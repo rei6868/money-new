@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, text, timestamp, varchar, numeric } from "drizzle-orm/pg-core";
+import { foreignKey, pgEnum, pgTable, text, timestamp, varchar, numeric } from "drizzle-orm/pg-core";
 
 /**
  * Enumerates all supported account types within the finance platform.
@@ -68,13 +68,7 @@ export const accounts = pgTable("accounts", {
    * grouping account. Null for top-level or stand-alone accounts. The parent
    * is expected to aggregate balances of its immediate children.
    */
-  parentAccountId: varchar("parent_account_id", { length: 36 }).references(
-    () => accounts.accountId,
-    {
-      onDelete: "set null",
-      onUpdate: "cascade",
-    },
-  ),
+  parentAccountId: varchar("parent_account_id", { length: 36 }),
 
   /**
    * Optional linkage to an Asset record (e.g. collateral or pledged asset).
@@ -133,7 +127,15 @@ export const accounts = pgTable("accounts", {
    * Optional to avoid polluting the record when no remarks are necessary.
    */
   notes: text("notes"),
-});
+}, (table) => ({
+  parentAccountFk: foreignKey({
+    columns: [table.parentAccountId],
+    foreignColumns: [table.accountId],
+    onDelete: "set null",
+    onUpdate: "cascade",
+    name: "accounts_parent_account_id_fkey",
+  }),
+}));
 
 export type Account = typeof accounts.$inferSelect;
 export type NewAccount = typeof accounts.$inferInsert;
