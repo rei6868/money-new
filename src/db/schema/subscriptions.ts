@@ -119,73 +119,73 @@ export const subscriptionMemberStatusEnum = pgEnum("subscription_member_status",
  * proportional cost allocation whenever multiple members split the bill.
  */
 export const subscriptionMembers = pgTable("subscription_members", {
-  /**
-   * Primary key for the membership record. Stored as string (UUID) for
-   * compatibility with distributed ID generators.
-   */
-  memberId: varchar("member_id", { length: 36 }).primaryKey(),
+    /**
+     * Primary key for the membership record. Stored as string (UUID) for
+     * compatibility with distributed ID generators.
+     */
+    memberId: varchar("member_id", { length: 36 }).primaryKey(),
 
-  /**
-   * Foreign key linking the membership to its parent subscription.
-   */
-  subscriptionId: varchar("subscription_id", { length: 36 })
-    .notNull()
-    .references(() => subscriptions.subscriptionId, { onDelete: "cascade" }),
+    /**
+     * Foreign key linking the membership to its parent subscription.
+     */
+    subscriptionId: varchar("subscription_id", { length: 36 })
+      .notNull()
+      .references(() => subscriptions.subscriptionId, { onDelete: "cascade" }),
 
-  /**
-   * Foreign key to the person participating in the subscription.
-   */
-  personId: varchar("person_id", { length: 36 })
-    .notNull()
-    .references(() => people.personId, { onDelete: "cascade" }),
+    /**
+     * Foreign key to the person participating in the subscription.
+     */
+    personId: varchar("person_id", { length: 36 })
+      .notNull()
+      .references(() => people.personId, { onDelete: "cascade" }),
 
-  /**
-   * Indicates whether the member administrates the subscription or is a
-   * regular participant. Multiple owners are allowed to support shared
-   * administration.
-   */
-  role: subscriptionMemberRoleEnum("role").notNull(),
+    /**
+     * Indicates whether the member administrates the subscription or is a
+     * regular participant. Multiple owners are allowed to support shared
+     * administration.
+     */
+    role: subscriptionMemberRoleEnum("role").notNull(),
 
-  /**
-   * Date the member joined the subscription, used when generating pro-rated
-   * charges or analysing history.
-   */
-  joinDate: date("join_date").notNull(),
+    /**
+     * Date the member joined the subscription, used when generating pro-rated
+     * charges or analysing history.
+     */
+    joinDate: date("join_date").notNull(),
 
-  /**
-   * When populated, indicates the date the member stopped participating in
-   * the subscription. Helps automation avoid charging former members while
-   * preserving historic participation data.
-   */
-  leaveDate: date("leave_date"),
+    /**
+     * When populated, indicates the date the member stopped participating in
+     * the subscription. Helps automation avoid charging former members while
+     * preserving historic participation data.
+     */
+    leaveDate: date("leave_date"),
 
-  /**
-   * Optional ratio (0-1) representing the proportion of the monthly price the
-   * member should absorb. Null implies equal split handled at runtime.
-   */
-  shareRatio: numeric("share_ratio", { precision: 5, scale: 4 }),
+    /**
+     * Optional ratio (0-1) representing the proportion of the monthly price the
+     * member should absorb. Null implies equal split handled at runtime.
+     */
+    shareRatio: numeric("share_ratio", { precision: 5, scale: 4 }),
 
-  /**
-   * Lifecycle flag denoting if the member is still active in the subscription
-   * and should be billed in upcoming cycles.
-   */
-  status: subscriptionMemberStatusEnum("status").notNull(),
+    /**
+     * Lifecycle flag denoting if the member is still active in the subscription
+     * and should be billed in upcoming cycles.
+     */
+    status: subscriptionMemberStatusEnum("status").notNull(),
 
-  /**
-   * Optional free-form notes that capture manual adjustments, custom split
-   * rules or context needed for finance reviews.
-   */
-  notes: text("notes"),
+    /**
+     * Optional free-form notes that capture manual adjustments, custom split
+     * rules or context needed for finance reviews.
+     */
+    notes: text("notes"),
 
-  /**
-   * Creation timestamp for the membership record.
-   */
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    /**
+     * Creation timestamp for the membership record.
+     */
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 
-  /**
-   * Update timestamp to support downstream sync processes.
-   */
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    /**
+     * Update timestamp to support downstream sync processes.
+     */
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   /**
    * Ensures a person cannot be enrolled twice in the same subscription.
