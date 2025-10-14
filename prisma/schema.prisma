@@ -1,0 +1,528 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DB_URL")
+}
+
+enum PersonStatus {
+  active
+  inactive
+  archived
+}
+
+enum AccountType {
+  bank
+  credit
+  saving
+  invest
+  e_wallet @map("e-wallet")
+  group
+  loan
+  mortgage
+  cash
+  other
+}
+
+enum AccountStatus {
+  active
+  closed
+  archived
+}
+
+enum CategoryKind {
+  expense
+  income
+  transfer
+  debt
+  cashback
+  subscription
+  other
+}
+
+enum TransactionType {
+  expense
+  income
+  debt
+  repayment
+  cashback
+  subscription
+  import
+  adjustment
+}
+
+enum TransactionStatus {
+  active
+  pending
+  void
+  canceled
+}
+
+enum LinkedTxnType {
+  refund
+  split
+  batch
+  settle
+}
+
+enum LinkedTxnStatus {
+  active
+  done
+  canceled
+}
+
+enum CashbackEligibility {
+  eligible
+  not_eligible
+  reached_cap
+  pending
+}
+
+enum CashbackLedgerStatus {
+  open
+  closed
+}
+
+enum CashbackType {
+  percent
+  fixed
+}
+
+enum CashbackStatus {
+  init
+  applied
+  exceed_cap
+  invalidated
+}
+
+enum DebtLedgerStatus {
+  open
+  partial
+  repaid
+  overdue
+}
+
+enum DebtMovementType {
+  borrow
+  repay
+  adjust
+  discount
+  split
+}
+
+enum DebtMovementStatus {
+  active
+  settled
+  reversed
+}
+
+enum SubscriptionInterval {
+  weekly
+  monthly
+  quarterly
+  yearly
+  custom
+}
+
+enum SubscriptionStatus {
+  active
+  paused
+  canceled
+}
+
+enum SubscriptionMemberRole {
+  owner
+  participant
+  viewer
+}
+
+enum SubscriptionMemberStatus {
+  active
+  inactive
+  pending
+}
+
+enum SheetLinkType {
+  report
+  debt
+  sync
+}
+
+enum ShopType {
+  food
+  retail
+  digital
+  service
+  other
+}
+
+enum ShopStatus {
+  active
+  hidden
+}
+
+enum AssetType {
+  saving
+  invest
+  real_estate
+  crypto
+  bond
+  collateral
+  other
+}
+
+enum AssetStatus {
+  active
+  sold
+  transferred
+  frozen
+}
+
+enum BatchImportType {
+  transfer
+  payment
+  topup
+  other
+}
+
+enum BatchImportStatus {
+  pending
+  processing
+  done
+}
+
+model Person {
+  personId    String   @id @map("person_id") @db.VarChar(36)
+  fullName    String   @map("full_name") @db.VarChar(180)
+  contactInfo String?  @map("contact_info") @db.Text
+  status      PersonStatus
+  groupId     String?  @map("group_id") @db.VarChar(36)
+  imgUrl      String?  @map("img_url") @db.Text
+  note        String?  @db.Text
+  createdAt   DateTime @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @map("updated_at") @default(now()) @db.Timestamptz(6)
+
+  accounts                Account[]            @relation("AccountOwner")
+  assets                  Asset[]              @relation("AssetOwner")
+  transactions            Transaction[]        @relation("TransactionPerson")
+  debtLedgers             DebtLedger[]         @relation("DebtLedgerPerson")
+  debtMovements           DebtMovement[]       @relation("DebtMovementPerson")
+  ownedSubscriptions      Subscription[]       @relation("SubscriptionOwner")
+  subscriptionMemberships SubscriptionMember[] @relation("SubscriptionMemberPerson")
+  batchImports            BatchImport[]        @relation("BatchImportUser")
+  sheetLinks              SheetLink[]          @relation("SheetLinkPerson")
+
+  @@map("people")
+}
+
+model Account {
+  accountId        String   @id @map("account_id") @db.VarChar(36)
+  accountName      String   @map("account_name") @db.VarChar(120)
+  imgUrl           String?  @map("img_url") @db.Text
+  accountType      AccountType @map("account_type")
+  ownerId          String   @map("owner_id") @db.VarChar(36)
+  parentAccountId  String?  @map("parent_account_id") @db.VarChar(36)
+  assetRef         String?  @map("asset_ref") @db.VarChar(36)
+  openingBalance   Decimal  @map("opening_balance") @db.Decimal(18, 2)
+  currentBalance   Decimal  @map("current_balance") @db.Decimal(18, 2)
+  status           AccountStatus
+  totalIn          Decimal  @map("total_in") @default(0) @db.Decimal(18, 2)
+  totalOut         Decimal  @map("total_out") @default(0) @db.Decimal(18, 2)
+  createdAt        DateTime @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @map("updated_at") @default(now()) @db.Timestamptz(6)
+  notes            String?  @db.Text
+
+  owner              Person               @relation("AccountOwner", fields: [ownerId], references: [personId], onDelete: Restrict)
+  parent             Account?             @relation("AccountParent", fields: [parentAccountId], references: [accountId], onDelete: SetNull)
+  children           Account[]            @relation("AccountParent")
+  collateralAsset    Asset?               @relation("CollateralAsset", fields: [assetRef], references: [assetId], onDelete: SetNull)
+  linkedAssets       Asset[]              @relation("AssetLinkedAccount")
+  transactions       Transaction[]
+  cashbackLedgers    CashbackLedger[]
+  cashbackMovements  CashbackMovement[]
+  debtMovements      DebtMovement[]
+  billingSubscriptions Subscription[]     @relation("SubscriptionBillingAccount")
+  reimbursementMemberships SubscriptionMember[] @relation("SubscriptionMemberReimbursement")
+  cardPlRecords      CardPl[]
+  batchImports       BatchImport[]
+
+  @@map("accounts")
+}
+
+model Asset {
+  assetId        String   @id @map("asset_id") @db.VarChar(36)
+  assetName      String   @map("asset_name") @db.VarChar(180)
+  assetType      AssetType @map("asset_type")
+  ownerId        String   @map("owner_id") @db.VarChar(36)
+  linkedAccountId String? @map("linked_account_id") @db.VarChar(36)
+  status         AssetStatus
+  currentValue   Decimal  @map("current_value") @db.Decimal(18, 2)
+  initialValue   Decimal? @map("initial_value") @db.Decimal(18, 2)
+  currency       String?  @db.VarChar(10)
+  acquiredAt     DateTime? @map("acquired_at") @db.Date
+  imgUrl         String?  @map("img_url") @db.Text
+  notes          String?  @db.Text
+  createdAt      DateTime @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @map("updated_at") @default(now()) @db.Timestamptz(6)
+
+  owner                    Person   @relation("AssetOwner", fields: [ownerId], references: [personId], onDelete: Restrict)
+  linkedAccount            Account? @relation("AssetLinkedAccount", fields: [linkedAccountId], references: [accountId], onDelete: SetNull)
+  accountsUsingAsCollateral Account[] @relation("CollateralAsset")
+
+  @@map("assets")
+}
+
+model Category {
+  categoryId       String   @id @map("category_id") @db.VarChar(36)
+  name             String   @db.VarChar(120)
+  kind             CategoryKind
+  parentCategoryId String?  @map("parent_category_id") @db.VarChar(36)
+  description      String?  @db.Text
+  createdAt        DateTime @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @map("updated_at") @default(now()) @db.Timestamptz(6)
+
+  parent    Category?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [categoryId], onDelete: SetNull)
+  children  Category[] @relation("CategoryHierarchy")
+  transactions Transaction[]
+
+  @@map("categories")
+}
+
+model Transaction {
+  transactionId         String   @id @map("transaction_id") @db.VarChar(36)
+  accountId             String   @map("account_id") @db.VarChar(36)
+  personId              String?  @map("person_id") @db.VarChar(36)
+  type                  TransactionType
+  categoryId            String?  @map("category_id") @db.VarChar(36)
+  subscriptionMemberId  String?  @map("subscription_member_id") @db.VarChar(36)
+  linkedTxnId           String?  @map("linked_txn_id") @db.VarChar(36)
+  status                TransactionStatus
+  amount                Decimal  @db.Decimal(18, 2)
+  fee                   Decimal? @db.Decimal(18, 2)
+  occurredOn            DateTime @map("occurred_on") @db.Date
+  notes                 String?  @db.Text
+  createdAt             DateTime @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime @map("updated_at") @default(now()) @db.Timestamptz(6)
+
+  account             Account             @relation(fields: [accountId], references: [accountId], onDelete: Restrict)
+  person              Person?             @relation("TransactionPerson", fields: [personId], references: [personId], onDelete: SetNull)
+  category            Category?           @relation(fields: [categoryId], references: [categoryId], onDelete: SetNull)
+  subscriptionMember  SubscriptionMember? @relation("TransactionSubscriptionMember", fields: [subscriptionMemberId], references: [memberId], onDelete: SetNull)
+  linkedTransaction   LinkedTransaction?  @relation("TransactionLinkedGroup", fields: [linkedTxnId], references: [linkedTxnId], onDelete: SetNull)
+  cashbackMovements   CashbackMovement[]
+  debtMovements       DebtMovement[]
+  linkedChildren      LinkedTransaction[] @relation("LinkedParent")
+
+  @@map("transactions")
+}
+
+model LinkedTransaction {
+  linkedTxnId    String    @id @map("linked_txn_id") @db.VarChar(36)
+  parentTxnId    String?   @map("parent_txn_id") @db.VarChar(36)
+  type           LinkedTxnType
+  relatedTxnIds  String[]  @map("related_txn_ids") @default([]) @db.VarChar(36)
+  notes          String?   @db.Text
+  status         LinkedTxnStatus
+  createdAt      DateTime  @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @map("updated_at") @default(now()) @db.Timestamptz(6)
+
+  parentTransaction Transaction? @relation("LinkedParent", fields: [parentTxnId], references: [transactionId], onDelete: SetNull)
+  transactions      Transaction[] @relation("TransactionLinkedGroup")
+
+  @@map("linked_transactions")
+}
+
+model CashbackLedger {
+  cashbackLedgerId String   @id @map("cashback_ledger_id") @db.VarChar(36)
+  accountId        String   @map("account_id") @db.VarChar(36)
+  cycleTag         String   @map("cycle_tag") @db.VarChar(10)
+  totalSpend       Decimal  @map("total_spend") @default(0) @db.Decimal(18, 2)
+  totalCashback    Decimal  @map("total_cashback") @default(0) @db.Decimal(18, 2)
+  budgetCap        Decimal  @map("budget_cap") @default(0) @db.Decimal(18, 2)
+  eligibility      CashbackEligibility
+  remainingBudget  Decimal  @map("remaining_budget") @default(0) @db.Decimal(18, 2)
+  status           CashbackLedgerStatus
+  notes            String?  @db.Text
+  lastUpdated      DateTime @map("last_updated") @default(now()) @db.Timestamptz(6)
+
+  account Account @relation(fields: [accountId], references: [accountId], onDelete: Restrict)
+
+  @@unique([accountId, cycleTag], name: "cashback_ledger_account_cycle_uidx")
+  @@map("cashback_ledger")
+}
+
+model CashbackMovement {
+  cashbackMovementId String   @id @map("cashback_movement_id") @db.VarChar(36)
+  transactionId      String   @map("transaction_id") @db.VarChar(36)
+  accountId          String   @map("account_id") @db.VarChar(36)
+  cycleTag           String   @map("cycle_tag") @db.VarChar(10)
+  cashbackType       CashbackType @map("cashback_type")
+  cashbackValue      Decimal  @map("cashback_value") @db.Decimal(18, 4)
+  cashbackAmount     Decimal  @map("cashback_amount") @db.Decimal(18, 2)
+  status             CashbackStatus
+  budgetCap          Decimal? @map("budget_cap") @db.Decimal(18, 2)
+  note               String?  @db.Text @map("note")
+  createdAt          DateTime @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime @map("updated_at") @default(now()) @db.Timestamptz(6)
+
+  transaction Transaction @relation(fields: [transactionId], references: [transactionId], onDelete: Restrict)
+  account     Account     @relation(fields: [accountId], references: [accountId], onDelete: Restrict)
+
+  @@index([accountId, cycleTag], name: "cashback_movements_account_cycle_idx")
+  @@map("cashback_movements")
+}
+
+model DebtLedger {
+  debtLedgerId String   @id @map("debt_ledger_id") @db.VarChar(36)
+  personId     String   @map("person_id") @db.VarChar(36)
+  cycleTag     String?  @map("cycle_tag") @db.VarChar(10)
+  initialDebt  Decimal  @map("initial_debt") @default(0) @db.Decimal(18, 2)
+  newDebt      Decimal  @map("new_debt") @default(0) @db.Decimal(18, 2)
+  repayments   Decimal  @default(0) @db.Decimal(18, 2)
+  debtDiscount Decimal? @map("debt_discount") @default(0) @db.Decimal(18, 2)
+  netDebt      Decimal  @map("net_debt") @default(0) @db.Decimal(18, 2)
+  status       DebtLedgerStatus
+  lastUpdated  DateTime @map("last_updated") @default(now()) @db.Timestamptz(6)
+  notes        String?  @db.Text
+
+  person Person @relation("DebtLedgerPerson", fields: [personId], references: [personId], onDelete: Restrict)
+
+  @@unique([personId, cycleTag], name: "debt_ledger_person_cycle_uidx")
+  @@map("debt_ledger")
+}
+
+model DebtMovement {
+  debtMovementId String   @id @map("debt_movement_id") @db.VarChar(36)
+  transactionId  String   @map("transaction_id") @db.VarChar(36)
+  personId       String   @map("person_id") @db.VarChar(36)
+  accountId      String   @map("account_id") @db.VarChar(36)
+  movementType   DebtMovementType @map("movement_type")
+  amount         Decimal  @db.Decimal(18, 2)
+  cycleTag       String?  @map("cycle_tag") @db.VarChar(10)
+  status         DebtMovementStatus
+  notes          String?  @db.Text
+  createdAt      DateTime @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @map("updated_at") @default(now()) @db.Timestamptz(6)
+
+  transaction Transaction @relation(fields: [transactionId], references: [transactionId], onDelete: Restrict)
+  person       Person     @relation("DebtMovementPerson", fields: [personId], references: [personId], onDelete: Restrict)
+  account      Account    @relation(fields: [accountId], references: [accountId], onDelete: Restrict)
+
+  @@index([personId, accountId], name: "debt_movements_person_account_idx")
+  @@index([accountId, cycleTag], name: "debt_movements_account_cycle_idx")
+  @@map("debt_movements")
+}
+
+model Subscription {
+  subscriptionId   String   @id @map("subscription_id") @db.VarChar(36)
+  subscriptionName String   @map("subscription_name") @db.VarChar(160)
+  provider         String?  @db.VarChar(120)
+  billingAccountId String   @map("billing_account_id") @db.VarChar(36)
+  ownerId          String   @map("owner_id") @db.VarChar(36)
+  amount           Decimal? @db.Decimal(18, 2)
+  currencyCode     String?  @map("currency_code") @default("USD") @db.VarChar(10)
+  billingInterval  SubscriptionInterval @map("billing_interval")
+  nextBillingDate  DateTime? @map("next_billing_date") @db.Date
+  status           SubscriptionStatus @default(active)
+  notes            String?  @db.Text
+  createdAt        DateTime @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @map("updated_at") @default(now()) @db.Timestamptz(6)
+
+  billingAccount Account @relation("SubscriptionBillingAccount", fields: [billingAccountId], references: [accountId], onDelete: Restrict)
+  owner          Person  @relation("SubscriptionOwner", fields: [ownerId], references: [personId], onDelete: Restrict)
+  members        SubscriptionMember[]
+
+  @@unique([billingAccountId, subscriptionName], name: "subscriptions_account_name_uidx")
+  @@map("subscriptions")
+}
+
+model SubscriptionMember {
+  memberId               String   @id @map("member_id") @db.VarChar(36)
+  subscriptionId         String   @map("subscription_id") @db.VarChar(36)
+  personId               String   @map("person_id") @db.VarChar(36)
+  reimbursementAccountId String?  @map("reimbursement_account_id") @db.VarChar(36)
+  responsibilityShare    Decimal? @map("responsibility_share") @db.Decimal(5, 4)
+  role                   SubscriptionMemberRole @default(participant)
+  status                 SubscriptionMemberStatus @default(active)
+  notes                  String?  @db.Text
+  createdAt              DateTime @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt              DateTime @map("updated_at") @default(now()) @db.Timestamptz(6)
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [subscriptionId], onDelete: Cascade)
+  person       Person       @relation("SubscriptionMemberPerson", fields: [personId], references: [personId], onDelete: Cascade)
+  reimbursementAccount Account? @relation("SubscriptionMemberReimbursement", fields: [reimbursementAccountId], references: [accountId], onDelete: SetNull)
+  transactions Transaction[] @relation("TransactionSubscriptionMember")
+
+  @@unique([subscriptionId, personId], name: "subscription_members_subscription_person_uidx")
+  @@check(name: "subscription_members_responsibility_share_check", expression: "responsibility_share IS NULL OR (responsibility_share >= 0 AND responsibility_share <= 1)")
+  @@map("subscription_members")
+}
+
+model SheetLink {
+  sheetLinkId String   @id @map("sheet_link_id") @db.VarChar(36)
+  url         String   @db.Text
+  personId    String?  @map("person_id") @db.VarChar(36)
+  groupId     String?  @map("group_id") @db.VarChar(36)
+  type        SheetLinkType
+  lastSync    DateTime? @map("last_sync") @db.Timestamptz(6)
+  notes       String?  @db.Text
+  createdAt   DateTime @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @map("updated_at") @default(now()) @db.Timestamptz(6)
+
+  person Person? @relation("SheetLinkPerson", fields: [personId], references: [personId], onDelete: SetNull)
+
+  @@check(name: "sheet_links_target_exclusivity_check", expression: "(person_id IS NOT NULL AND group_id IS NULL) OR (group_id IS NOT NULL AND person_id IS NULL)")
+  @@map("sheet_links")
+}
+
+model Shop {
+  shopId    String   @id @map("shop_id") @db.VarChar(36)
+  shopName  String   @map("shop_name") @db.VarChar(180)
+  shopType  ShopType @map("shop_type")
+  imgUrl    String?  @map("img_url") @db.Text
+  url       String?  @db.Text
+  status    ShopStatus
+  notes     String?  @db.Text
+  createdAt DateTime @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @map("updated_at") @default(now()) @db.Timestamptz(6)
+
+  @@map("shops")
+}
+
+model CardPl {
+  cardPlId   String   @id @map("card_pl_id") @db.VarChar(36)
+  accountId  String   @map("account_id") @db.VarChar(36)
+  year       String   @db.VarChar(9)
+  totalEarned Decimal  @map("total_earned") @default(0) @db.Decimal(18, 2)
+  totalFee    Decimal  @map("total_fee") @default(0) @db.Decimal(18, 2)
+  netPl       Decimal? @map("net_pl") @default(dbgenerated("coalesce(\"total_earned\", 0) - coalesce(\"total_fee\", 0)")) @db.Decimal(18, 2)
+  notes       String?  @db.Text
+  createdAt   DateTime @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @map("updated_at") @default(now()) @db.Timestamptz(6)
+
+  account Account @relation(fields: [accountId], references: [accountId], onDelete: Cascade)
+
+  @@map("card_pl")
+}
+
+model BatchImport {
+  batchImportId String   @id @map("batch_import_id") @db.VarChar(36)
+  batchName     String   @map("batch_name") @db.VarChar(160)
+  importType    BatchImportType @map("import_type")
+  status        BatchImportStatus
+  accountId     String   @map("account_id") @db.VarChar(36)
+  totalAmount   Decimal  @map("total_amount") @db.Decimal(18, 2)
+  deadline      DateTime @db.Date
+  userId        String   @map("user_id") @db.VarChar(36)
+  notes         String?  @db.Text
+  createdAt     DateTime @map("created_at") @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @map("updated_at") @default(now()) @db.Timestamptz(6)
+
+  account Account @relation(fields: [accountId], references: [accountId], onDelete: Restrict)
+  user    Person  @relation("BatchImportUser", fields: [userId], references: [personId], onDelete: Restrict)
+
+  @@map("batch_imports")
+}
+
