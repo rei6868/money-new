@@ -456,7 +456,6 @@ model SubscriptionMember {
   transactions Transaction[] @relation("TransactionSubscriptionMember")
 
   @@unique([subscriptionId, personId], name: "subscription_members_subscription_person_uidx")
-  @@check(name: "subscription_members_responsibility_share_check", expression: "responsibility_share IS NULL OR (responsibility_share >= 0 AND responsibility_share <= 1)")
   @@map("subscription_members")
 }
 
@@ -473,7 +472,6 @@ model SheetLink {
 
   person Person? @relation("SheetLinkPerson", fields: [personId], references: [personId], onDelete: SetNull)
 
-  @@check(name: "sheet_links_target_exclusivity_check", expression: "(person_id IS NOT NULL AND group_id IS NULL) OR (group_id IS NOT NULL AND person_id IS NULL)")
   @@map("sheet_links")
 }
 
@@ -525,4 +523,3 @@ model BatchImport {
 
   @@map("batch_imports")
 }
-
