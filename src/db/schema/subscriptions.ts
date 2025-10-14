@@ -81,7 +81,7 @@ export const subscriptions = pgTable("subscriptions", {
    * Optional public-facing icon or illustration used in dashboards. Enables
    * richer UI when rendering subscription cards.
    */
-  imageUrl: text("img_url"),
+  imgUrl: text("img_url"),
 
   /**
    * Creation timestamp defaults to NOW() so onboarding audits can trace when a
