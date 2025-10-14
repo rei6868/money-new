@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgEnum, pgTable, text, timestamp, varchar, numeric, date, uniqueIndex, check } from "drizzle-orm/pg-core";
+import { pgEnum, pgTable, timestamp, varchar, numeric, date, uniqueIndex, check } from "drizzle-orm/pg-core";
 import { people } from "./people";
 
 /**
@@ -174,97 +174,7 @@ export const subscriptionMembers = pgTable("subscription_members", {
   ),
 }));
 
-/**
- * Enumerates the supported mapping targets for a sheet link.
- */
-export const sheetMappingTypeEnum = pgEnum("sheet_mapping_type", [
-  "person",
-  "group",
-]);
-
-/**
- * Categorises the intent of a linked Google Sheet. "sync" entries drive import
- * jobs whereas "report" or "debt" entries feed human-friendly dashboards.
- */
-export const sheetTypeEnum = pgEnum("sheet_type", [
-  "report",
-  "debt",
-  "sync",
-  "other",
-]);
-
-/**
- * Stores Google Sheet integrations per person or group so external data can be
- * synced into the platform or exported for manual reconciliation.
- */
-export const sheetLinks = pgTable("sheet_links", {
-  /**
-   * Primary key for the sheet mapping. String based to allow UUIDs.
-   */
-  sheetLinkId: varchar("sheet_link_id", { length: 36 }).primaryKey(),
-
-  /**
-   * Direct URL to the Google Sheet. Stored as text to accommodate long query
-   * parameters and shareable links.
-   */
-  url: text("url").notNull(),
-
-  /**
-   * Optional link to a person when the sheet tracks individual level data.
-   */
-  personId: varchar("person_id", { length: 36 }).references(() => people.personId, {
-    onDelete: "set null",
-  }),
-
-  /**
-   * Optional reference to a group or household entity. Nullable until group
-   * tables are formalised.
-   */
-  groupId: varchar("group_id", { length: 36 }),
-
-  /**
-   * Classifies the Google Sheet usage so automation can run the correct sync
-   * pipelines.
-   */
-  sheetType: sheetTypeEnum("sheet_type").notNull(),
-
-  /**
-   * Declares whether the mapping targets a single person or a group entity.
-   */
-  mappingType: sheetMappingTypeEnum("mapping_type").notNull(),
-
-  /**
-   * Timestamp of the last successful sync with the external sheet. Nullable
-   * because a sheet may be linked but never synced yet.
-   */
-  lastSync: timestamp("last_sync", { withTimezone: true }),
-
-  /**
-   * Creation timestamp for auditing onboarding of external data sources.
-   */
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-
-  /**
-   * Tracks the most recent mutation (e.g. URL rotation, mapping type change).
-   */
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
-  /**
-   * Guarantees the mapping_type aligns with the populated foreign key columns.
-   */
-  mappingTargetValidation: check(
-    "sheet_links_mapping_target_check",
-    sql`
-      (mapping_type = 'person' AND person_id IS NOT NULL AND group_id IS NULL)
-      OR
-      (mapping_type = 'group' AND group_id IS NOT NULL AND person_id IS NULL)
-    `,
-  ),
-}));
-
 export type Subscription = typeof subscriptions.$inferSelect;
 export type NewSubscription = typeof subscriptions.$inferInsert;
 export type SubscriptionMember = typeof subscriptionMembers.$inferSelect;
 export type NewSubscriptionMember = typeof subscriptionMembers.$inferInsert;
-export type SheetLink = typeof sheetLinks.$inferSelect;
-export type NewSheetLink = typeof sheetLinks.$inferInsert;
