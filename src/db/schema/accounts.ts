@@ -6,6 +6,7 @@ import {
   timestamp,
   varchar,
   numeric,
+  type PgTableWithColumns,
 } from "drizzle-orm/pg-core";
 
 import { assets } from "./assets";
@@ -46,7 +47,7 @@ export const accountStatusEnum = pgEnum("account_status", [
  * to help both engineering and product stakeholders understand the business
  * rules enforced at the persistence layer.
  */
-export const accounts = pgTable("accounts", {
+export const accounts: PgTableWithColumns<any> = pgTable("accounts", {
   /**
    * Globally unique identifier for the account. Stored as a string to allow
    * UUIDs or externally-generated IDs. Serves as the primary key and anchor
