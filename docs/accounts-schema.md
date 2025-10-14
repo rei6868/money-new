@@ -16,6 +16,7 @@ See [`src/db/schema/accounts.ts`](../src/db/schema/accounts.ts) for the full def
 |-------|------|----------|---------------------------|
 | `accountId` | `varchar(36)` | ✅ | Primary key; unique identifier for the account and anchor for all related transactions and balances. |
 | `accountName` | `varchar(120)` | ✅ | Display label presented to end users, exports, and notifications. Must be provided to avoid ambiguity in UI references. |
+| `imgUrl` | `text` | ⛔️ (optional) | CDN-hosted URL to the account avatar/bank logo/card art (e.g., `https://res.cloudinary.com/demo/card.png`) surfaced across dashboards and mobile cards. |
 | `accountType` | `account_type` enum | ✅ | Controlled vocabulary describing the financial instrument (bank, credit, saving, invest, e-wallet, group, loan, mortgage, cash, other). Drives categorised reporting and feature flags. |
 | `ownerId` | `varchar(36)` | ✅ | References the `People` table to map the account to its owner/manager. Required so balances always have a responsible person. |
 | `parentAccountId` | `varchar(36)` FK (self) | ⛔️ (optional) | Links a child account to a parent group account to enable aggregate balances. When null the account is top-level. Cascades updates, sets null on parent deletion. |

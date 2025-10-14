@@ -61,6 +61,13 @@ export const accounts = pgTable("accounts", {
   accountName: varchar("account_name", { length: 120 }).notNull(),
 
   /**
+   * Optional URL pointing to an avatar, bank logo, or card thumbnail hosted on
+   * a CDN (e.g. Cloudinary). Used in dashboards, cards, and mobile views to
+   * give users quick visual recognition of their accounts.
+   */
+  imgUrl: text("img_url"),
+
+  /**
    * Categorisation used for reporting, filtering, and business logic (e.g.
    * credit vs. asset accounts). Backed by a controlled enum to prevent drift
    * and to guarantee consistent aggregation behaviour.
