@@ -26,6 +26,7 @@ See [`src/db/schema/subscriptions.ts`](../src/db/schema/subscriptions.ts) for th
 | `name` | `varchar(180)` | ✅ | Display name shown in dashboards, invoices, and notifications. | `YouTube Premium Family` |
 | `type` | `subscription_type` enum | ✅ | Categorises the subscription for analytics; values include `youtube`, `icloud`, `spotify`, `netflix`, `other`. | `youtube` |
 | `pricePerMonth` | `numeric(12,2)` | ✅ | Total monthly recurring cost in the platform's base currency. | `299000.00` |
+| `imgUrl` | `text` | ⛔️ (optional) | CDN-hosted icon or illustration rendered on subscription cards. | `https://res.cloudinary.com/demo/youtube.png` |
 | `ownerId` | `varchar(36)` FK → `people.person_id` | ✅ | Person responsible for managing the subscription contract and default charge allocation. | `person_123` |
 | `status` | `subscription_status` enum | ✅ | Lifecycle flag controlling invoicing behaviour (`active`, `paused`, `cancelled`). | `active` |
 | `createdAt` | `timestamptz` (default `now()`) | ✅ | When the subscription was registered; useful for onboarding audits. | `2024-03-01T00:05:00Z` |
@@ -46,8 +47,10 @@ See [`src/db/schema/subscriptions.ts`](../src/db/schema/subscriptions.ts) for th
 | `personId` | `varchar(36)` FK → `people.person_id` | ✅ | Identifies the enrolled person. | `person_123` |
 | `role` | `subscription_member_role` enum | ✅ | Distinguishes administrators (`owner`) from regular consumers (`member`). | `member` |
 | `joinDate` | `date` | ✅ | When the person joined, used for prorating invoices. | `2024-03-10` |
+| `leaveDate` | `date` | ⛔️ (optional) | When populated, indicates the member stopped participating so charges cease. | `2024-05-01` |
 | `shareRatio` | `numeric(5,4)` | ⛔️ (optional) | Explicit cost split for this member (`0.25` = 25%); `null` means runtime equal split logic. | `0.3333` |
 | `status` | `subscription_member_status` enum | ✅ | Indicates whether to keep generating charges (`active` or `left`). | `active` |
+| `notes` | `text` | ⛔️ (optional) | Free-form annotations that capture manual adjustments or context for finance reviews. | `Prorated for April` |
 | `createdAt` | `timestamptz` (default `now()`) | ✅ | Membership creation timestamp for historical audits. | `2024-03-10T12:00:00Z` |
 | `updatedAt` | `timestamptz` (default `now()`) | ✅ | Tracks the last membership update (role/status changes). | `2024-04-01T08:30:00Z` |
 
