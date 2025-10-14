@@ -62,6 +62,13 @@ npm run dev
 ### Deployment
 Deployment instructions will be added as the project progresses.
 
+### Database Operations
+- `npm run db:push` – Uses Drizzle Kit to push the current schema to the Neon database defined by `DB_URL`.
+- `npm run db:deploy` – Wraps the push command with logging to `logs/` for auditing deployment runs.
+- `npm run db:verify` – Connects to Neon, inspects the live schema, and writes a verification report to `docs/neon-schema-verification.md` comparing it with the documented expectations.
+
+Ensure `DB_URL` is configured in your `.env` before running any of the database commands.
+
 ## Documentation
 - Technical documentation can be found in the `/docs` directory
 - API documentation will be available once endpoints are implemented

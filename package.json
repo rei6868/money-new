@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "jest"
+    "test": "jest",
+    "db:deploy": "ts-node --transpile-only scripts/deployNeon.ts",
+    "db:verify": "ts-node --transpile-only scripts/verifySchema.ts",
+    "db:push": "drizzle-kit push --config drizzle.config.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
@@ -22,9 +25,11 @@
     "@types/node": "^20.1.0",
     "@types/react": "^18.2.6",
     "@types/react-dom": "^18.2.4",
+    "drizzle-kit": "^0.22.8",
     "jest": "^29.5.0",
     "prettier": "^2.8.8",
     "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.0.4"
   }
 }

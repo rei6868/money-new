@@ -1,4 +1,15 @@
-import { foreignKey, pgEnum, pgTable, text, timestamp, varchar, numeric } from "drizzle-orm/pg-core";
+import {
+  foreignKey,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  varchar,
+  numeric,
+} from "drizzle-orm/pg-core";
+
+import { assets } from "./assets";
+import { people } from "./people";
 
 /**
  * Enumerates all supported account types within the finance platform.
@@ -68,7 +79,9 @@ export const accounts = pgTable("accounts", {
    * for the account. Mandatory so balances can always be mapped to a person.
    * If ownership is shared, represent it via a group account and children.
    */
-  ownerId: varchar("owner_id", { length: 36 }).notNull(),
+  ownerId: varchar("owner_id", { length: 36 })
+    .notNull()
+    .references(() => people.personId, { onDelete: "restrict" }),
 
   /**
    * Self-referencing foreign key that links a child account to its parent
@@ -82,7 +95,9 @@ export const accounts = pgTable("accounts", {
    * Enables risk reporting and ensures collateralised accounts can surface
    * the underlying asset metadata.
    */
-  assetRef: varchar("asset_ref", { length: 36 }),
+  assetRef: varchar("asset_ref", { length: 36 }).references(() => assets.assetId, {
+    onDelete: "set null",
+  }),
 
   /**
    * Balance when the account record was created in the system. Stored with two
@@ -139,6 +154,20 @@ export const accounts = pgTable("accounts", {
     columns: [table.parentAccountId],
     foreignColumns: [table.accountId],
     name: "accounts_parent_account_id_fkey",
+  })
+    .onDelete("set null")
+    .onUpdate("cascade"),
+  ownerFk: foreignKey({
+    columns: [table.ownerId],
+    foreignColumns: [people.personId],
+    name: "accounts_owner_id_fkey",
+  })
+    .onDelete("restrict")
+    .onUpdate("cascade"),
+  assetFk: foreignKey({
+    columns: [table.assetRef],
+    foreignColumns: [assets.assetId],
+    name: "accounts_asset_ref_fkey",
   })
     .onDelete("set null")
     .onUpdate("cascade"),
