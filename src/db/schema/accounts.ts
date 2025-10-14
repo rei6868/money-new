@@ -131,10 +131,10 @@ export const accounts = pgTable("accounts", {
   parentAccountFk: foreignKey({
     columns: [table.parentAccountId],
     foreignColumns: [table.accountId],
-    onDelete: "set null",
-    onUpdate: "cascade",
     name: "accounts_parent_account_id_fkey",
-  }),
+  })
+    .onDelete("set null")
+    .onUpdate("cascade"),
 }));
 
 export type Account = typeof accounts.$inferSelect;
