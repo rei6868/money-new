@@ -1,5 +1,15 @@
 import { sql } from "drizzle-orm";
-import { pgEnum, pgTable, text, timestamp, varchar, numeric, date, uniqueIndex, check } from "drizzle-orm/pg-core";
+import {
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  varchar,
+  numeric,
+  date,
+  uniqueIndex,
+  check,
+} from "drizzle-orm/pg-core";
 import { people } from "./people";
 
 /**
@@ -66,6 +76,12 @@ export const subscriptions = pgTable("subscriptions", {
    * invoicing when paused or cancelled).
    */
   status: subscriptionStatusEnum("status").notNull(),
+
+  /**
+   * Optional public-facing icon or illustration used in dashboards. Enables
+   * richer UI when rendering subscription cards.
+   */
+  imageUrl: text("img_url"),
 
   /**
    * Creation timestamp defaults to NOW() so onboarding audits can trace when a
@@ -137,6 +153,13 @@ export const subscriptionMembers = pgTable("subscription_members", {
     joinDate: date("join_date").notNull(),
 
     /**
+     * When populated, indicates the date the member stopped participating in
+     * the subscription. Helps automation avoid charging former members while
+     * preserving historic participation data.
+     */
+    leaveDate: date("leave_date"),
+
+    /**
      * Optional ratio (0-1) representing the proportion of the monthly price the
      * member should absorb. Null implies equal split handled at runtime.
      */
@@ -147,6 +170,12 @@ export const subscriptionMembers = pgTable("subscription_members", {
      * and should be billed in upcoming cycles.
      */
     status: subscriptionMemberStatusEnum("status").notNull(),
+
+    /**
+     * Optional free-form notes that capture manual adjustments, custom split
+     * rules or context needed for finance reviews.
+     */
+    notes: text("notes"),
 
     /**
      * Creation timestamp for the membership record.
