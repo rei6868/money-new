@@ -1,3 +1,5 @@
+// subscriptions.ts
+import { sql } from "drizzle-orm";
 import {
   foreignKey,
   pgEnum,
@@ -8,6 +10,7 @@ import {
   varchar,
   numeric,
   date,
+  check,
 } from "drizzle-orm/pg-core";
 
 import { accounts } from "./accounts";
@@ -217,6 +220,8 @@ export const subscriptionMembers = pgTable(
       table.subscriptionId,
       table.personId,
     ),
+
+    // Keep explicit FKs for clarity & migration safety.
     subscriptionFk: foreignKey({
       columns: [table.subscriptionId],
       foreignColumns: [subscriptions.subscriptionId],
@@ -238,6 +243,12 @@ export const subscriptionMembers = pgTable(
     })
       .onDelete("set null")
       .onUpdate("cascade"),
+
+    // Adapted from the other branch: keep bounds validation for share %
+    responsibilityShareBounds: check(
+      "subscription_members_responsibility_share_check",
+      sql`responsibility_share IS NULL OR (responsibility_share >= 0 AND responsibility_share <= 1)`,
+    ),
   }),
 );
 
@@ -246,4 +257,3 @@ export type NewSubscription = typeof subscriptions.$inferInsert;
 
 export type SubscriptionMember = typeof subscriptionMembers.$inferSelect;
 export type NewSubscriptionMember = typeof subscriptionMembers.$inferInsert;
-
