@@ -145,7 +145,7 @@ const compareColumns = (expected: TableExpectation, actualMap: Map<string, Colum
 };
 
 const fetchConstraints = async (tableName: string): Promise<ConstraintRow[]> => {
-  const rows = await sql<ConstraintRow>`
+  const rows = (await sql`
     SELECT
       tc.constraint_name,
       tc.constraint_type,
@@ -162,20 +162,20 @@ const fetchConstraints = async (tableName: string): Promise<ConstraintRow[]> => 
     WHERE tc.table_schema = 'public'
       AND tc.table_name = ${tableName}
     GROUP BY tc.constraint_name, tc.constraint_type, ccu.table_name
-  `;
+  `) as ConstraintRow[];
   return rows;
 };
 
 const fetchIndexes = async (tableName: string): Promise<IndexRow[]> => {
-  return sql<IndexRow>`
+  return (await sql`
     SELECT indexname, indexdef
     FROM pg_indexes
     WHERE schemaname = 'public' AND tablename = ${tableName}
-  `;
+  `) as IndexRow[];
 };
 
 const verifyTable = async (expectation: TableExpectation): Promise<TableVerificationResult> => {
-  const columnRows = await sql<ColumnRow>`
+  const columnRows = (await sql`
     SELECT
       column_name,
       data_type,
@@ -189,7 +189,7 @@ const verifyTable = async (expectation: TableExpectation): Promise<TableVerifica
     FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = ${expectation.tableName}
     ORDER BY ordinal_position
-  `;
+  `) as ColumnRow[];
 
   const issues: string[] = [];
   const warnings: string[] = [];
