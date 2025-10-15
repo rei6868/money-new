@@ -10,7 +10,8 @@
     "test": "jest",
     "db:deploy": "ts-node --transpile-only scripts/deployNeon.ts",
     "db:verify": "ts-node --transpile-only scripts/verifySchema.ts",
-    "db:push": "drizzle-kit push --config drizzle.config.ts"
+    "db:push": "drizzle-kit push --config drizzle.config.ts",
+    "seed": "node drizzle/seeds/seedAll.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
