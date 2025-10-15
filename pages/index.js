@@ -1,3 +1,8 @@
 export default function HomePage() {
-  return <h1>Hello, World!</h1>;
+  return (
+    <main>
+      <h1>Welcome</h1>
+      <p>Track credit card profit and loss insights in one place.</p>
+    </main>
+  );
 }

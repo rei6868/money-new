@@ -46,9 +46,9 @@ export const cardPl = pgTable("card_pl", {
    * generated column so downstream queries always reference a consistent
    * calculation.
    */
-  netPl: numeric("net_pl", { precision: 18, scale: 2 })
-    .generatedAlwaysAs(sql`coalesce("total_earned", 0) - coalesce("total_fee", 0)`)
-    .stored(),
+  netPl: numeric("net_pl", { precision: 18, scale: 2 }).generatedAlwaysAs(
+    sql`coalesce("total_earned", 0) - coalesce("total_fee", 0)`
+  ),
 
   /**
    * Operational notes or annotations (e.g. explaining fee reimbursements or

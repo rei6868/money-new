@@ -1,15 +1,43 @@
-﻿name: Cypress CI
+name: CI
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
 
 jobs:
-  cypress-run:
+  build-and-test:
     runs-on: ubuntu-latest
+    env:
+      CI: true
+      NEXT_TELEMETRY_DISABLED: 1
+      DB_URL: postgresql://example:example@localhost:5432/example
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
-      - run: npm ci
-      - run: npm run build
-      - run: npx cypress run
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test -- --passWithNoTests
+
+      - name: Build
+        run: npm run build
+
+      - name: Start app and run Cypress
+        run: |
+          set -euo pipefail
+          npm start -- --hostname 0.0.0.0 --port 3000 &
+          SERVER_PID=$!
+          trap "kill $SERVER_PID" EXIT
+          npx wait-on@latest http://127.0.0.1:3000
+          npx cypress run

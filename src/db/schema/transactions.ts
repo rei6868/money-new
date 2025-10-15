@@ -100,12 +100,7 @@ export const transactions = pgTable("transactions", {
    * Optional pointer to a Linked Transaction group for multi-step flows such as
    * refunds, splits, batch imports, or settlement runs.
    */
-  linkedTxnId: varchar("linked_txn_id", { length: 36 }).references(
-    () => linkedTransactions.linkedTxnId,
-    {
-      onDelete: "set null",
-    },
-  ),
+  linkedTxnId: varchar("linked_txn_id", { length: 36 }),
 
   /**
    * Lifecycle state controlling whether the transaction impacts balances.
