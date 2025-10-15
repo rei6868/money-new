@@ -2,15 +2,30 @@ name: CI
 
 on:
   push:
+    branches: [main, develop]
   pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: >
+          automatic (default) calls the auto-PR step after CI, manual skips it.
+        required: false
+        default: automatic
+
+env:
+  CI: true
+  NEXT_TELEMETRY_DISABLED: 1
+  DB_URL: postgresql://example:example@localhost:5432/example
+  CYPRESS_CACHE_FOLDER: /home/runner/.cache/Cypress
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  build-and-test:
+  lint:
     runs-on: ubuntu-latest
-    env:
-      CI: true
-      NEXT_TELEMETRY_DISABLED: 1
-      DB_URL: postgresql://example:example@localhost:5432/example
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -18,8 +33,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: '20.x'
+
+      - name: Cache npm and Cypress assets
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/Cypress
+          key: ${{ runner.os }}-build-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
 
       - name: Install dependencies
         run: npm ci
@@ -27,17 +51,178 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Unit tests
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Cache npm and Cypress assets
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/Cypress
+          key: ${{ runner.os }}-build-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
         run: npm test -- --passWithNoTests
+
+  build:
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+      - unit
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Cache npm and Cypress assets
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/Cypress
+          key: ${{ runner.os }}-build-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build
         run: npm run build
 
+      - name: Upload Next build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-build
+          path: .next
+          if-no-files-found: error
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      PORT: 3000
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Cache npm and Cypress assets
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/Cypress
+          key: ${{ runner.os }}-build-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download Next build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: next-build
+          path: .
+
       - name: Start app and run Cypress
+        env:
+          HOST: 0.0.0.0
         run: |
           set -euo pipefail
-          npm start -- --hostname 0.0.0.0 --port 3000 &
+          npm start -- --hostname "${HOST}" --port "${PORT}" &
           SERVER_PID=$!
           trap "kill $SERVER_PID" EXIT
-          npx wait-on@latest http://127.0.0.1:3000
+          npx wait-on@latest http://127.0.0.1:${PORT}
           npx cypress run
+
+  create-pr:
+    needs:
+      - lint
+      - unit
+      - build
+      - e2e
+    runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode != 'manual')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config --global user.email "ci-bot@example.com"
+          git config --global user.name "ci-bot"
+
+      - name: Prepare status trace
+        id: pr_body
+        env:
+          LINT_RESULT: ${{ needs.lint.result }}
+          UNIT_RESULT: ${{ needs.unit.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            echo "Skipping PR creation for main branch."
+            echo "continue=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          cat <<'EOF' >> "$GITHUB_OUTPUT"
+continue=true
+body<<'BODY'
+Automated CI-verified PR
+
+Status Trace:
+- lint: ${LINT_RESULT}
+- unit: ${UNIT_RESULT}
+- build: ${BUILD_RESULT}
+- e2e: ${E2E_RESULT}
+
+Debug Logs: ${RUN_URL}
+BODY
+EOF
+
+      - name: Create PR
+        if: steps.pr_body.outputs.continue == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_BODY: ${{ steps.pr_body.outputs.body }}
+        run: |
+          if gh pr view --head "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            echo "PR already exists for ${GITHUB_REF_NAME}, skipping creation."
+            exit 0
+          fi
+
+          gh pr create \
+            --title "Sprint 3 - Green CI & workflow" \
+            --body "${PR_BODY}" \
+            --base main \
+            --head "${GITHUB_REF_NAME}"
