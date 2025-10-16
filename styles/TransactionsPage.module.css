@@ -1,0 +1,465 @@
+.page {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-height: 0;
+}
+
+.controlsBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 24px 46px rgba(15, 23, 42, 0.08);
+}
+
+.controlsGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.searchInput {
+  min-width: clamp(200px, 24vw, 320px);
+  border-radius: 14px;
+  border: 1px solid #d0d7e2;
+  background: #f8fafc;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.95rem;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.selectControl {
+  border-radius: 14px;
+  border: 1px solid #d0d7e2;
+  background: #ffffff;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.95rem;
+  min-width: 150px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.selectControl:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.actionButtons {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.primaryButton,
+.secondaryButton {
+  border: none;
+  border-radius: 14px;
+  padding: 0.65rem 1.2rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.primaryButton {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.25);
+}
+
+.primaryButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 32px rgba(37, 99, 235, 0.3);
+}
+
+.secondaryButton {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+}
+
+.secondaryButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.18);
+}
+
+.tableSection {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 28px 50px rgba(15, 23, 42, 0.12);
+  padding: 1.25rem 1.5rem 1.5rem;
+  position: relative;
+}
+
+.tableHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.tableHeader h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.tableHeader p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.tableShell {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: 1.25rem;
+  position: relative;
+}
+
+.tableContainer {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tableWrapper {
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 1px solid #d8e0ed;
+  border-radius: 18px;
+  overflow: auto;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 12%);
+}
+
+.table {
+  width: max(100%, 900px);
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.94rem;
+  color: #0f172a;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #e2e8f0;
+  color: #1e293b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid #cbd5e1;
+  box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.08);
+  white-space: nowrap;
+}
+
+.table tbody td {
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+  background: #ffffff;
+}
+
+.table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.table tbody tr:hover td {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.table tfoot td {
+  position: sticky;
+  bottom: 0;
+  background: #e2e8f0;
+  font-weight: 700;
+  color: #1e293b;
+  padding: 0.9rem 1.25rem;
+  border-top: 1px solid #cbd5e1;
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.08);
+}
+
+.amountPositive {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.amountNegative {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: rgba(148, 163, 184, 0.2);
+  color: #0f172a;
+}
+
+.statusApproved {
+  background: rgba(134, 239, 172, 0.4);
+  color: #166534;
+}
+
+.statusPending {
+  background: rgba(253, 224, 71, 0.45);
+  color: #92400e;
+}
+
+.statusDeclined {
+  background: rgba(254, 202, 202, 0.55);
+  color: #b91c1c;
+}
+
+.loadingState,
+.errorState,
+.emptyState {
+  padding: 1.5rem;
+  text-align: center;
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.errorState {
+  color: #b91c1c;
+}
+
+.customizePanel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(320px, 90%);
+  background: #ffffff;
+  border-radius: 22px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow: 0 32px 50px rgba(15, 23, 42, 0.16);
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transform: translateX(120%);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.25s ease,
+    opacity 0.25s ease;
+  z-index: 4;
+}
+
+.customizePanel[data-open='true'] {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.customizeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.customizeHeader h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #1e293b;
+}
+
+.customizeClose {
+  border: none;
+  background: transparent;
+  color: #1e293b;
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: 10px;
+}
+
+.customizeClose:hover {
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.customizeList {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-right: 0.25rem;
+}
+
+.customizeRow {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+}
+
+.customizeRow label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.customizeRow input[type='range'] {
+  width: 100%;
+}
+
+.customizeFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.resetButton {
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  border-radius: 12px;
+  background: transparent;
+  color: #1d4ed8;
+  padding: 0.55rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.resetButton:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.customizeBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  border-radius: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 3;
+}
+
+.customizeBackdrop[data-open='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (max-width: 1280px) {
+  .tableShell {
+    flex-direction: column;
+  }
+
+  .tableContainer {
+    width: 100%;
+  }
+
+  .customizePanel {
+    position: fixed;
+    inset: 4rem 1.5rem auto;
+    max-height: calc(100vh - 8rem);
+    width: auto;
+  }
+
+  .customizeBackdrop {
+    position: fixed;
+    inset: 0;
+    border-radius: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .controlsBar {
+    padding: 0.85rem 1rem;
+    border-radius: 18px;
+  }
+
+  .searchInput {
+    min-width: clamp(180px, 70vw, 260px);
+  }
+
+  .actionButtons {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .tableSection {
+    padding: 1rem 1rem 1.25rem;
+    border-radius: 20px;
+  }
+
+  .tableWrapper {
+    border-radius: 16px;
+  }
+
+  .customizePanel {
+    inset: 3.5rem 1rem auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .controlsBar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+  }
+
+  .controlsGroup {
+    width: 100%;
+  }
+
+  .actionButtons {
+    flex-wrap: wrap;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .table {
+    width: max(100%, 720px);
+  }
+}
