@@ -13,4 +13,4 @@
 - Screenshot placeholder: capture desktop layout with selection bar + column panel before publishing PR.
 
 ## PR Link
-- **TBD – update after opening PR `Sprint3-FE-3B: Transactions History Table + UI`**
+- **https://github.com/rei6868/money-new/pull/44**
