@@ -13,20 +13,23 @@ export default function AppLayout({ title, subtitle, children }) {
   const closeMobile = () => setIsMobileOpen(false);
 
   return (
-    <div className={styles.layout} data-collapsed={isCollapsed}>
+    <div className={styles.layout} data-collapsed={isCollapsed} data-testid="app-root">
       <Sidebar
         collapsed={isCollapsed}
         onCollapseToggle={toggleCollapsed}
         mobileOpen={isMobileOpen}
         onMobileClose={closeMobile}
       />
-      <div className={styles.contentArea}>
+      <div className={styles.contentArea} data-testid="layout-content">
         <header className={styles.topBar}>
           <button
             type="button"
             className={styles.menuButton}
             onClick={toggleMobile}
             aria-label="Toggle navigation menu"
+            aria-controls="sidebar-navigation"
+            aria-expanded={isMobileOpen}
+            data-testid="sidebar-toggle"
           >
             <FiMenu size={20} />
           </button>
@@ -35,9 +38,18 @@ export default function AppLayout({ title, subtitle, children }) {
             {subtitle ? <p className={styles.pageSubtitle}>{subtitle}</p> : null}
           </div>
         </header>
-        <main className={styles.mainContent}>{children}</main>
+        <main className={styles.mainContent} data-testid="layout-main">
+          {children}
+        </main>
       </div>
-      {isMobileOpen && <div className={styles.backdrop} onClick={closeMobile} aria-hidden="true" />}
+      {isMobileOpen && (
+        <div
+          className={styles.backdrop}
+          onClick={closeMobile}
+          aria-hidden="true"
+          data-testid="sidebar-backdrop"
+        />
+      )}
     </div>
   );
 }

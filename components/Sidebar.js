@@ -57,7 +57,7 @@ export default function Sidebar({ collapsed, onCollapseToggle, mobileOpen, onMob
   };
 
   return (
-    <aside className={className}>
+    <aside className={className} id="sidebar-navigation" data-testid="sidebar">
       <div className={styles.brandRow}>
         <div className={styles.brandIdentity}>
           <div className={styles.brandAvatar}>MM</div>
@@ -68,6 +68,8 @@ export default function Sidebar({ collapsed, onCollapseToggle, mobileOpen, onMob
           className={styles.collapseButton}
           onClick={onCollapseToggle}
           aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+          aria-expanded={!collapsed}
+          data-testid="sidebar-collapse-button"
         >
           {collapsed ? <FiChevronRight size={18} /> : <FiChevronLeft size={18} />}
         </button>
@@ -81,6 +83,7 @@ export default function Sidebar({ collapsed, onCollapseToggle, mobileOpen, onMob
               <Link
                 href={item.href}
                 className={`${styles.menuLink} ${isActive(item.href) ? styles.active : ''}`}
+                data-testid={`sidebar-link-${item.key}`}
                 onClick={handleNavigate}
               >
                 <span className={styles.iconWrapper}>{item.icon}</span>
@@ -99,6 +102,7 @@ export default function Sidebar({ collapsed, onCollapseToggle, mobileOpen, onMob
               <Link
                 href={item.href}
                 className={`${styles.menuLink} ${isActive(item.href) ? styles.active : ''}`}
+                data-testid={`sidebar-link-${item.key}`}
                 onClick={handleNavigate}
               >
                 <span className={styles.iconWrapper}>{item.icon}</span>
@@ -109,14 +113,19 @@ export default function Sidebar({ collapsed, onCollapseToggle, mobileOpen, onMob
         </ul>
       </nav>
 
-      <div className={styles.footerCard}>
+      <div className={styles.footerCard} data-testid="sidebar-footer">
         {!collapsed && (
           <>
             <p className={styles.footerTitle}>Need an upgrade?</p>
             <p className={styles.footerMessage}>Premium analytics and automations coming soon.</p>
           </>
         )}
-        <button type="button" className={styles.logoutButton} onClick={handleLogout}>
+        <button
+          type="button"
+          className={styles.logoutButton}
+          onClick={handleLogout}
+          data-testid="sidebar-logout-button"
+        >
           Log out
         </button>
       </div>
