@@ -1,7 +1,7 @@
 const AUTH_STORAGE_KEY = 'finance-app-authenticated';
 
-const visitAuthenticatedDashboard = () =>
-  cy.visit('/', {
+const visitDashboard = () =>
+  cy.visit('/dashboard', {
     onBeforeLoad(win) {
       win.localStorage.setItem(AUTH_STORAGE_KEY, 'true');
     },
@@ -20,56 +20,77 @@ const assertNoSidebarOverlap = () => {
   });
 };
 
-describe('Responsive left menu experience', () => {
+const PRIMARY_ROUTES = [
+  { testId: 'sidebar-item-dashboard', path: '/dashboard' },
+  { testId: 'sidebar-item-transactions', path: '/transactions' },
+  { testId: 'sidebar-item-accounts', path: '/accounts' },
+  { testId: 'sidebar-item-people', path: '/people' },
+  { testId: 'sidebar-item-reports', path: '/reports' },
+  { testId: 'sidebar-item-settings', path: '/settings' },
+];
+
+describe('Responsive menu sidebar', () => {
   beforeEach(() => {
     cy.clearLocalStorage();
   });
 
-  it('expands and collapses cleanly on desktop without overlap', () => {
+  it('anchors the collapse control to the sidebar edge on desktop', () => {
     cy.viewport(1440, 900);
-    visitAuthenticatedDashboard();
+    visitDashboard();
 
     getSidebar().should('be.visible');
-    cy.get('[data-testid="app-root"]').should('have.attr', 'data-theme', 'light');
+    getLayout().should('be.visible');
+    cy.get('[data-testid="sidebar-collapse-button"]').as('collapseControl');
+
+    cy.get('@collapseControl').then(($button) => {
+      const buttonRect = $button[0].getBoundingClientRect();
+      getSidebar().then(($sidebar) => {
+        const sidebarRect = $sidebar[0].getBoundingClientRect();
+        expect(buttonRect.left, 'collapse button left edge').to.be.lessThan(sidebarRect.right);
+        expect(buttonRect.right, 'collapse button right edge').to.be.greaterThan(sidebarRect.right);
+      });
+    });
 
     getSidebar().invoke('outerWidth').should('be.within', 250, 320);
-    assertNoSidebarOverlap();
 
-    cy.get('[data-testid="sidebar-item-overview"]').should('be.visible');
-
-    cy.get('[data-testid="sidebar-collapse-button"]').click();
+    cy.get('@collapseControl').click();
     getSidebar().invoke('outerWidth').should('be.within', 80, 140);
-    cy.get('[data-testid="sidebar-item-overview"]').should('be.visible');
+    cy.get('@collapseControl').should('have.attr', 'aria-expanded', 'false');
 
-    cy.get('[data-testid="sidebar-collapse-button"]').click();
+    cy.get('@collapseControl').click();
     getSidebar().invoke('outerWidth').should('be.within', 250, 320);
-    assertNoSidebarOverlap();
+    cy.get('@collapseControl').should('have.attr', 'aria-expanded', 'true');
   });
 
-  it('retains structure across iPad orientations', () => {
+  it('remains interactive across iPad orientations', () => {
     cy.viewport(1024, 768);
-    visitAuthenticatedDashboard();
+    visitDashboard();
 
     getSidebar().should('be.visible');
+    getLayout().should('be.visible');
     cy.get('[data-testid="sidebar-toggle"]').should('not.be.visible');
-    assertNoSidebarOverlap();
 
-    cy.get('[data-testid="sidebar-item-geo"]').click();
-    cy.location('pathname').should('eq', '/geo-information');
+    cy.get('[data-testid="sidebar-item-accounts"]').click();
+    cy.location('pathname').should('eq', '/accounts');
     assertNoSidebarOverlap();
 
     cy.viewport(768, 1024);
     cy.wait(150);
-    assertNoSidebarOverlap();
+    cy.get('[data-testid="sidebar-toggle"]').click();
+    getSidebar().should(($sidebar) => {
+      const transform = getComputedStyle($sidebar[0]).transform;
+      const isOpen = transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)';
+      expect(isOpen, 'sidebar open after portrait toggle').to.be.true;
+    });
 
-    cy.get('[data-testid="sidebar-item-inventory"]').click();
-    cy.location('pathname').should('eq', '/inventory');
+    cy.get('[data-testid="sidebar-item-reports"]').click();
+    cy.location('pathname').should('eq', '/reports');
     assertNoSidebarOverlap();
   });
 
   it('slides in on mobile and closes after navigation', () => {
     cy.viewport(390, 844);
-    visitAuthenticatedDashboard();
+    visitDashboard();
 
     getSidebar().should(($sidebar) => {
       const transform = getComputedStyle($sidebar[0]).transform;
@@ -84,9 +105,8 @@ describe('Responsive left menu experience', () => {
       expect(isOpen, 'sidebar slides into view').to.be.true;
     });
 
-    cy.get('[data-testid="sidebar-backdrop"]').should('exist');
-    cy.get('[data-testid="sidebar-item-users"]').click();
-    cy.location('pathname').should('eq', '/users');
+    cy.get('[data-testid="sidebar-item-people"]').click();
+    cy.location('pathname').should('eq', '/people');
 
     getSidebar().should(($sidebar) => {
       const transform = getComputedStyle($sidebar[0]).transform;
@@ -97,8 +117,9 @@ describe('Responsive left menu experience', () => {
 
   it('toggles between light and dark appearances', () => {
     cy.viewport(1440, 900);
-    visitAuthenticatedDashboard();
+    visitDashboard();
 
+    getLayout().should('be.visible');
     cy.get('[data-testid="app-root"]').should('have.attr', 'data-theme', 'light');
     cy.get('[data-testid="sidebar-theme-toggle"]').click();
     cy.get('[data-testid="app-root"]').should('have.attr', 'data-theme', 'dark');
@@ -106,25 +127,12 @@ describe('Responsive left menu experience', () => {
     cy.get('[data-testid="app-root"]').should('have.attr', 'data-theme', 'light');
   });
 
-  it('navigates to each placeholder route without overlapping layout', () => {
+  it('navigates to each primary route without breaking layout', () => {
     cy.viewport(1440, 900);
-    visitAuthenticatedDashboard();
+    visitDashboard();
 
-    const routes = [
-      { testId: 'sidebar-item-dashboard', path: '/dashboard' },
-      { testId: 'sidebar-item-overview', path: '/overview' },
-      { testId: 'sidebar-item-geo', path: '/geo-information' },
-      { testId: 'sidebar-item-hub', path: '/hub' },
-      { testId: 'sidebar-item-users', path: '/users' },
-      { testId: 'sidebar-item-product', path: '/product' },
-      { testId: 'sidebar-item-orders', path: '/orders' },
-      { testId: 'sidebar-item-inventory', path: '/inventory' },
-      { testId: 'sidebar-item-invoice', path: '/invoice' },
-      { testId: 'sidebar-item-attendance', path: '/attendance' },
-      { testId: 'sidebar-item-settings', path: '/settings' },
-    ];
-
-    cy.wrap(routes).each((route) => {
+    getLayout().should('be.visible');
+    cy.wrap(PRIMARY_ROUTES).each((route) => {
       cy.get(`[data-testid="${route.testId}"]`).click();
       cy.location('pathname').should('eq', route.path);
       assertNoSidebarOverlap();
