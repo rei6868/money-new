@@ -4,68 +4,22 @@ import { useEffect, useMemo } from 'react';
 import {
   FiChevronLeft,
   FiChevronRight,
-  FiCreditCard,
-  FiFileText,
-  FiGift,
   FiLogOut,
-  FiPieChart,
-  FiRepeat,
-  FiSettings,
   FiSun,
   FiMoon,
-  FiTrendingDown,
-  FiUsers,
 } from 'react-icons/fi';
 
 import { useAuth } from '../context/AuthContext';
 
-import styles from './Sidebar.module.css';
+import { NAV_ITEMS } from './navItems';
 
-const navigationSections = [
-  {
-    key: 'core',
-    title: 'Core',
-    items: [
-      { key: 'overview', label: 'Overview', href: '/overview', icon: FiPieChart },
-      { key: 'accounts', label: 'Accounts', href: '/accounts', icon: FiCreditCard },
-      { key: 'people', label: 'People', href: '/people', icon: FiUsers },
-      {
-        key: 'transactions-history',
-        label: 'Transactions History',
-        href: '/transactions-history',
-        icon: FiRepeat,
-      },
-      {
-        key: 'cashback',
-        label: 'Cashback',
-        icon: FiGift,
-        children: [
-          { key: 'cashback-ledger', label: 'Ledger', href: '/cashback/ledger' },
-          { key: 'cashback-summary', label: 'Summary', href: '/cashback/summary' },
-        ],
-      },
-      { key: 'debt', label: 'Debt', href: '/debt', icon: FiTrendingDown },
-      { key: 'reports', label: 'Reports', href: '/reports', icon: FiFileText },
-    ],
-  },
-  {
-    key: 'transactions-history',
-    label: 'Transactions History',
-    href: '/transactions-history',
-    icon: FiRepeat,
-  },
-  { key: 'cashback-ledger', label: 'Cashback Ledger', href: '/cashback/ledger', icon: FiGift },
-  { key: 'cashback-summary', label: 'Cashback Summary', href: '/cashback/summary', icon: FiGift },
-  { key: 'debt', label: 'Debt', href: '/debt', icon: FiTrendingDown },
-  { key: 'reports', label: 'Reports', href: '/reports', icon: FiFileText },
-  { key: 'settings', label: 'Settings', href: '/settings', icon: FiSettings },
-];
+import styles from './Sidebar.module.css';
 
 const isRouteActive = (pathname, href) => {
   if (href === '/') {
     return pathname === '/';
   }
-  if (href === '/transactions' && pathname === '/') {
+  if (href === '/transactions-history' && pathname === '/') {
     return true;
   }
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -114,7 +68,7 @@ export default function Sidebar({
     if (mobileOpen) {
       onMobileClose();
     }
-    router.push('/login');
+    router.push('/');
   };
 
   const handleThemeToggle = () => {
