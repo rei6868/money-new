@@ -13,6 +13,7 @@ import {
 import { accounts } from "./accounts";
 import { categories } from "./categories";
 import { people } from "./people";
+import { shops } from "./shops";
 import { subscriptionMembers } from "./subscriptions";
 
 /**
@@ -68,6 +69,15 @@ export const transactions = pgTable("transactions", {
    * every entry.
    */
   personId: varchar("person_id", { length: 36 }).references(() => people.personId, {
+    onDelete: "set null",
+  }),
+
+  /**
+   * Optional reference to the merchant or shop that fulfilled the transaction.
+   * Enables normalised reporting and cashback logic linked to the shops
+   * catalogue while keeping unenriched transactions flexible.
+   */
+  shopId: varchar("shop_id", { length: 36 }).references(() => shops.shopId, {
     onDelete: "set null",
   }),
 

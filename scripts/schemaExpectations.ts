@@ -294,10 +294,12 @@ export const schemaExpectations: TableExpectation[] = [
   },
   {
     tableName: "transactions",
+    documentation: "docs/transactions-schema.md",
     columns: {
       transaction_id: varcharColumn(36, false),
       account_id: varcharColumn(36, false),
       person_id: varcharColumn(36, true),
+      shop_id: varcharColumn(36, true),
       type: { dataType: "USER-DEFINED", udtName: "transaction_type", isNullable: false },
       category_id: varcharColumn(36, true),
       subscription_member_id: varcharColumn(36, true),
@@ -314,6 +316,7 @@ export const schemaExpectations: TableExpectation[] = [
     foreignKeys: [
       { columns: ["account_id"], referencedTable: "accounts", referencedColumns: ["account_id"] },
       { columns: ["person_id"], referencedTable: "people", referencedColumns: ["person_id"] },
+      { columns: ["shop_id"], referencedTable: "shops", referencedColumns: ["shop_id"] },
       { columns: ["category_id"], referencedTable: "categories", referencedColumns: ["category_id"] },
       { columns: ["subscription_member_id"], referencedTable: "subscription_members", referencedColumns: ["member_id"] },
       { columns: ["linked_txn_id"], referencedTable: "linked_transactions", referencedColumns: ["linked_txn_id"] },

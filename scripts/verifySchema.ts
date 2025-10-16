@@ -27,6 +27,14 @@ type ColumnRow = {
   is_generated: "ALWAYS" | "NEVER";
 };
 
+type RawConstraintRow = {
+  constraint_name: string;
+  constraint_type: string;
+  columns: string[] | string;
+  foreign_table_name: string | null;
+  foreign_columns: string[] | string | null;
+};
+
 type ConstraintRow = {
   constraint_name: string;
   columns: string[];
@@ -162,8 +170,36 @@ const fetchConstraints = async (tableName: string): Promise<ConstraintRow[]> => 
     WHERE tc.table_schema = 'public'
       AND tc.table_name = ${tableName}
     GROUP BY tc.constraint_name, tc.constraint_type, ccu.table_name
-  `) as ConstraintRow[];
-  return rows;
+  `) as RawConstraintRow[];
+
+  const toArray = (value: string[] | string | null): string[] | null => {
+    if (value == null) {
+      return null;
+    }
+    if (Array.isArray(value)) {
+      return value;
+    }
+    const trimmed = value.trim();
+    if (trimmed === "{}") {
+      return [];
+    }
+    const withoutBraces = trimmed.replace(/^\{/, "").replace(/\}$/, "");
+    if (withoutBraces.length === 0) {
+      return [];
+    }
+    return withoutBraces
+      .split(",")
+      .map((part) => part.replace(/^"+|"+$/g, "").trim())
+      .filter((part) => part.length > 0);
+  };
+
+  return rows.map<ConstraintRow>((row) => ({
+    constraint_name: row.constraint_name,
+    constraint_type: row.constraint_type,
+    columns: toArray(row.columns) ?? [],
+    foreign_table_name: row.foreign_table_name,
+    foreign_columns: toArray(row.foreign_columns),
+  }));
 };
 
 const fetchIndexes = async (tableName: string): Promise<IndexRow[]> => {
