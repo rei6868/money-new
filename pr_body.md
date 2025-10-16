@@ -1,15 +1,16 @@
-## Highlights
-- Scaffolded `/api/transactions` with GET support, CRUD stubs, and Drizzle-ready repository including Neon wiring TODOs (`pages/api/transactions/index.ts`, `lib/api/transactions/repository.ts`).
-- Implemented `/api/transactions/columns` metadata feed for dynamic FE tables with table/column identifiers (`pages/api/transactions/columns.ts`).
-- Added query parsing, mock datasets, and serialization to expose all transaction + cashback columns exactly as in Neon schema (`lib/api/transactions/*.ts`).
+﻿## Highlights
+- Delivered responsive transactions history page consuming live `/api/transactions` + `/api/transactions/columns` with dynamic columns, cashback data, selection totals, and CRUD stubs (`pages/transactions-history.js`, `styles/TransactionsHistory.module.css`).
+- Simplified sidebar navigation to finance-focused sections and added placeholders for People, Debt, and Cashback routes (`components/Sidebar.js`, `pages/people.js`, `pages/debt.js`, `pages/cashback/*`).
+- Added column customizer, filter/add modals, and advanced row actions with persistent `data-testid` hooks for Cypress coverage.
 
-## Test & Device Logs
-- npm run lint ✅
+## Cypress & Test Logs
+- npm run lint (pass)
+- Cypress spec: `cypress/e2e/transactions-history.spec.js` (search, filter, selection, column panel flows).
 
-## Schema & Contract Notes
-- Column map and serializer align with Drizzle schema; see `lib/api/transactions/repository.ts:311` and `lib/api/transactions/transform.ts:50`.
-- Mock data mirrors Neon casing while DATABASE_URL remains unset; replace with live Drizzle queries once Neon secrets are available (see TODO markers).
+## Notes & Follow-ups
+- UI currently posts to stubbed API handlers; wire to Neon-backed mutations once BE endpoints are production-ready.
+- Column defaults + mandatory map mirror API metadata; update `MANDATORY_COLUMNS` if the schema evolves.
+- Screenshot placeholder: capture desktop layout with selection bar + column panel before publishing PR.
 
-## FE Coordination
-- PR link for FE reference: **TBD – update after opening PR `Sprint3-BE-3A: API + Schema for Transactions History`**
-- Endpoints ready for curl/httpie smoke tests: `GET /api/transactions`, `GET /api/transactions/columns`.
+## PR Link
+- **TBD – update after opening PR `Sprint3-FE-3B: Transactions History Table + UI`**
