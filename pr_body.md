@@ -1,11 +1,15 @@
 ## Highlights
-- Added optional `shop_id` FK to `transactions` in Drizzle schema with docs update and schema expectation coverage.
-- Generated migration 0013 to add the column in Postgres and ran `drizzle-kit push` against Neon.
-- Expanded schema verification script to handle Neon array responses and documented field reference for transactions.
+- Scaffolded `/api/transactions` with GET support, CRUD stubs, and Drizzle-ready repository including Neon wiring TODOs (`pages/api/transactions/index.ts`, `lib/api/transactions/repository.ts`).
+- Implemented `/api/transactions/columns` metadata feed for dynamic FE tables with table/column identifiers (`pages/api/transactions/columns.ts`).
+- Added query parsing, mock datasets, and serialization to expose all transaction + cashback columns exactly as in Neon schema (`lib/api/transactions/*.ts`).
 
 ## Test & Device Logs
-- npx drizzle-kit push --config drizzle.config.ts ✅ (Neon schema updated)
-- npm run db:verify ✅ (fails persist for legacy subscriptions tables; `transactions` now only reports missing legacy FK on `linked_txn_id`)
+- npm run lint ✅
 
-## QA Trace
-- docs/neon-schema-verification.md refreshed with latest verification results.
+## Schema & Contract Notes
+- Column map and serializer align with Drizzle schema; see `lib/api/transactions/repository.ts:311` and `lib/api/transactions/transform.ts:50`.
+- Mock data mirrors Neon casing while DATABASE_URL remains unset; replace with live Drizzle queries once Neon secrets are available (see TODO markers).
+
+## FE Coordination
+- PR link for FE reference: **TBD – update after opening PR `Sprint3-BE-3A: API + Schema for Transactions History`**
+- Endpoints ready for curl/httpie smoke tests: `GET /api/transactions`, `GET /api/transactions/columns`.
