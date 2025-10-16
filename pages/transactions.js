@@ -389,24 +389,34 @@ export default function TransactionsPage() {
           </header>
           <div className={styles.tableShell}>
             <div className={styles.tableContainer}>
-              <div className={styles.tableWrapper} role="region" aria-live="polite">
-                <table className={styles.table} aria-label="Transactions ledger">
-                  <thead>
-                    <tr>
-                      {visibleColumns.map((column) => (
-                        <th key={column} style={{ width: columnWidths[column], minWidth: columnWidths[column] }}>
-                          {formatLabel(column)}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {isLoadingData && (
+              <div className={styles.tableWrapper}>
+                <div
+                  className={styles.tableViewport}
+                  role="region"
+                  aria-live="polite"
+                  aria-label="Transactions ledger"
+                  data-testid="transactions-table-viewport"
+                >
+                  <table className={styles.table}>
+                    <thead
+                      className={`${styles.tableHead} ${styles.stickyTop}`}
+                      data-testid="transactions-table-header"
+                    >
                       <tr>
-                        <td colSpan={visibleColumns.length} className={styles.loadingState}>
-                          Loading transactions…
-                        </td>
+                        {visibleColumns.map((column) => (
+                          <th key={column} style={{ width: columnWidths[column], minWidth: columnWidths[column] }}>
+                            {formatLabel(column)}
+                          </th>
+                        ))}
                       </tr>
+                    </thead>
+                    <tbody data-testid="transactions-table-body">
+                      {isLoadingData && (
+                        <tr>
+                          <td colSpan={visibleColumns.length} className={styles.loadingState}>
+                            Loading transactions…
+                          </td>
+                        </tr>
                     )}
                     {!isLoadingData && error && (
                       <tr>
@@ -471,50 +481,54 @@ export default function TransactionsPage() {
                           })}
                         </tr>
                       ))}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      {visibleColumns.map((column, index) => {
-                        if (column === 'amount') {
+                    </tbody>
+                    <tfoot
+                      className={`${styles.tableFoot} ${styles.stickyBottom}`}
+                      data-testid="transactions-table-footer"
+                    >
+                      <tr>
+                        {visibleColumns.map((column, index) => {
+                          if (column === 'amount') {
+                            return (
+                              <td
+                                key={column}
+                                style={{ width: columnWidths[column], minWidth: columnWidths[column] }}
+                              >
+                                {currencyFormatter.format(totals.amount)}
+                              </td>
+                            );
+                          }
+                          if (column === 'fee') {
+                            return (
+                              <td
+                                key={column}
+                                style={{ width: columnWidths[column], minWidth: columnWidths[column] }}
+                              >
+                                {currencyFormatter.format(totals.fee)}
+                              </td>
+                            );
+                          }
+                          if (index === 0) {
+                            return (
+                              <td
+                                key={column}
+                                style={{ width: columnWidths[column], minWidth: columnWidths[column] }}
+                              >
+                                Totals
+                              </td>
+                            );
+                          }
                           return (
                             <td
                               key={column}
                               style={{ width: columnWidths[column], minWidth: columnWidths[column] }}
-                            >
-                              {currencyFormatter.format(totals.amount)}
-                            </td>
+                            />
                           );
-                        }
-                        if (column === 'fee') {
-                          return (
-                            <td
-                              key={column}
-                              style={{ width: columnWidths[column], minWidth: columnWidths[column] }}
-                            >
-                              {currencyFormatter.format(totals.fee)}
-                            </td>
-                          );
-                        }
-                        if (index === 0) {
-                          return (
-                            <td
-                              key={column}
-                              style={{ width: columnWidths[column], minWidth: columnWidths[column] }}
-                            >
-                              Totals
-                            </td>
-                          );
-                        }
-                        return (
-                          <td
-                            key={column}
-                            style={{ width: columnWidths[column], minWidth: columnWidths[column] }}
-                          />
-                        );
-                      })}
-                    </tr>
-                  </tfoot>
-                </table>
+                        })}
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               </div>
             </div>
             <div
