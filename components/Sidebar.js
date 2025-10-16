@@ -21,10 +21,33 @@ import { useAuth } from '../context/AuthContext';
 
 import styles from './Sidebar.module.css';
 
-const NAV_ITEMS = [
-  { key: 'overview', label: 'Overview', href: '/overview', icon: FiPieChart },
-  { key: 'accounts', label: 'Accounts', href: '/accounts', icon: FiCreditCard },
-  { key: 'people', label: 'People', href: '/people', icon: FiUsers },
+const navigationSections = [
+  {
+    key: 'core',
+    title: 'Core',
+    items: [
+      { key: 'overview', label: 'Overview', href: '/overview', icon: FiPieChart },
+      { key: 'accounts', label: 'Accounts', href: '/accounts', icon: FiCreditCard },
+      { key: 'people', label: 'People', href: '/people', icon: FiUsers },
+      {
+        key: 'transactions-history',
+        label: 'Transactions History',
+        href: '/transactions-history',
+        icon: FiRepeat,
+      },
+      {
+        key: 'cashback',
+        label: 'Cashback',
+        icon: FiGift,
+        children: [
+          { key: 'cashback-ledger', label: 'Ledger', href: '/cashback/ledger' },
+          { key: 'cashback-summary', label: 'Summary', href: '/cashback/summary' },
+        ],
+      },
+      { key: 'debt', label: 'Debt', href: '/debt', icon: FiTrendingDown },
+      { key: 'reports', label: 'Reports', href: '/reports', icon: FiFileText },
+    ],
+  },
   {
     key: 'transactions-history',
     label: 'Transactions History',
