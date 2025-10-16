@@ -1,21 +1,16 @@
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import {
-  FiArchive,
-  FiCalendar,
+  FiChevronDown,
   FiChevronLeft,
   FiChevronRight,
-  FiFileText,
-  FiGrid,
-  FiLayers,
+  FiCreditCard,
   FiLogOut,
-  FiMapPin,
   FiMoon,
-  FiPackage,
-  FiPieChart,
-  FiSettings,
-  FiShoppingBag,
+  FiPercent,
   FiSun,
+  FiTrendingDown,
   FiUsers,
 } from 'react-icons/fi';
 
@@ -23,21 +18,19 @@ import { useAuth } from '../context/AuthContext';
 
 import styles from './Sidebar.module.css';
 
-const primaryNavigation = [
-  { key: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: FiGrid },
-  { key: 'overview', label: 'Overview', href: '/overview', icon: FiPieChart },
-  { key: 'geo', label: 'Geo Information', href: '/geo-information', icon: FiMapPin },
-  { key: 'hub', label: 'Hub', href: '/hub', icon: FiLayers },
-  { key: 'users', label: 'Users', href: '/users', icon: FiUsers },
-  { key: 'product', label: 'Product', href: '/product', icon: FiPackage },
-  { key: 'orders', label: 'Order List', href: '/orders', icon: FiShoppingBag },
-  { key: 'inventory', label: 'Inventory', href: '/inventory', icon: FiArchive },
-  { key: 'invoice', label: 'Invoice', href: '/invoice', icon: FiFileText },
-];
-
-const supportingNavigation = [
-  { key: 'attendance', label: 'Attendance', href: '/attendance', icon: FiCalendar },
-  { key: 'settings', label: 'Settings', href: '/settings', icon: FiSettings },
+const navigationItems = [
+  { key: 'accounts', label: 'Accounts', href: '/accounts', icon: FiCreditCard },
+  { key: 'people', label: 'People', href: '/people', icon: FiUsers },
+  { key: 'debt', label: 'Debt', href: '/debt', icon: FiTrendingDown },
+  {
+    key: 'cashback',
+    label: 'Cashback',
+    icon: FiPercent,
+    children: [
+      { key: 'cashback-ledger', label: 'Cashback Ledger', href: '/cashback/ledger' },
+      { key: 'cashback-summary', label: 'Cashback Summary', href: '/cashback/summary' },
+    ],
+  },
 ];
 
 const PROFILE = {
@@ -56,6 +49,7 @@ export default function Sidebar({
 }) {
   const router = useRouter();
   const { logout } = useAuth();
+  const [openGroups, setOpenGroups] = useState({ cashback: true });
 
   const computedClassName = [
     styles.sidebar,
@@ -72,6 +66,9 @@ export default function Sidebar({
     return router.pathname.startsWith(href);
   };
 
+  const isGroupActive = (item) =>
+    Array.isArray(item.children) && item.children.some((child) => isActive(child.href));
+
   const handleNavigate = () => {
     if (mobileOpen) {
       onMobileClose();
@@ -86,8 +83,65 @@ export default function Sidebar({
     router.push('/login');
   };
 
+  const toggleGroup = (key) => {
+    setOpenGroups((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
   const renderNavLink = (item) => {
     const Icon = item.icon;
+
+    if (item.children) {
+      const open = openGroups[item.key] ?? isGroupActive(item);
+      const active = isGroupActive(item);
+
+      return (
+        <li key={item.key} className={`${styles.navItem} ${styles.navGroup}`}>
+          <button
+            type="button"
+            className={`${styles.navLink} ${active ? styles.active : ''}`}
+            onClick={() => toggleGroup(item.key)}
+            data-testid={`sidebar-item-${item.key}`}
+            aria-expanded={open}
+            aria-controls={`sidebar-group-${item.key}`}
+          >
+            <span className={styles.linkIcon} aria-hidden="true">
+              <Icon size={18} />
+            </span>
+            <span className={styles.linkLabel}>{item.label}</span>
+            <span className={styles.groupCaret} data-open={open} aria-hidden="true">
+              <FiChevronDown size={16} />
+            </span>
+          </button>
+          <ul
+            id={`sidebar-group-${item.key}`}
+            className={styles.childList}
+            data-open={open}
+            data-collapsed={collapsed}
+          >
+            {item.children.map((child) => {
+              const childActive = isActive(child.href);
+              return (
+                <li key={child.key} className={styles.childItem}>
+                  <Link
+                    href={child.href}
+                    className={`${styles.childLink} ${childActive ? styles.childActive : ''}`}
+                    data-testid={`sidebar-item-${child.key}`}
+                    onClick={handleNavigate}
+                  >
+                    <span className={styles.childBullet} aria-hidden="true" />
+                    <span className={styles.childLabel}>{child.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </li>
+      );
+    }
+
     return (
       <li key={item.key} className={styles.navItem}>
         <Link
@@ -144,22 +198,9 @@ export default function Sidebar({
 
       <nav className={styles.section} aria-label="Primary menu" data-testid="sidebar-section-primary">
         <p className={styles.sectionTitle} data-collapsed={collapsed}>
-          Menu
+          Navigation
         </p>
-        <ul className={styles.navList}>{primaryNavigation.map(renderNavLink)}</ul>
-      </nav>
-
-      <div className={styles.sectionDivider} aria-hidden="true" />
-
-      <nav
-        className={styles.section}
-        aria-label="Secondary menu"
-        data-testid="sidebar-section-secondary"
-      >
-        <p className={styles.sectionTitle} data-collapsed={collapsed}>
-          General
-        </p>
-        <ul className={styles.navList}>{supportingNavigation.map(renderNavLink)}</ul>
+        <ul className={styles.navList}>{navigationItems.map(renderNavLink)}</ul>
       </nav>
 
       <button
