@@ -12,6 +12,7 @@
   position: relative;
   display: flex;
   min-height: 100vh;
+  height: 100vh;
   background: var(--layout-background);
   color: var(--layout-text);
   transition:
@@ -96,6 +97,8 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .backdrop {
