@@ -30,7 +30,12 @@ const navigationSections = [
       { key: 'overview', label: 'Overview', href: '/overview', icon: FiPieChart },
       { key: 'accounts', label: 'Accounts', href: '/accounts', icon: FiCreditCard },
       { key: 'people', label: 'People', href: '/people', icon: FiUsers },
-      { key: 'transactions', label: 'Transactions', href: '/transactions', icon: FiRepeat },
+      {
+        key: 'transactions-history',
+        label: 'Transactions History',
+        href: '/transactions-history',
+        icon: FiRepeat,
+      },
       {
         key: 'cashback',
         label: 'Cashback',
