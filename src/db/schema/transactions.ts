@@ -141,12 +141,16 @@ export const transactions = pgTable("transactions", {
   /**
    * Record creation timestamp.
    */
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+    .defaultNow()
+    .notNull(),
 
   /**
    * Timestamp of the most recent update for audit trails.
    */
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+    .defaultNow()
+    .notNull(),
 });
 
 /**

@@ -111,13 +111,17 @@ export const cashbackMovements = pgTable(
     /**
      * Record creation timestamp.
      */
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .defaultNow()
+      .notNull(),
 
     /**
      * Timestamp of last update. Application logic should bump this when the
      * status or computed amounts change.
      */
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .defaultNow()
+      .notNull(),
   },
   (table) => ({
     /**
