@@ -1,0 +1,58 @@
+name: CI - Cypress
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  cypress:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Detect Node.js version from package.json
+        id: detect_node
+        run: |
+          NODE_VERSION=$(jq -r '.engines.node // empty' package.json)
+          if [ -z "$NODE_VERSION" ]; then
+            echo "Node version not defined in package.json; defaulting to 20." >&2
+            NODE_VERSION="20"
+          fi
+          echo "node-version=$NODE_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ steps.detect_node.outputs.node-version }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Cypress tests
+        id: run_cypress
+        run: |
+          npm run cypress:run | tee cypress-tests.log
+        continue-on-error: true
+
+      - name: Upload Cypress logs
+        if: steps.run_cypress.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-artifacts
+          path: |
+            cypress-tests.log
+            cypress/screenshots
+            cypress/videos
+          if-no-files-found: ignore
+
+      - name: Fail workflow if Cypress failed
+        if: steps.run_cypress.outcome == 'failure'
+        run: exit 1
