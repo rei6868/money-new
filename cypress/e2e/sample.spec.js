@@ -1,105 +1,133 @@
 const AUTH_STORAGE_KEY = 'finance-app-authenticated';
 
-const visitAuthenticatedHome = () =>
+const visitAuthenticatedDashboard = () =>
   cy.visit('/', {
     onBeforeLoad(win) {
       win.localStorage.setItem(AUTH_STORAGE_KEY, 'true');
     },
   });
 
+const getSidebar = () => cy.get('[data-testid="sidebar"]');
+const getLayout = () => cy.get('[data-testid="layout-content"]');
+
 const assertNoSidebarOverlap = () => {
-  cy.get('[data-testid="sidebar"]').then(($sidebar) => {
+  getSidebar().then(($sidebar) => {
     const sidebarRect = $sidebar[0].getBoundingClientRect();
-    cy.get('[data-testid="layout-content"]').then(($content) => {
+    getLayout().then(($content) => {
       const contentRect = $content[0].getBoundingClientRect();
-      expect(sidebarRect.right).to.be.lte(contentRect.left + 1);
+      expect(sidebarRect.right, 'sidebar right edge').to.be.lte(contentRect.left + 1);
     });
   });
 };
 
-describe('Responsive sidebar layout', () => {
+describe('Responsive left menu experience', () => {
   beforeEach(() => {
     cy.clearLocalStorage();
   });
 
-  it('keeps the sidebar stable on desktop viewports', () => {
+  it('expands and collapses cleanly on desktop without overlap', () => {
     cy.viewport(1440, 900);
-    visitAuthenticatedHome();
+    visitAuthenticatedDashboard();
 
-    cy.get('[data-testid="app-root"]').should('be.visible');
-    cy.get('[data-testid="sidebar"]').should('be.visible');
-    cy.get('[data-testid="sidebar"]')
-      .invoke('outerWidth')
-      .then((width) => {
-        expect(width).to.be.greaterThan(220);
-        expect(width).to.be.lessThan(320);
-      });
+    getSidebar().should('be.visible');
+    cy.get('[data-testid="app-root"]').should('have.attr', 'data-theme', 'light');
 
+    getSidebar().invoke('outerWidth').should('be.within', 250, 320);
     assertNoSidebarOverlap();
-    cy.get('[data-testid="sidebar-link-dashboard"]').should('be.visible');
+
+    cy.get('[data-testid="sidebar-item-overview"]').should('be.visible');
 
     cy.get('[data-testid="sidebar-collapse-button"]').click();
-    cy.get('[data-testid="sidebar"]')
-      .invoke('outerWidth')
-      .then((width) => {
-        expect(width).to.be.greaterThan(60);
-        expect(width).to.be.lessThan(150);
-      });
+    getSidebar().invoke('outerWidth').should('be.within', 80, 140);
+    cy.get('[data-testid="sidebar-item-overview"]').should('be.visible');
 
     cy.get('[data-testid="sidebar-collapse-button"]').click();
-    cy.get('[data-testid="sidebar"]')
-      .invoke('outerWidth')
-      .then((width) => {
-        expect(width).to.be.greaterThan(220);
-      });
+    getSidebar().invoke('outerWidth').should('be.within', 250, 320);
+    assertNoSidebarOverlap();
   });
 
-  it('maintains visible navigation on iPad landscape', () => {
+  it('retains structure across iPad orientations', () => {
     cy.viewport(1024, 768);
-    visitAuthenticatedHome();
+    visitAuthenticatedDashboard();
 
-    cy.get('[data-testid="sidebar"]').should('be.visible');
+    getSidebar().should('be.visible');
     cy.get('[data-testid="sidebar-toggle"]').should('not.be.visible');
     assertNoSidebarOverlap();
-    cy.get('[data-testid="sidebar-link-reports"]').click();
-    cy.location('pathname').should('eq', '/reports');
-    assertNoSidebarOverlap();
-  });
 
-  it('keeps the sidebar fully accessible on iPad portrait', () => {
+    cy.get('[data-testid="sidebar-item-geo"]').click();
+    cy.location('pathname').should('eq', '/geo-information');
+    assertNoSidebarOverlap();
+
     cy.viewport(768, 1024);
-    visitAuthenticatedHome();
-
-    cy.get('[data-testid="sidebar"]').should('be.visible');
+    cy.wait(150);
     assertNoSidebarOverlap();
-    cy.get('[data-testid="sidebar-link-settings"]').click();
-    cy.location('pathname').should('eq', '/settings');
-    cy.get('[data-testid="sidebar"]').should('be.visible');
+
+    cy.get('[data-testid="sidebar-item-inventory"]').click();
+    cy.location('pathname').should('eq', '/inventory');
+    assertNoSidebarOverlap();
   });
 
-  it('toggles the sidebar for iPhone viewports', () => {
+  it('slides in on mobile and closes after navigation', () => {
     cy.viewport(390, 844);
-    visitAuthenticatedHome();
+    visitAuthenticatedDashboard();
 
-    cy.get('[data-testid="sidebar"]').should('exist');
-    cy.get('[data-testid="sidebar"]').should(($sidebar) => {
+    getSidebar().should(($sidebar) => {
       const transform = getComputedStyle($sidebar[0]).transform;
-      expect(transform, 'sidebar starts out hidden via transform').to.not.equal('none');
+      expect(transform, 'sidebar starts hidden for mobile').to.not.equal('none');
     });
 
     cy.get('[data-testid="sidebar-toggle"]').should('be.visible').click();
-    cy.get('[data-testid="sidebar"]').should(($sidebar) => {
+
+    getSidebar().should(($sidebar) => {
       const transform = getComputedStyle($sidebar[0]).transform;
       const isOpen = transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)';
-      expect(isOpen, 'sidebar slides into view for mobile').to.be.true;
+      expect(isOpen, 'sidebar slides into view').to.be.true;
     });
-    cy.get('[data-testid="sidebar-backdrop"]').should('exist');
 
-    cy.get('[data-testid="sidebar-link-accounts"]').click();
-    cy.location('pathname').should('eq', '/accounts');
-    cy.get('[data-testid="sidebar"]').should(($sidebar) => {
+    cy.get('[data-testid="sidebar-backdrop"]').should('exist');
+    cy.get('[data-testid="sidebar-item-users"]').click();
+    cy.location('pathname').should('eq', '/users');
+
+    getSidebar().should(($sidebar) => {
       const transform = getComputedStyle($sidebar[0]).transform;
-      expect(transform, 'sidebar returns to hidden state on link navigation').to.not.equal('none');
+      const isClosed = transform !== 'none' && transform !== 'matrix(1, 0, 0, 1, 0, 0)';
+      expect(isClosed, 'sidebar closes after navigation on mobile').to.be.true;
+    });
+  });
+
+  it('toggles between light and dark appearances', () => {
+    cy.viewport(1440, 900);
+    visitAuthenticatedDashboard();
+
+    cy.get('[data-testid="app-root"]').should('have.attr', 'data-theme', 'light');
+    cy.get('[data-testid="sidebar-theme-toggle"]').click();
+    cy.get('[data-testid="app-root"]').should('have.attr', 'data-theme', 'dark');
+    cy.get('[data-testid="sidebar-theme-toggle"]').click();
+    cy.get('[data-testid="app-root"]').should('have.attr', 'data-theme', 'light');
+  });
+
+  it('navigates to each placeholder route without overlapping layout', () => {
+    cy.viewport(1440, 900);
+    visitAuthenticatedDashboard();
+
+    const routes = [
+      { testId: 'sidebar-item-dashboard', path: '/dashboard' },
+      { testId: 'sidebar-item-overview', path: '/overview' },
+      { testId: 'sidebar-item-geo', path: '/geo-information' },
+      { testId: 'sidebar-item-hub', path: '/hub' },
+      { testId: 'sidebar-item-users', path: '/users' },
+      { testId: 'sidebar-item-product', path: '/product' },
+      { testId: 'sidebar-item-orders', path: '/orders' },
+      { testId: 'sidebar-item-inventory', path: '/inventory' },
+      { testId: 'sidebar-item-invoice', path: '/invoice' },
+      { testId: 'sidebar-item-attendance', path: '/attendance' },
+      { testId: 'sidebar-item-settings', path: '/settings' },
+    ];
+
+    cy.wrap(routes).each((route) => {
+      cy.get(`[data-testid="${route.testId}"]`).click();
+      cy.location('pathname').should('eq', route.path);
+      assertNoSidebarOverlap();
     });
   });
 });
