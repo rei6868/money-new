@@ -59,6 +59,20 @@ cp .env.example .env
 npm run dev
 ```
 
+### End-to-End Testing with Cypress
+
+Cypress is configured for browser-based end-to-end testing.
+
+1. Ensure the development server is running in a separate terminal (`npm run dev`).
+2. Open the interactive Cypress Test Runner:
+   ```bash
+   npm run cypress:open
+   ```
+3. Execute the Cypress suite in headless mode:
+   ```bash
+   npm run cypress:run
+   ```
+
 ### Deployment
 Deployment instructions will be added as the project progresses.
 
