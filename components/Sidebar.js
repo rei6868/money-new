@@ -6,12 +6,14 @@ import {
   FiChevronRight,
   FiCreditCard,
   FiFileText,
+  FiGift,
   FiLogOut,
   FiPieChart,
   FiRepeat,
   FiSettings,
   FiSun,
   FiMoon,
+  FiTrendingDown,
   FiUsers,
 } from 'react-icons/fi';
 
@@ -20,10 +22,18 @@ import { useAuth } from '../context/AuthContext';
 import styles from './Sidebar.module.css';
 
 const NAV_ITEMS = [
-  { key: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: FiPieChart },
-  { key: 'transactions', label: 'Transactions', href: '/transactions', icon: FiRepeat },
+  { key: 'overview', label: 'Overview', href: '/overview', icon: FiPieChart },
   { key: 'accounts', label: 'Accounts', href: '/accounts', icon: FiCreditCard },
   { key: 'people', label: 'People', href: '/people', icon: FiUsers },
+  {
+    key: 'transactions-history',
+    label: 'Transactions History',
+    href: '/transactions-history',
+    icon: FiRepeat,
+  },
+  { key: 'cashback-ledger', label: 'Cashback Ledger', href: '/cashback/ledger', icon: FiGift },
+  { key: 'cashback-summary', label: 'Cashback Summary', href: '/cashback/summary', icon: FiGift },
+  { key: 'debt', label: 'Debt', href: '/debt', icon: FiTrendingDown },
   { key: 'reports', label: 'Reports', href: '/reports', icon: FiFileText },
   { key: 'settings', label: 'Settings', href: '/settings', icon: FiSettings },
 ];
