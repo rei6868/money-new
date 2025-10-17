@@ -11,10 +11,10 @@ export default function CashbackSummaryPage() {
 
   return (
     <AppLayout
-      title="Cashback Summary"
-      subtitle="Track cashback performance, burn-down, and payouts."
+      title="Cashback summary"
+      subtitle="Monitor cashback KPIs and highlight program performance."
     >
-      <PagePlaceholder title="Cashback Summary" />
+      <PagePlaceholder title="Cashback summary dashboards" />
     </AppLayout>
   );
 }

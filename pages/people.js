@@ -12,9 +12,9 @@ export default function PeoplePage() {
   return (
     <AppLayout
       title="People"
-      subtitle="Track employees, contractors, and spending relationships."
+      subtitle="Manage individuals linked to accounts, transactions, and reimbursements."
     >
-      <PagePlaceholder title="People" />
+      <PagePlaceholder title="People management workspace" />
     </AppLayout>
   );
 }

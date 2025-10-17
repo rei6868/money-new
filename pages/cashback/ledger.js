@@ -11,10 +11,10 @@ export default function CashbackLedgerPage() {
 
   return (
     <AppLayout
-      title="Cashback Ledger"
-      subtitle="Review accrued cashback entries and settlement cycles."
+      title="Cashback ledger"
+      subtitle="View monthly accruals, payouts, and budget caps."
     >
-      <PagePlaceholder title="Cashback Ledger" />
+      <PagePlaceholder title="Cashback ledger reporting" />
     </AppLayout>
   );
 }

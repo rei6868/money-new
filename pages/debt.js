@@ -11,10 +11,10 @@ export default function DebtPage() {
 
   return (
     <AppLayout
-      title="Debt"
-      subtitle="Monitor outstanding balances, repayments, and obligations."
+      title="Debt hub"
+      subtitle="Track liabilities, repayments, and related ledgers."
     >
-      <PagePlaceholder title="Debt" />
+      <PagePlaceholder title="Debt tracking coming soon" />
     </AppLayout>
   );
 }
