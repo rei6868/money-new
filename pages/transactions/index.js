@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiXCircle } from 'react-icons/fi';
 
 import AppLayout from '../../components/AppLayout';
@@ -7,6 +7,7 @@ import { TransactionsTable } from '../../components/transactions/TransactionsTab
 import { TransactionsToolbar } from '../../components/transactions/TransactionsToolbar';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { fetchMockTransactions } from '../../lib/mockTransactions';
+import { TransactionsSelectionProvider } from '../../context/TransactionsSelectionContext';
 import styles from '../../styles/TransactionsHistory.module.css';
 
 const INITIAL_FILTERS = {
@@ -156,6 +157,11 @@ export default function TransactionsHistoryPage() {
     });
   }, [filteredTransactions]);
 
+  const filteredIdSet = useMemo(
+    () => new Set(filteredTransactions.map((txn) => txn.id)),
+    [filteredTransactions],
+  );
+
   const selectionSummary = useMemo(() => {
     if (selectedIds.length === 0) {
       return { count: 0, amount: 0, finalPrice: 0, totalBack: 0 };
@@ -203,6 +209,72 @@ export default function TransactionsHistoryPage() {
 
     setSelectedIds(filteredTransactions.map((txn) => txn.id));
   };
+
+  const handleBulkSelect = useCallback(() => {
+    setSelectedIds(filteredTransactions.map((txn) => txn.id));
+  }, [filteredTransactions]);
+
+  const handleBulkClear = useCallback(() => {
+    setSelectedIds([]);
+  }, []);
+
+  const handleReplaceSelection = useCallback(
+    (ids) => {
+      if (!Array.isArray(ids)) {
+        return;
+      }
+
+      const next = ids.filter((id) => filteredIdSet.has(id));
+      setSelectedIds(next);
+    },
+    [filteredIdSet],
+  );
+
+  const handleToggleSelection = useCallback(
+    (id) => {
+      setSelectedIds((prev) => {
+        if (prev.includes(id)) {
+          return prev.filter((item) => item !== id);
+        }
+        if (!filteredIdSet.has(id)) {
+          return prev;
+        }
+        return [...prev, id];
+      });
+    },
+    [filteredIdSet],
+  );
+
+  const getSelectionSnapshot = useCallback(() => [...selectedIds], [selectedIds]);
+
+  const isSelected = useCallback(
+    (id) => filteredIdSet.has(id) && selectedIds.includes(id),
+    [filteredIdSet, selectedIds],
+  );
+
+  const selectionContextValue = useMemo(
+    () => ({
+      selectedIds,
+      selectedCount: selectedIds.length,
+      selectionSummary,
+      bulkSelect: handleBulkSelect,
+      bulkClear: handleBulkClear,
+      replaceSelection: handleReplaceSelection,
+      toggleSelection: handleToggleSelection,
+      getSelectionSnapshot,
+      isSelected,
+    }),
+    [
+      selectedIds,
+      selectionSummary,
+      handleBulkSelect,
+      handleBulkClear,
+      handleReplaceSelection,
+      handleToggleSelection,
+      getSelectionSnapshot,
+      isSelected,
+    ],
+  );
 
   const handleClearQuery = () => {
     if (!query) {
@@ -260,58 +332,59 @@ export default function TransactionsHistoryPage() {
   }
 
   return (
-    <AppLayout
-      title="Transactions History"
-      subtitle="Monitor every inflow, cashback, debt movement, and adjustment inside Money Flow."
-    >
-      <div className={styles.screen}>
-        <TransactionsToolbar
-          query={query}
-          onQueryChange={setQuery}
-          onClearQuery={handleClearQuery}
-          previousQuery={previousQuery}
-          onRestoreQuery={handleRestoreQuery}
-          onFilterClick={handleOpenFilters}
-          filterCount={filterCount}
-          onAddTransaction={handleAddTransaction}
+    <TransactionsSelectionProvider value={selectionContextValue}>
+      <AppLayout
+        title="Transactions History"
+        subtitle="Monitor every inflow, cashback, debt movement, and adjustment inside Money Flow."
+      >
+        <div className={styles.screen}>
+          <TransactionsToolbar
+            query={query}
+            onQueryChange={setQuery}
+            onClearQuery={handleClearQuery}
+            previousQuery={previousQuery}
+            onRestoreQuery={handleRestoreQuery}
+            onFilterClick={handleOpenFilters}
+            filterCount={filterCount}
+            onAddTransaction={handleAddTransaction}
+          />
+
+          {isFetching ? (
+            <div className={styles.tableCard} data-testid="transactions-loading">
+              <div className={styles.emptyState}>Loading transactions...</div>
+            </div>
+          ) : (
+            <TransactionsTable
+              transactions={filteredTransactions}
+              selectedIds={selectedIds}
+              onSelectRow={handleSelectRow}
+              onSelectAll={handleSelectAll}
+              selectionSummary={selectionSummary}
+              onOpenAdvanced={handleAdvanced}
+            />
+          )}
+
+        </div>
+
+        <TransactionsFilterModal
+          isOpen={isFilterOpen}
+          filters={draftFilters}
+          onChange={handleFilterChange}
+          onClose={() => setIsFilterOpen(false)}
+          onReset={handleFilterReset}
+          onApply={handleFilterApply}
+          options={filterOptions}
         />
 
-        {isFetching ? (
-          <div className={styles.tableCard} data-testid="transactions-loading">
-            <div className={styles.emptyState}>Loading transactions...</div>
-          </div>
-        ) : (
-          <TransactionsTable
-            transactions={filteredTransactions}
-            selectedIds={selectedIds}
-            onSelectRow={handleSelectRow}
-            onSelectAll={handleSelectAll}
-            selectionSummary={selectionSummary}
-            onOpenAdvanced={handleAdvanced}
-          />
-        )}
-
-      </div>
-
-      <TransactionsFilterModal
-        isOpen={isFilterOpen}
-        filters={draftFilters}
-        onChange={handleFilterChange}
-        onClose={() => setIsFilterOpen(false)}
-        onReset={handleFilterReset}
-        onApply={handleFilterApply}
-        options={filterOptions}
-      />
-
-      {advancedPanel ? (
-        <div
-          className={styles.advancedOverlay}
-          data-testid="transactions-advanced-modal"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className={styles.advancedPanel}>
-            <div className={styles.advancedHeader}>
+        {advancedPanel ? (
+          <div
+            className={styles.advancedOverlay}
+            data-testid="transactions-advanced-modal"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className={styles.advancedPanel}>
+              <div className={styles.advancedHeader}>
               <h3 className={styles.advancedTitle}>
                 {advancedPanel.mode === 'create'
                   ? 'Quick Create Transaction'
@@ -383,6 +456,11 @@ export default function TransactionsHistoryPage() {
                     <span className={styles.metricValue}>
                       {formatCurrency(advancedPanel.transaction?.totalBack)}
                     </span>
+                    {advancedPanel.transaction?.totalBackFormula ? (
+                      <span className={styles.metricSubValue}>
+                        {advancedPanel.transaction.totalBackFormula}
+                      </span>
+                    ) : null}
                   </div>
                   <div className={styles.metricTile}>
                     <span className={styles.metricLabel}>Final Price</span>
@@ -425,5 +503,6 @@ export default function TransactionsHistoryPage() {
         </div>
       ) : null}
     </AppLayout>
+    </TransactionsSelectionProvider>
   );
 }

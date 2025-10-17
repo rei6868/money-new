@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { FiMoreHorizontal } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
+import { useTransactionsSelection } from '../../hooks/useTransactionsSelection';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -47,6 +48,7 @@ export function TransactionsTable({
   selectionSummary,
   onOpenAdvanced,
 }) {
+  const { bulkSelect, bulkClear } = useTransactionsSelection();
   const selectionSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allSelected = transactions.length > 0 && transactions.every((txn) => selectionSet.has(txn.id));
   const isIndeterminate = selectionSet.size > 0 && !allSelected;
@@ -197,7 +199,12 @@ export function TransactionsTable({
                       {formatCurrency(txn.fixedBack)}
                     </td>
                     <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.totalBack }}>
-                      {formatCurrency(txn.totalBack)}
+                      <div className={styles.totalBackCell}>
+                        <span>{formatCurrency(txn.totalBack)}</span>
+                        {txn.totalBackFormula ? (
+                          <span className={styles.totalBackFormula}>{txn.totalBackFormula}</span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.finalPrice }}>
                       {formatCurrency(txn.finalPrice)}
@@ -268,6 +275,24 @@ export function TransactionsTable({
               <span>Total amount {formatCurrency(selectionSummary.amount)}</span>
               <span>Final price {formatCurrency(selectionSummary.finalPrice)}</span>
               <span>Total back {formatCurrency(selectionSummary.totalBack)}</span>
+            </div>
+            <div className={styles.selectionActions}>
+              <button
+                type="button"
+                className={styles.selectionButton}
+                onClick={bulkSelect}
+                data-testid="transactions-selection-select-all"
+              >
+                Select all
+              </button>
+              <button
+                type="button"
+                className={styles.selectionButton}
+                onClick={bulkClear}
+                data-testid="transactions-selection-clear"
+              >
+                Clear
+              </button>
             </div>
           </div>
         </div>

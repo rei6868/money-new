@@ -287,6 +287,19 @@
   font-size: 0.85rem;
 }
 
+.totalBackCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+}
+
+.totalBackFormula {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--mf-text-muted);
+}
+
 .actionsGroup {
   display: inline-flex;
   align-items: center;
@@ -364,6 +377,30 @@
   flex-wrap: wrap;
   color: var(--mf-text-secondary);
   font-size: 0.9rem;
+}
+
+.selectionActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.selectionButton {
+  border: 1px solid var(--mf-border-subtle);
+  background: transparent;
+  color: var(--mf-text-secondary);
+  border-radius: 12px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+}
+
+.selectionButton:hover {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.45);
+  color: var(--mf-accent-strong);
 }
 
 .modalOverlay {
@@ -571,6 +608,12 @@
   color: var(--mf-text-primary);
 }
 
+.metricSubValue {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--mf-text-muted);
+}
+
 .wrap {
   white-space: nowrap;
 }
@@ -593,6 +636,10 @@
   .selectionBar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .selectionActions {
+    justify-content: flex-start;
   }
 }
 
