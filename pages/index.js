@@ -1,6 +1,6 @@
 export const getServerSideProps = () => ({
   redirect: {
-    destination: '/dashboard',
+    destination: '/transactions',
     permanent: false,
   },
 });

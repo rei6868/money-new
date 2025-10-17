@@ -1,0 +1,616 @@
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-height: 0;
+  width: 100%;
+}
+
+.toolbarCard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.5rem;
+  border-radius: 22px;
+  border: 1px solid var(--mf-border-subtle);
+  background: var(--mf-sidebar-bg);
+  box-shadow: var(--mf-elevation-sm);
+  width: 100%;
+  max-width: 100%;
+  /* no page-level horizontal scrolling: keep controls full width without pushing layout; main content/container overflow-x: hidden already guards outer shell */
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.searchGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  background: rgba(148, 163, 184, 0.15);
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+  min-width: min(320px, 80vw);
+}
+
+.searchGroup:focus-within {
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.searchIcon {
+  font-size: 1.05rem;
+  color: var(--mf-text-muted);
+}
+
+.searchInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--mf-text-primary);
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.iconButton {
+  border: none;
+  background: transparent;
+  color: var(--mf-text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.iconButton:hover {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--mf-text-primary);
+}
+
+.restoreChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--mf-accent-soft);
+  color: var(--mf-accent-strong);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.restoreChip:hover {
+  transform: translateY(-1px);
+}
+
+.filterButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1rem;
+  border-radius: 16px;
+  border: 1px solid var(--mf-border-subtle);
+  background: transparent;
+  color: var(--mf-text-secondary);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.filterButton:hover {
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--mf-text-primary);
+}
+
+.filterButtonActive {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: transparent;
+  color: var(--mf-accent-strong);
+}
+
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: rgba(67, 56, 202, 0.92);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 1.25rem;
+  border-radius: 16px;
+  border: none;
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 16px 32px rgba(79, 70, 229, 0.32);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primaryButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 36px rgba(79, 70, 229, 0.38);
+}
+
+.tableCard {
+  background: var(--mf-sidebar-bg);
+  border-radius: 22px;
+  border: 1px solid var(--mf-border-subtle);
+  box-shadow: var(--mf-elevation-sm);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  /* horizontal scroll inside table container with table-fixed layout, main content overflow: hidden so no layout shift or horizontal overflow on html, body, app-root, main-content */
+}
+
+.tableScroll {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: auto;
+  border-radius: 22px 22px 0 0;
+  max-height: clamp(420px, 60vh, 720px);
+  width: 100%;
+  max-width: 100%;
+  /* table wrapper overflow-x: auto to guarantee horizontal scroll inside table container and enforce contained table scroll */
+}
+
+.table {
+  width: 100%;
+  min-width: 1280px;
+  table-layout: fixed;
+  max-width: none;
+  /* table must have min-width greater than container on overflow; table-layout: fixed keeps columns measurable for sticky header, fixed checkbox & actions column */
+  border-collapse: separate;
+  border-spacing: 0;
+  background: transparent;
+}
+
+.headerCell {
+  position: sticky;
+  top: 0;
+  background: var(--mf-sidebar-bg);
+  z-index: 7;
+  text-align: left;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mf-text-muted);
+  font-weight: 700;
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  /* sticky header, fixed checkbox & actions column rely on this sticky positioning */
+}
+
+.cell {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  font-size: 0.9rem;
+  color: var(--mf-text-secondary);
+  background: var(--mf-sidebar-bg);
+}
+
+.row {
+  transition: background 0.2s ease;
+}
+
+.row:hover {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.rowSelected {
+  background: rgba(99, 102, 241, 0.14);
+}
+
+.stickyLeft {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: var(--mf-sidebar-bg);
+}
+
+.stickyRight {
+  position: sticky;
+  right: 0;
+  z-index: 10;
+  background: var(--mf-sidebar-bg);
+}
+
+.checkboxCell {
+  width: 60px;
+}
+
+.actionsCell {
+  width: 180px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.pillExpense {
+  background: rgba(239, 68, 68, 0.14);
+  color: #b91c1c;
+}
+
+.pillIncome {
+  background: rgba(16, 185, 129, 0.16);
+  color: #047857;
+}
+
+.noteText {
+  color: var(--mf-text-muted);
+  font-size: 0.85rem;
+}
+
+.actionsGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.ghostButton {
+  border: 1px solid var(--mf-border-subtle);
+  background: transparent;
+  color: var(--mf-text-secondary);
+  border-radius: 12px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+}
+
+.ghostButton:hover {
+  border-color: rgba(99, 102, 241, 0.55);
+  color: var(--mf-accent-strong);
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.dangerButton {
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #b91c1c;
+}
+
+.dangerButton:hover {
+  border-color: rgba(239, 68, 68, 0.6);
+  background: rgba(239, 68, 68, 0.15);
+  color: #991b1b;
+}
+
+.advancedButton {
+  border: none;
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--mf-text-primary);
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.advancedButton:hover {
+  background: rgba(99, 102, 241, 0.22);
+}
+
+.tableFooter {
+  position: sticky;
+  bottom: 0;
+  background: var(--mf-sidebar-bg);
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 -14px 36px rgba(15, 23, 42, 0.12);
+  border-radius: 0 0 22px 22px;
+}
+
+.selectionBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1.35rem;
+  font-weight: 600;
+  color: var(--mf-text-primary);
+}
+
+.selectionTotals {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  color: var(--mf-text-secondary);
+  font-size: 0.9rem;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(3px);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+  padding: 1.5rem;
+}
+
+.modalContent {
+  width: min(520px, 92vw);
+  background: var(--mf-sidebar-bg);
+  border-radius: 22px;
+  border: 1px solid var(--mf-border-subtle);
+  box-shadow: var(--mf-elevation-md);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  animation: fadeUp 0.28s ease;
+}
+
+.modalHeader {
+  padding: 1.25rem 1.5rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--mf-text-primary);
+}
+
+.modalBody {
+  padding: 0 1.5rem 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.modalField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.modalLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mf-text-muted);
+}
+
+.modalControl {
+  border-radius: 14px;
+  border: 1px solid var(--mf-border-subtle);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.95rem;
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--mf-text-primary);
+}
+
+.modalControl:focus {
+  outline: 3px solid rgba(99, 102, 241, 0.24);
+  border-color: rgba(99, 102, 241, 0.6);
+  background: rgba(99, 102, 241, 0.18);
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 1.5rem 1.35rem;
+}
+
+.secondaryButton {
+  border: 1px solid var(--mf-border-subtle);
+  background: transparent;
+  color: var(--mf-text-secondary);
+  border-radius: 14px;
+  padding: 0.65rem 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+}
+
+.secondaryButton:hover {
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--mf-text-primary);
+}
+
+.modalApply {
+  background: linear-gradient(135deg, #22d3ee 0%, #0ea5e9 100%);
+  border: none;
+  color: #ffffff;
+  border-radius: 14px;
+  padding: 0.65rem 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 16px 32px rgba(14, 165, 233, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.modalApply:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 36px rgba(14, 165, 233, 0.36);
+}
+
+.emptyState {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: var(--mf-text-muted);
+  font-size: 0.95rem;
+}
+
+.advancedOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.32);
+  backdrop-filter: blur(2px);
+  z-index: 55;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.advancedPanel {
+  width: min(480px, 90vw);
+  border-radius: 20px;
+  border: 1px solid var(--mf-border-subtle);
+  background: var(--mf-sidebar-bg);
+  box-shadow: var(--mf-elevation-md);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem 1.4rem 1.5rem;
+  animation: fadeUp 0.24s ease;
+}
+
+.advancedHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.advancedTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--mf-text-primary);
+}
+
+.advancedSection {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.advancedLabel {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--mf-text-muted);
+}
+
+.advancedValue {
+  font-size: 0.95rem;
+  color: var(--mf-text-secondary);
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.metricTile {
+  border: 1px solid var(--mf-border-subtle);
+  border-radius: 16px;
+  padding: 0.75rem;
+  background: rgba(148, 163, 184, 0.08);
+  display: grid;
+  gap: 0.35rem;
+}
+
+.metricLabel {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mf-text-muted);
+}
+
+.metricValue {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--mf-text-primary);
+}
+
+.wrap {
+  white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+  .toolbarCard {
+    padding: 1rem 1.15rem;
+    border-radius: 20px;
+  }
+
+  .tableScroll {
+    max-height: clamp(360px, 58vh, 680px);
+  }
+
+  .primaryButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .selectionBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 600px) {
+  .toolbarLeft {
+    width: 100%;
+  }
+
+  .searchGroup {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .toolbarCard {
+    gap: 0.85rem;
+  }
+
+  .selectionTotals {
+    gap: 0.75rem;
+  }
+}
