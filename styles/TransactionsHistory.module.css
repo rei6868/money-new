@@ -195,10 +195,11 @@
 }
 
 .table {
-  width: 100%;
-  min-width: var(--transactions-table-min-width, 100%);
-  table-layout: fixed;
-  /* table-layout: fixed keeps predictable column widths and table must have min-width greater than container on overflow */
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+  max-width: none;
+  /* table expands based on content while remaining scrollable within wrapper */
   border-collapse: separate;
   border-spacing: 0;
   background: transparent;

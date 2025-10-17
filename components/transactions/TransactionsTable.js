@@ -171,18 +171,6 @@ export function TransactionsTable({
     [columnConfig],
   );
 
-  const tableMinWidth = useMemo(() => {
-    const stickyColumnsWidth = 60 + 120; // checkbox column + actions column stay fixed
-    const dynamicColumnsWidth = visibleColumns.reduce((sum, column) => {
-      const nextWidth = Number(column.width ?? column.minWidth ?? 0);
-      return sum + (Number.isNaN(nextWidth) ? 0 : nextWidth);
-    }, 0);
-
-    // table must have min-width greater than container on overflow so the horizontal scroll inside table container
-    // shows every column
-    return stickyColumnsWidth + dynamicColumnsWidth;
-  }, [visibleColumns]);
-
   const paginatedTransactions = useMemo(() => {
     const start = pageIndex * pageSize;
     return transactions.slice(start, start + pageSize);
@@ -288,10 +276,7 @@ export function TransactionsTable({
       </div>
 
       <div className={styles.tableScroll} data-testid="transactions-table-container">
-        <table
-          className={styles.table}
-          style={{ '--transactions-table-min-width': `${tableMinWidth}px` }}
-        >
+        <table className={styles.table}>
           <thead>
             <tr>
               <th
