@@ -15,7 +15,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace('/');
+      router.replace('/dashboard');
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -27,7 +27,7 @@ export default function LoginPage() {
     try {
       const authenticated = login(username.trim(), password.trim());
       if (authenticated) {
-        router.push('/');
+        router.push('/dashboard');
       } else {
         setError('Invalid credentials. Use admin / admin to continue.');
       }
@@ -45,7 +45,7 @@ export default function LoginPage() {
       <div className={styles.card}>
         <header className={styles.header}>
           <h1 className={styles.title}>Welcome back</h1>
-          <p className={styles.subtitle}>Sign in to review and manage transactions instantly.</p>
+          <p className={styles.subtitle}>Sign in to access your finance workspace.</p>
         </header>
 
         <form className={styles.form} onSubmit={handleSubmit}>
