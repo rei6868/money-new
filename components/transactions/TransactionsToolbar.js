@@ -1,5 +1,7 @@
-import { FiPlus, FiRotateCcw, FiSearch, FiSliders, FiX } from 'react-icons/fi';
+import { useEffect, useRef, useState } from 'react';
+import { FiPlus, FiSearch, FiSliders } from 'react-icons/fi';
 
+import { InputClearAction, InputRestoreAction } from '../common/InputActionIcon';
 import styles from '../../styles/TransactionsHistory.module.css';
 
 export function TransactionsToolbar({
@@ -12,9 +14,35 @@ export function TransactionsToolbar({
   filterCount,
   onAddTransaction,
 }) {
+  const [isFocused, setIsFocused] = useState(false);
+  const [shouldShowRestore, setShouldShowRestore] = useState(false);
+  const inputRef = useRef(null);
   const hasQuery = Boolean(query);
-  const canRestore = Boolean(previousQuery);
   const hasFilters = filterCount > 0;
+
+  useEffect(() => {
+    setShouldShowRestore(Boolean(previousQuery));
+  }, [previousQuery]);
+
+  const handleRestore = () => {
+    if (!previousQuery) {
+      return;
+    }
+    onRestoreQuery(previousQuery);
+    setShouldShowRestore(false);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      setIsFocused(true);
+    });
+  };
+
+  const handleClear = () => {
+    onClearQuery();
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      setIsFocused(true);
+    });
+  };
 
   return (
     <section className={styles.toolbarCard} aria-label="Transactions controls">
@@ -29,33 +57,28 @@ export function TransactionsToolbar({
             className={styles.searchInput}
             data-testid="transactions-search-input"
             aria-label="Search transactions"
+            ref={inputRef}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
           />
-          {hasQuery ? (
-            <button
-              type="button"
-              className={styles.iconButton}
-              onClick={onClearQuery}
-              data-testid="transactions-search-clear"
-              aria-label="Clear search"
-            >
-              <FiX aria-hidden />
-            </button>
-          ) : null}
+          <InputClearAction
+            isVisible={isFocused}
+            onConfirm={handleClear}
+            confirmMessage={
+              hasQuery ? `Clear the search “${query}”?` : 'Clear this field?'
+            }
+            label="Clear search"
+            onCancel={() => setIsFocused(true)}
+            testId="transactions-search-clear"
+          />
+          <InputRestoreAction
+            isVisible={shouldShowRestore}
+            onRestore={handleRestore}
+            label="Restore previous search"
+            title="Restore search"
+            testId="transactions-search-restore"
+          />
         </div>
-
-        {canRestore ? (
-          <button
-            type="button"
-            className={styles.restoreChip}
-            onClick={() => onRestoreQuery(previousQuery)}
-            data-testid="transactions-search-restore"
-            aria-label="Restore previous search"
-          >
-            <FiRotateCcw aria-hidden />
-            <span>Restore</span>
-            <span className={styles.wrap}>&ldquo;{previousQuery}&rdquo;</span>
-          </button>
-        ) : null}
       </div>
 
       <div className={styles.actionsGroup}>
