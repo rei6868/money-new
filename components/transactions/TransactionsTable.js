@@ -145,25 +145,21 @@ function getAmountToneClass(type) {
   return styles.amountExpense;
 }
 
-function TotalBackCell({ transaction }) {
-  const totalBack = formatAmount(transaction.totalBack);
-  const percentBack = Number(transaction.percentBack ?? 0);
-  const fixedBack = Number(transaction.fixedBack ?? 0);
-  const amount = Number(transaction.amount ?? 0);
-  const hasPercent = percentBack > 0;
-  const hasFixed = fixedBack > 0;
-  const canShowFormula =
-    Number(transaction.totalBack ?? 0) > 0 && hasPercent && hasFixed && amount > 0;
-  const formulaText = `${formatAmount(amount)}×${formatPercent(percentBack)} + ${formatAmount(
-    fixedBack,
-  )}`;
+const QUICK_FILTER_CONFIG = {
+  category: { type: 'single', label: 'Category' },
+  owner: { type: 'single', label: 'People' },
+  type: { type: 'multi', label: 'Type' },
+  debtTag: { type: 'multi', label: 'Debt Tag' },
+};
 
-  return (
-    <div className={styles.totalBackCell} title={canShowFormula ? formulaText : undefined}>
-      <span className={styles.totalBackValue}>{totalBack}</span>
-      {canShowFormula ? <span className={styles.totalBackFormula}>{formulaText}</span> : null}
-    </div>
-  );
+function getAmountToneClass(type) {
+  if (type === 'Income') {
+    return styles.amountIncome;
+  }
+  if (type === 'Transfer') {
+    return styles.amountTransfer;
+  }
+  return styles.amountExpense;
 }
 
 const columnRenderers = {
@@ -207,11 +203,52 @@ const columnRenderers = {
 };
 
 function renderCellContent(column, transaction) {
-  const renderer = columnRenderers[column.id];
-  if (!renderer) {
-    return transaction[column.id] ?? '—';
+  switch (column.id) {
+    case 'date':
+      return transaction.displayDate ?? transaction.date ?? '—';
+    case 'type':
+    case 'account':
+    case 'shop':
+    case 'notes':
+    case 'debtTag':
+    case 'cycleTag':
+    case 'category':
+    case 'linkedTxn':
+    case 'owner':
+    case 'id':
+      return transaction[column.id] ?? '—';
+    case 'amount': {
+      const numeric = Math.abs(Number(transaction.amount ?? 0));
+      const toneClass = getAmountToneClass(transaction.type);
+      return (
+        <span className={`${styles.amountValue} ${toneClass}`} data-testid={`transaction-amount-${transaction.id}`}>
+          {formatAmount(numeric)}
+        </span>
+      );
+    }
+    case 'percentBack':
+      return formatPercent(transaction.percentBack);
+    case 'fixedBack':
+      return formatAmount(transaction.fixedBack);
+    case 'totalBack': {
+      const amount = Number(transaction.amount ?? 0);
+      const percentBack = Number(transaction.percentBack ?? 0);
+      const fixedBack = Number(transaction.fixedBack ?? 0);
+      const totalBack = Number(transaction.totalBack ?? 0);
+      const showFormula = amount > 0 && percentBack > 0 && fixedBack > 0 && totalBack > 0;
+      const formula = `${formatAmount(amount)}×${formatPercent(percentBack)} + ${formatAmount(fixedBack)}`;
+      return (
+        <div className={styles.totalBackCell} title={showFormula ? formula : undefined}>
+          <span className={styles.totalBackValue}>{formatAmount(totalBack)}</span>
+          {showFormula ? <span className={styles.totalBackFormula}>{formula}</span> : null}
+        </div>
+      );
+    }
+    case 'finalPrice':
+      return formatAmount(transaction.finalPrice);
+    default:
+      return transaction[column.id] ?? '—';
   }
-  return renderer(transaction, column, styles);
 }
 
 function computeMinWidth(columns, definitionMap) {
@@ -271,7 +308,7 @@ export function TransactionsTable({
   selectionSummary = { count: 0, amount: 0, finalPrice: 0, totalBack: 0 },
   onOpenAdvanced,
   columnDefinitions = [],
-  visibleColumns,
+  visibleColumns = [],
   pagination,
   sortState = [],
   onSortChange,
@@ -315,8 +352,8 @@ export function TransactionsTable({
   const headerCheckboxRef = useRef(null);
 
   const definitionMap = useMemo(
-    () => new Map(columnDefinitions.map((definition) => [definition.id, definition])),
-    [columnDefinitions],
+    () => new Map(effectiveDefinitions.map((definition) => [definition.id, definition])),
+    [effectiveDefinitions],
   );
 
   const selectionSet = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -330,8 +367,8 @@ export function TransactionsTable({
 
   const sortLookup = useMemo(() => {
     const lookup = new Map();
-    sortState?.forEach((item, index) => {
-      lookup.set(item.id, { ...item, index });
+    sortState.forEach((entry, index) => {
+      lookup.set(entry.id, { ...entry, index });
     });
     return lookup;
   }, [sortState]);
@@ -470,6 +507,9 @@ export function TransactionsTable({
     if (!openQuickFilter) {
       return undefined;
     }
+    const isMulti = event.shiftKey || event.metaKey || event.ctrlKey;
+    onSortChange(columnId, { multi: isMulti });
+  };
 
     const handlePointerDown = (event) => {
       const anchor = actionAnchorRefs.current.get(openActionId);
@@ -887,6 +927,7 @@ export function TransactionsTable({
     } else {
       quickFilterRefs.current.delete(columnId);
     }
+    onQuickFilterChange(filterId, value);
   };
 
   const registerActionAnchor = useCallback(
@@ -1284,18 +1325,16 @@ export function TransactionsTable({
         >
           <thead>
             <tr>
-              <th
-                scope="col"
-                className={`${styles.headerCell} ${styles.stickyLeft} ${styles.stickyLeftEdge} ${styles.checkboxCell}`}
-              >
-                <input
-                  ref={headerCheckboxRef}
-                  type="checkbox"
-                  aria-label="Select all transactions"
-                  checked={allSelected}
-                  onChange={(event) => onSelectAll?.(event.target.checked)}
-                  data-testid="transaction-select-all"
-                />
+              <th className={`${styles.headerCell} ${styles.stickyLeft}`} scope="col">
+                <div className={styles.headerContent}>
+                  <input
+                    ref={headerCheckboxRef}
+                    type="checkbox"
+                    checked={transactions.length > 0 && selectionSet.size === transactions.length}
+                    onChange={handleSelectAllChange}
+                    aria-label="Select all transactions"
+                  />
+                </div>
               </th>
               <th
                 scope="col"
@@ -1606,13 +1645,13 @@ export function TransactionsTable({
               })}
             </tr>
           </thead>
-          <tbody style={{ minWidth: `${minTableWidth + STICKY_COLUMN_BUFFER}px` }}>
-            {transactions.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={visibleColumns.length + 2}
-                  className={styles.emptyState}
-                  data-testid="transactions-empty-state"
+          <tbody>
+            {transactions.map((transaction) => {
+              const isSelected = selectionSet.has(transaction.id);
+              return (
+                <tr
+                  key={transaction.id}
+                  className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`}
                 >
                   No transactions match the current search or filters.
                 </td>
@@ -1877,44 +1916,40 @@ export function TransactionsTable({
       {quickFilterPopover}
       {actionMenuPortal}
 
-      <div className={styles.paginationBar} data-testid="transactions-pagination">
-        <div className={styles.pageSizeGroup}>
-          <label htmlFor="transactions-page-size">Rows per page</label>
-          <select
-            id="transactions-page-size"
-            className={styles.pageSizeSelect}
-            value={pagination.pageSize}
-            onChange={(event) => pagination.onPageSizeChange(Number(event.target.value))}
-          >
-            {pagination.pageSizeOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className={styles.paginationControls}>
-          <button
-            type="button"
-            className={styles.paginationButton}
-            onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
-            disabled={pagination.currentPage === 1}
-            aria-label="Previous page"
-          >
-            Prev
-          </button>
-          <span className={styles.paginationStatus}>
+      {pagination ? (
+        <div className={styles.paginationBar}>
+          <div className={styles.paginationMeta}>
             Page {pagination.currentPage} of {pagination.totalPages}
-          </span>
-          <button
-            type="button"
-            className={styles.paginationButton}
-            onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
-            disabled={pagination.currentPage === pagination.totalPages}
-            aria-label="Next page"
-          >
-            Next
-          </button>
+          </div>
+          <div className={styles.paginationControls}>
+            <button
+              type="button"
+              className={styles.paginationButton}
+              onClick={() => pagination.onPageChange?.(Math.max(1, pagination.currentPage - 1))}
+              disabled={pagination.currentPage <= 1}
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              className={styles.paginationButton}
+              onClick={() => pagination.onPageChange?.(Math.min(pagination.totalPages, pagination.currentPage + 1))}
+              disabled={pagination.currentPage >= pagination.totalPages}
+            >
+              Next
+            </button>
+            <select
+              className={styles.paginationSelect}
+              value={pagination.pageSize}
+              onChange={(event) => pagination.onPageSizeChange?.(Number(event.target.value))}
+            >
+              {pagination.pageSizeOptions?.map((option) => (
+                <option key={option} value={option}>
+                  {option} / page
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
     </section>

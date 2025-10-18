@@ -30,30 +30,11 @@ export function CustomizeColumnsModal({
     [columnDefinitions],
   );
 
-  useEffect(() => {
-    if (!isOpen) {
-      return undefined;
-    }
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
-
   const filteredColumns = useMemo(() => {
     const lowered = columnQuery.trim().toLowerCase();
     if (!lowered) {
       return draftColumns;
     }
-
     return draftColumns.filter((column) => {
       const definition = definitionMap.get(column.id);
       const label = definition?.label ?? column.id;
@@ -65,23 +46,21 @@ export function CustomizeColumnsModal({
     return null;
   }
 
-  const handleToggleVisible = (columnId) => (event) => {
-    const { checked } = event.target;
+  const handleToggleVisible = (columnId) => {
     setDraftColumns((prev) =>
       prev.map((column) =>
-        column.id === columnId ? { ...column, visible: checked } : column,
+        column.id === columnId ? { ...column, visible: column.visible !== false ? false : true } : column,
       ),
     );
   };
 
-  const handleWidthChange = (columnId) => (event) => {
-    const nextWidth = Number(event.target.value);
+  const handleWidthChange = (columnId, value) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+      return;
+    }
     setDraftColumns((prev) =>
-      prev.map((column) =>
-        column.id === columnId && !Number.isNaN(nextWidth)
-          ? { ...column, width: nextWidth }
-          : column,
-      ),
+      prev.map((column) => (column.id === columnId ? { ...column, width: numeric } : column)),
     );
   };
 
@@ -272,47 +251,15 @@ export function CustomizeColumnsModal({
   };
 
   const handleApply = () => {
-    onApply(
-      draftColumns.map((column, order) => ({
-        ...column,
-        order,
-      })),
-    );
-  };
-
-  const handleReset = () => {
-    onReset();
-  };
-
-  const handleOverlayClick = (event) => {
-    if (event.target === event.currentTarget) {
-      onClose();
-    }
+    onApply?.(draftColumns.map((column, index) => ({ ...column, order: index })));
   };
 
   return (
-    <div
-      className={styles.columnsOverlay}
-      role="presentation"
-      onMouseDown={handleOverlayClick}
-      data-testid="transactions-customize-columns"
-    >
-      <div
-        className={styles.columnsPopover}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Customize columns"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
+    <div className={styles.columnsOverlay} role="dialog" aria-modal="true">
+      <div className={styles.columnsPopover}>
         <div className={styles.columnsHeader}>
-          <h2 className={styles.modalTitle}>Customize Columns</h2>
-          <button
-            type="button"
-            className={styles.iconButton}
-            onClick={onClose}
-            aria-label="Close column customization"
-            data-testid="transactions-customize-close"
-          >
+          <h2 className={styles.modalTitle}>Customize columns</h2>
+          <button type="button" className={styles.iconButton} onClick={onClose} aria-label="Close customize columns">
             <FiX aria-hidden />
           </button>
         </div>
@@ -323,23 +270,16 @@ export function CustomizeColumnsModal({
 
         <div className={styles.columnsSearchRow}>
           <div className={styles.columnsSearchField}>
-            <FiSearch aria-hidden className={styles.columnsSearchIcon} />
+            <FiSearch className={styles.columnsSearchIcon} aria-hidden />
             <input
               type="search"
+              className={styles.columnsSearchInput}
+              placeholder="Find a column"
               value={columnQuery}
               onChange={(event) => setColumnQuery(event.target.value)}
-              placeholder="Search columns"
-              className={styles.columnsSearchInput}
-              aria-label="Search columns"
-              data-testid="transactions-customize-search"
             />
           </div>
-          <button
-            type="button"
-            className={styles.secondaryButton}
-            onClick={handleReset}
-            data-testid="transactions-customize-reset"
-          >
+          <button type="button" className={styles.secondaryButton} onClick={onReset}>
             <FiRotateCcw aria-hidden /> Reset
           </button>
         </div>
@@ -431,16 +371,14 @@ export function CustomizeColumnsModal({
                     <FiMove aria-hidden />
                   </button>
                   <div className={styles.columnMainControls}>
-                    <label className={styles.columnLabel} htmlFor={`column-visible-${column.id}`}>
+                    <label className={styles.columnLabel}>
                       <input
                         type="checkbox"
-                        id={`column-visible-${column.id}`}
-                        checked={column.visible}
-                        onChange={handleToggleVisible(column.id)}
                         className={styles.columnCheckbox}
-                        data-testid={`transactions-column-visible-${column.id}`}
+                        checked={column.visible !== false}
+                        onChange={() => handleToggleVisible(column.id)}
                       />
-                      <span>{definition.label}</span>
+                      {label}
                     </label>
 
                     {presetOptions.length > 0 ? (
@@ -488,19 +426,23 @@ export function CustomizeColumnsModal({
                     ) : null}
                   </div>
                   <div className={styles.columnWidthGroup}>
-                    <span className={styles.columnWidthValue}>{column.width}px</span>
-                    <input
-                      id={`column-width-${column.id}`}
-                      type="range"
-                      min={sliderMin}
-                      max={sliderMax}
-                      step={4}
-                      value={column.width}
-                      onChange={handleWidthChange(column.id)}
-                      className={styles.columnWidthSlider}
-                      aria-label={`Adjust width for ${definition.label}`}
-                      data-testid={`transactions-customize-width-${column.id}`}
-                    />
+                    <span className={styles.columnWidthValue}>#{index + 1}</span>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() => moveColumn(column.id, -1)}
+                      aria-label={`Move ${label} up`}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() => moveColumn(column.id, 1)}
+                      aria-label={`Move ${label} down`}
+                    >
+                      ↓
+                    </button>
                   </div>
                 </li>
               );
@@ -509,12 +451,7 @@ export function CustomizeColumnsModal({
         </div>
 
         <div className={styles.columnsFooter}>
-          <button
-            type="button"
-            className={styles.modalApply}
-            onClick={handleApply}
-            data-testid="transactions-customize-apply"
-          >
+          <button type="button" className={styles.modalApply} onClick={handleApply}>
             Apply changes
           </button>
         </div>

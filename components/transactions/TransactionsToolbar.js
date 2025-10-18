@@ -1,12 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import {
-  FiPlus,
-  FiRotateCcw,
-  FiSearch,
-  FiSettings,
-  FiSliders,
-  FiX,
-} from 'react-icons/fi';
+import { useRef } from 'react';
+import { FiPlus, FiRotateCcw, FiSearch, FiSettings, FiSliders, FiX } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
@@ -103,9 +96,9 @@ export function TransactionsToolbar({
     focusSearchInput();
   };
 
-  const handleCancelClear = () => {
-    setIsConfirmingClear(false);
-    focusSearchInput();
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    onSubmitSearch();
   };
 
   const handleToggleSelected = () => {
@@ -117,7 +110,7 @@ export function TransactionsToolbar({
 
   return (
     <section className={styles.toolbarCard} aria-label="Transactions controls">
-      <div className={styles.toolbarLeft}>
+      <form className={styles.toolbarLeft} onSubmit={handleSubmit} role="search">
         <div className={styles.searchGroup} data-testid="transactions-search-group">
           <input
             ref={searchInputRef}
@@ -133,23 +126,22 @@ export function TransactionsToolbar({
             aria-label="Search transactions"
           />
           <div className={styles.searchTrailingIcons}>
-            {showRestoreButton ? (
+            {canRestore ? (
               <button
                 type="button"
-                className={`${styles.searchIconButton} ${styles.searchRestoreButton}`}
-                onClick={handleRestoreClick}
+                className={styles.searchIconButton}
+                onClick={handleRestore}
                 data-testid="transactions-search-restore"
-                aria-label={`Restore search ${previousQuery}`}
-                title={`Restore “${previousQuery}”`}
+                aria-label="Restore last search"
+                title={previousQuery}
               >
                 <FiRotateCcw aria-hidden />
               </button>
             ) : null}
-            {showClearButton ? (
+            {hasSearch ? (
               <button
                 type="button"
-                className={`${styles.searchIconButton} ${styles.searchClearButton}`}
-                onMouseDown={handleClearMouseDown}
+                className={styles.searchIconButton}
                 onClick={handleClearClick}
                 data-testid="transactions-search-clear"
                 aria-label="Clear search"
@@ -171,6 +163,7 @@ export function TransactionsToolbar({
         >
           Search
         </button>
+      </form>
 
         {selectedCount > 0 ? (
           <div className={styles.selectionQuickActions} data-testid="transactions-selection-inline">
@@ -233,43 +226,26 @@ export function TransactionsToolbar({
           <FiSettings aria-hidden />
           Customize columns
         </button>
-
-        <button
-          type="button"
-          className={styles.primaryButton}
-          onClick={onAddTransaction}
-          data-testid="transactions-add-button"
-        >
-          <FiPlus aria-hidden />
-          Add transaction
+        <button type="button" className={styles.secondaryButton} onClick={onCustomizeColumns}>
+          <FiSettings aria-hidden /> Customize
         </button>
-      </div>
-
-      {isConfirmingClear ? (
-        <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
-          <div className={styles.confirmDialog}>
-            <p className={styles.confirmMessage}>Clear the current search text?</p>
-            <div className={styles.confirmActions}>
-              <button
-                type="button"
-                className={styles.secondaryButton}
-                onClick={handleCancelClear}
-                data-testid="transactions-search-cancel-clear"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.primaryButton}
-                onClick={handleConfirmClear}
-                data-testid="transactions-search-confirm-clear"
-              >
-                Clear search
-              </button>
+        {hasSelection ? (
+          <>
+            <div className={styles.selectionTotals}>
+              <span>{selectionSummary.count} selected</span>
+              <span>Total {formatAmountWithTrailing(selectionSummary.amount)}</span>
+              <span>Final {formatAmountWithTrailing(selectionSummary.finalPrice)}</span>
+              <span>Back {formatAmountWithTrailing(selectionSummary.totalBack)}</span>
             </div>
-          </div>
-        </div>
-      ) : null}
+            <button type="button" className={styles.secondaryButton} onClick={onDeselectAll}>
+              Clear selection
+            </button>
+            <button type="button" className={styles.secondaryButton} onClick={onToggleShowSelected}>
+              {isShowingSelectedOnly ? 'Show all' : 'Show selected'}
+            </button>
+          </>
+        ) : null}
+      </div>
     </section>
   );
 }

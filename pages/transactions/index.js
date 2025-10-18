@@ -19,24 +19,39 @@ const createInitialFilters = () => ({
   debtTags: [],
   accounts: [],
 });
+
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
 
 export default function TransactionsHistoryPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
   const [transactions, setTransactions] = useState([]);
-  const [isFetching, setIsFetching] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
   const [draftQuery, setDraftQuery] = useState('');
   const [appliedQuery, setAppliedQuery] = useState('');
   const [previousQuery, setPreviousQuery] = useState('');
-  const [appliedFilters, setAppliedFilters] = useState(() => createInitialFilters());
-  const [draftFilters, setDraftFilters] = useState(() => createInitialFilters());
+  const [draftFilters, setDraftFilters] = useState(createInitialFilters);
+  const [appliedFilters, setAppliedFilters] = useState(createInitialFilters);
+  const [filterOptions, setFilterOptions] = useState({
+    people: [],
+    categories: [],
+    years: [],
+    months: [],
+    types: [],
+    debtTags: [],
+  });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [advancedPanel, setAdvancedPanel] = useState(null);
   const [columnDefinitions, setColumnDefinitions] = useState([]);
   const [columnState, setColumnState] = useState([]);
   const [defaultColumnState, setDefaultColumnState] = useState([]);
   const [sortState, setSortState] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectionSummary, setSelectionSummary] = useState({
+    count: 0,
+    amount: 0,
+    finalPrice: 0,
+    totalBack: 0,
+  });
+  const [advancedPanel, setAdvancedPanel] = useState(null);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1] ?? PAGE_SIZE_OPTIONS[0]);
@@ -77,10 +92,10 @@ export default function TransactionsHistoryPage() {
         }
 
         const definitions = Array.isArray(data.columns) ? data.columns : [];
-        const definitionLookupLocal = new Map(definitions.map((definition) => [definition.id, definition]));
+        const definitionLookup = new Map(definitions.map((definition) => [definition.id, definition]));
         const defaultState = Array.isArray(data.defaultState) ? data.defaultState : [];
         const normalizedState = defaultState.map((column, index) => {
-          const definition = definitionLookupLocal.get(column.id) ?? {};
+          const definition = definitionLookup.get(column.id) ?? {};
           const minWidth = definition.minWidth ?? 120;
           const rawWidth = column.width;
           const fallbackWidth = definition.defaultWidth ?? minWidth;
@@ -92,6 +107,7 @@ export default function TransactionsHistoryPage() {
             width: Math.max(width, minWidth),
             visible: column.visible ?? definition.defaultVisible !== false,
             order: column.order ?? index,
+            format: column.format ?? definition.defaultFormat,
           };
         });
 
@@ -113,20 +129,13 @@ export default function TransactionsHistoryPage() {
     };
   }, [isAuthenticated]);
 
-  const definitionLookup = useMemo(
-    () => new Map(columnDefinitions.map((definition) => [definition.id, definition])),
-    [columnDefinitions],
-  );
-
-  const serializedFilters = useMemo(() => JSON.stringify(appliedFilters), [appliedFilters]);
-  const sortKey = useMemo(() => JSON.stringify(sortState), [sortState]);
+  const serializedSort = useMemo(() => JSON.stringify(sortState), [sortState]);
 
   useEffect(() => {
-    if (!isAuthenticated || columnDefinitions.length === 0) {
+    if (!isAuthenticated) {
       return;
     }
 
-    let isCancelled = false;
     const controller = new AbortController();
     setIsFetching(true);
 
@@ -144,22 +153,15 @@ export default function TransactionsHistoryPage() {
       parsedSort = [];
     }
 
-    const params = new URLSearchParams();
-    if (appliedQuery) {
-      params.set('search', appliedQuery);
-    }
+  useEffect(() => {
+    const available = new Set(transactions.map((txn) => txn.id));
+    setSelectedIds((prev) => prev.filter((id) => available.has(id)));
+  }, [transactions]);
 
-    if (parsedFilters.person && parsedFilters.person !== 'all') {
-      params.append('person', parsedFilters.person);
-    }
-    if (parsedFilters.category && parsedFilters.category !== 'all') {
-      params.append('category', parsedFilters.category);
-    }
-    if (parsedFilters.year && parsedFilters.year !== 'all') {
-      params.append('year', parsedFilters.year);
-    }
-    if (parsedFilters.month && parsedFilters.month !== 'all') {
-      params.append('month', parsedFilters.month);
+  useEffect(() => {
+    if (selectedIds.length === 0) {
+      setSelectionSummary({ count: 0, amount: 0, finalPrice: 0, totalBack: 0 });
+      return;
     }
     (parsedFilters.types ?? []).forEach((type) => {
       params.append('type', type);
@@ -171,21 +173,17 @@ export default function TransactionsHistoryPage() {
       params.append('account', account);
     });
 
-    if (parsedSort.length > 0) {
-      params.set(
-        'sort',
-        parsedSort
-          .map((sort) => `${sort.id}:${sort.direction === 'desc' ? 'desc' : 'asc'}`)
-          .join(','),
-      );
-    }
+    const controller = new AbortController();
 
-    fetch(`/api/transactions?${params.toString()}`, {
+    fetch('/api/transactions/selection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: selectedIds }),
       signal: controller.signal,
     })
       .then((response) => {
         if (!response.ok) {
-          throw new Error('Failed to fetch transactions');
+          throw new Error('Failed to fetch selection summary');
         }
         return response.json();
       })
@@ -224,22 +222,27 @@ export default function TransactionsHistoryPage() {
         }
       })
       .catch((error) => {
-        if (!isCancelled && error.name !== 'AbortError') {
+        if (error.name !== 'AbortError') {
           console.error(error);
-          setTransactions([]);
-        }
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setIsFetching(false);
+          setSelectionSummary({ count: selectedIds.length, amount: 0, finalPrice: 0, totalBack: 0 });
         }
       });
 
     return () => {
-      isCancelled = true;
       controller.abort();
     };
-  }, [isAuthenticated, columnDefinitions, appliedQuery, sortKey, serializedFilters]);
+  }, [selectedIds]);
+
+  useEffect(() => {
+    if (selectedIds.length === 0 && showSelectedOnly) {
+      setShowSelectedOnly(false);
+    }
+  }, [selectedIds, showSelectedOnly]);
+
+  const definitionLookup = useMemo(
+    () => new Map(columnDefinitions.map((definition) => [definition.id, definition])),
+    [columnDefinitions],
+  );
 
   const orderedColumns = useMemo(() => {
     if (columnState.length === 0) {
@@ -288,7 +291,7 @@ export default function TransactionsHistoryPage() {
     }
   }, [selectedIds, showSelectedOnly]);
 
-  const selectedLookup = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   const effectiveTransactions = useMemo(() => {
     if (!showSelectedOnly) {
@@ -300,7 +303,7 @@ export default function TransactionsHistoryPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [pageSize, filteredTransactions, showSelectedOnly]);
+  }, [pageSize, appliedFilters, appliedQuery, quickFilters, showSelectedOnly, sortState]);
 
   const totalPages = Math.max(1, Math.ceil(effectiveTransactions.length / pageSize));
 
@@ -317,48 +320,6 @@ export default function TransactionsHistoryPage() {
     const start = (currentPage - 1) * pageSize;
     return effectiveTransactions.slice(start, start + pageSize);
   }, [effectiveTransactions, currentPage, pageSize]);
-
-  useEffect(() => {
-    if (selectedIds.length === 0) {
-      setSelectionSummary({ count: 0, amount: 0, finalPrice: 0, totalBack: 0 });
-      return;
-    }
-
-    let isCancelled = false;
-    const controller = new AbortController();
-
-    fetch('/api/transactions/selection', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: selectedIds }),
-      signal: controller.signal,
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch selection summary');
-        }
-        return response.json();
-      })
-      .then((data) => {
-        if (isCancelled) {
-          return;
-        }
-        setSelectionSummary(
-          data?.summary ?? { count: 0, amount: 0, finalPrice: 0, totalBack: 0 },
-        );
-      })
-      .catch((error) => {
-        if (!isCancelled && error.name !== 'AbortError') {
-          console.error(error);
-          setSelectionSummary({ count: 0, amount: 0, finalPrice: 0, totalBack: 0 });
-        }
-      });
-
-    return () => {
-      isCancelled = true;
-      controller.abort();
-    };
-  }, [selectedIds]);
 
   const filterCount = useMemo(() => {
     let count = 0;
@@ -394,42 +355,15 @@ export default function TransactionsHistoryPage() {
         }
         return [...prev, id];
       }
-      return prev.filter((item) => item !== id);
-    });
-  };
+      return total + (value ? 1 : 0);
+    }, 0);
+    return baseCount + multiCount + quickCount;
+  }, [appliedFilters, quickFilters]);
 
-  const handleSelectAll = (checked) => {
-    if (!checked) {
-      setSelectedIds([]);
-      return;
-    }
-
-    setSelectedIds(filteredTransactions.map((txn) => txn.id));
-  };
-
-  const handleDeselectAll = () => {
-    setSelectedIds([]);
-  };
-
-  const handleToggleShowSelected = () => {
-    if (showSelectedOnly) {
-      setShowSelectedOnly(false);
-      return;
-    }
-
-    if (selectedIds.length === 0) {
-      return;
-    }
-
-    setShowSelectedOnly(true);
-  };
-
-  const handleSubmitQuery = useCallback(() => {
-    const normalized = draftQuery.trim();
-    if (normalized === appliedQuery.trim()) {
-      setAppliedQuery(normalized);
-      return;
-    }
+  const handleSubmitSearch = useCallback(() => {
+    setPreviousQuery(appliedQuery);
+    setAppliedQuery(draftQuery.trim());
+  }, [appliedQuery, draftQuery]);
 
     if (appliedQuery) {
       setPreviousQuery(appliedQuery);
@@ -450,11 +384,9 @@ export default function TransactionsHistoryPage() {
     setPreviousQuery(clearedValue);
     setDraftQuery('');
     setAppliedQuery('');
-    setCurrentPage(1);
-  };
+  }, [appliedQuery]);
 
-  const handleRestoreQuery = (value) => {
-    setPreviousQuery('');
+  const handleRestoreQuery = useCallback((value) => {
     setDraftQuery(value);
     setAppliedQuery(value);
     setCurrentPage(1);
@@ -465,27 +397,21 @@ export default function TransactionsHistoryPage() {
     setIsFilterOpen(true);
   };
 
-  const handleFilterChange = (field, value) => {
-    setDraftFilters((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
+  const handleFilterChange = useCallback((field, value) => {
+    setDraftFilters((prev) => ({ ...prev, [field]: value }));
+  }, []);
 
-  const handleFilterToggle = (field, value, checked) => {
+  const handleFilterToggle = useCallback((field, value, checked) => {
     setDraftFilters((prev) => {
-      const current = new Set(prev[field] ?? []);
+      const list = new Set(prev[field] ?? []);
       if (checked) {
-        current.add(value);
+        list.add(value);
       } else {
-        current.delete(value);
+        list.delete(value);
       }
-      return {
-        ...prev,
-        [field]: Array.from(current),
-      };
+      return { ...prev, [field]: Array.from(list) };
     });
-  };
+  }, []);
 
   const updateFiltersSync = useCallback((updater) => {
     setDraftFilters((prev) => {
@@ -501,10 +427,7 @@ export default function TransactionsHistoryPage() {
 
   const handleFilterReset = () => {
     setDraftFilters(createInitialFilters());
-    setAppliedFilters(createInitialFilters());
-    setIsFilterOpen(false);
-    setCurrentPage(1);
-  };
+  }, []);
 
   const handleFilterApply = () => {
     setAppliedFilters({
@@ -553,65 +476,64 @@ export default function TransactionsHistoryPage() {
 
     const params = new URLSearchParams({ field, query: term ?? '' });
 
-    fetch(`/api/transactions/options?${params.toString()}`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch filter options');
+  const handleSelectRow = useCallback((id, checked) => {
+    setSelectedIds((prev) => {
+      if (checked) {
+        if (prev.includes(id)) {
+          return prev;
         }
-        return response.json();
-      })
-      .then((data) => {
-        setFilterOptions((prev) => ({
-          ...prev,
-          [optionKey]: Array.isArray(data.options) ? data.options : [],
-        }));
-      })
-      .catch((error) => {
-        if (error.name !== 'AbortError') {
-          console.error(error);
-        }
-      });
+        return [...prev, id];
+      }
+      return prev.filter((item) => item !== id);
+    });
   }, []);
 
-  const handleAddTransaction = () => {
-    setAdvancedPanel({
-      mode: 'create',
-      transaction: null,
-    });
-  };
+  const handleSelectAll = useCallback(
+    (checked) => {
+      if (!checked) {
+        setSelectedIds([]);
+        return;
+      }
+      setSelectedIds(filteredTransactions.map((txn) => txn.id));
+    },
+    [filteredTransactions],
+  );
 
-  const handleAdvanced = (payload) => {
-    setAdvancedPanel(payload);
-  };
+  const handleDeselectAll = useCallback(() => {
+    setSelectedIds([]);
+  }, []);
 
-  const handleCloseAdvanced = () => {
-    setAdvancedPanel(null);
-  };
+  const handleToggleShowSelected = useCallback(() => {
+    setShowSelectedOnly((prev) => !prev);
+  }, []);
 
-  const handleApplyColumns = (columns) => {
-    setColumnState(
-      columns.map((column, index) => {
-        const definition = definitionLookup.get(column.id) ?? {};
-        const minWidth = definition.minWidth ?? 120;
-        const defaultVisible = definition.defaultVisible !== false;
-        const normalizedWidth = Math.max(
-          Number(column.width) || definition.defaultWidth || minWidth,
-          minWidth,
-        );
+  const handleApplyColumns = useCallback(
+    (columns) => {
+      setColumnState(
+        columns.map((column, index) => {
+          const definition = definitionLookup.get(column.id) ?? {};
+          const minWidth = definition.minWidth ?? 120;
+          const defaultVisible = definition.defaultVisible !== false;
+          const normalizedWidth = Math.max(
+            Number(column.width) || definition.defaultWidth || minWidth,
+            minWidth,
+          );
 
-        return {
-          id: column.id,
-          width: normalizedWidth,
-          visible: column.visible ?? defaultVisible,
-          order: index,
-          format: column.format ?? definition.defaultFormat,
-        };
-      }),
-    );
-    setIsCustomizeOpen(false);
-  };
+          return {
+            id: column.id,
+            width: normalizedWidth,
+            visible: column.visible ?? defaultVisible,
+            order: index,
+            format: column.format ?? definition.defaultFormat,
+          };
+        }),
+      );
+      setIsCustomizeOpen(false);
+    },
+    [definitionLookup],
+  );
 
-  const handleResetColumns = () => {
+  const handleResetColumns = useCallback(() => {
     if (defaultColumnState.length > 0) {
       setColumnState(
         defaultColumnState.map((column, index) => ({
@@ -621,34 +543,59 @@ export default function TransactionsHistoryPage() {
       );
     }
     setIsCustomizeOpen(false);
-  };
+  }, [defaultColumnState]);
 
   const handleSortStateChange = useCallback((columnId, options = {}) => {
     setSortState((prev) => {
       const existingIndex = prev.findIndex((item) => item.id === columnId);
-      const isMulti = options.multi;
+      const nextDirection =
+        existingIndex === -1
+          ? 'asc'
+          : prev[existingIndex].direction === 'asc'
+          ? 'desc'
+          : prev[existingIndex].direction === 'desc'
+          ? null
+          : 'asc';
+
+      if (!options.multi) {
+        if (!nextDirection) {
+          return [];
+        }
+        return [{ id: columnId, direction: nextDirection }];
+      }
+
+      if (!nextDirection) {
+        return prev.filter((item) => item.id !== columnId);
+      }
 
       if (existingIndex === -1) {
-        const nextSort = { id: columnId, direction: 'asc' };
-        return isMulti ? [...prev, nextSort] : [nextSort];
+        return [...prev, { id: columnId, direction: nextDirection }];
       }
 
-      const existing = prev[existingIndex];
-      const nextDirection = existing.direction === 'asc' ? 'desc' : existing.direction === 'desc' ? null : 'asc';
-
-      if (nextDirection === null) {
-        const without = prev.filter((item) => item.id !== columnId);
-        return isMulti ? without : [];
-      }
-
-      if (isMulti) {
-        const next = [...prev];
-        next[existingIndex] = { id: columnId, direction: nextDirection };
-        return next;
-      }
-
-      return [{ id: columnId, direction: nextDirection }];
+      const next = [...prev];
+      next[existingIndex] = { id: columnId, direction: nextDirection };
+      return next;
     });
+  }, []);
+
+  const handleQuickFilterChange = useCallback((filterId, value) => {
+    setQuickFilters((prev) => ({ ...prev, [filterId]: value }));
+  }, []);
+
+  const handleAddTransaction = useCallback(() => {
+    setAdvancedPanel({ mode: 'create' });
+  }, []);
+
+  const handleAdvanced = useCallback((payload) => {
+    setAdvancedPanel(payload);
+  }, []);
+
+  const handleCloseAdvanced = useCallback(() => {
+    setAdvancedPanel(null);
+  }, []);
+
+  const handleSearchOptions = useCallback(() => {
+    // Placeholder for future async search of filter options.
   }, []);
 
   if (isLoading || !isAuthenticated) {
@@ -664,11 +611,11 @@ export default function TransactionsHistoryPage() {
         <TransactionsToolbar
           searchValue={draftQuery}
           onSearchChange={setDraftQuery}
-          onSubmitSearch={handleSubmitQuery}
-          onClearSearch={handleClearQuery}
+          onSubmitSearch={handleSubmitSearch}
+          onClearSearch={handleClearSearch}
           previousQuery={previousQuery}
           onRestoreQuery={handleRestoreQuery}
-          onFilterClick={handleOpenFilters}
+          onFilterClick={() => setIsFilterOpen(true)}
           filterCount={filterCount}
           onClearFilters={handleFilterReset}
           onAddTransaction={handleAddTransaction}
@@ -704,7 +651,7 @@ export default function TransactionsHistoryPage() {
               onPageChange: (page) =>
                 setCurrentPage((prev) => {
                   const next = Math.min(Math.max(page, 1), totalPages);
-                  return next;
+                  return next === prev ? prev : next;
                 }),
             }}
             sortState={sortState}
@@ -716,7 +663,6 @@ export default function TransactionsHistoryPage() {
             onQuickFilterSearch={handleSearchOptions}
           />
         )}
-
       </div>
 
       <TransactionsFilterModal
@@ -734,10 +680,10 @@ export default function TransactionsHistoryPage() {
       <CustomizeColumnsModal
         isOpen={isCustomizeOpen}
         columns={orderedColumns}
-        columnDefinitions={columnDefinitions}
         onClose={() => setIsCustomizeOpen(false)}
         onApply={handleApplyColumns}
         onReset={handleResetColumns}
+        columnDefinitions={columnDefinitions}
       />
 
       {advancedPanel ? (
@@ -780,8 +726,7 @@ export default function TransactionsHistoryPage() {
                 <div className={styles.modalField}>
                   <p className={styles.modalLabel}>Next step</p>
                   <p className={styles.advancedValue}>
-                    Connect to your preferred batch input to populate a draft transaction with preset
-                    Cashback and Debt parameters.
+                    Connect to your preferred batch input to populate a draft transaction with preset Cashback and Debt parameters.
                   </p>
                 </div>
               </div>
