@@ -41,7 +41,11 @@
   box-shadow: var(--mf-elevation-sm);
   width: 100%;
   max-width: 100%;
-  /* no page-level horizontal scrolling: keep controls full width without pushing layout; main content/container overflow-x: hidden already guards outer shell */
+  /*
+    Prevent page-level horizontal scrolling: keep controls full width without
+    pushing the layout. The main content/container overflow-x: hidden already
+    guards the outer shell.
+  */
 }
 
 .toolbarLeft {
