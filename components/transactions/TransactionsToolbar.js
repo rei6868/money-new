@@ -176,6 +176,7 @@ export function TransactionsToolbar({
           <div className={styles.selectionQuickActions} data-testid="transactions-selection-inline">
             <span className={styles.selectionQuickSummary}>
               {selectedCount} selected · Amount {formatAmountWithTrailing(selectionSummary.amount)} · Final {formatAmountWithTrailing(selectionSummary.finalPrice)} · Total Back {formatAmountWithTrailing(selectionSummary.totalBack)}
+              {selectedCount} selected · Amount {formatAmountWithTrailing(selectionSummary.amount)}
             </span>
             <button
               type="button"

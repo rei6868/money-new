@@ -6,6 +6,10 @@ import {
   FiMoreHorizontal,
   FiRotateCcw,
   FiSearch,
+  FiCreditCard,
+  FiEdit2,
+  FiFilter,
+  FiMoreHorizontal,
   FiTag,
   FiTrash2,
   FiUser,
@@ -26,6 +30,52 @@ const QUICK_FILTER_META = {
     label: 'Type',
     multi: true,
     optionsKey: 'types',
+  },
+  owner: {
+    field: 'person',
+    label: 'People',
+    multi: false,
+    optionsKey: 'people',
+    searchable: true,
+    icon: <FiUser aria-hidden />,
+  },
+  category: {
+    field: 'category',
+    label: 'Category',
+    multi: false,
+    optionsKey: 'categories',
+    searchable: true,
+    icon: <FiFilter aria-hidden />,
+  },
+  debtTag: {
+    field: 'debtTags',
+    label: 'Debt Tag',
+    multi: true,
+    optionsKey: 'debtTags',
+    icon: <FiTag aria-hidden />,
+  },
+};
+
+const CHECKBOX_COLUMN_WIDTH = 64;
+const ACTIONS_COLUMN_WIDTH = 72;
+const STICKY_COLUMN_BUFFER = CHECKBOX_COLUMN_WIDTH + ACTIONS_COLUMN_WIDTH;
+
+const QUICK_FILTER_META = {
+  type: {
+    field: 'types',
+    label: 'Type',
+    multi: true,
+    optionsKey: 'types',
+    searchable: true,
+    icon: <FiFilter aria-hidden />,
+  },
+  account: {
+    field: 'accounts',
+    label: 'Account',
+    multi: true,
+    optionsKey: 'accounts',
+    searchable: true,
+    icon: <FiCreditCard aria-hidden />,
   },
   owner: {
     field: 'person',
@@ -196,6 +246,19 @@ function SortGlyph({ direction }) {
       <svg className={styles.sortGlyphIcon} viewBox="0 0 16 16" focusable="false">
         <path d="M8 3l5 6.5H3z" />
       </svg>
+  return (
+    <span
+      className={`${styles.sortGlyph} ${
+        direction === 'asc'
+          ? styles.sortGlyphAsc
+          : direction === 'desc'
+          ? styles.sortGlyphDesc
+          : ''
+      }`}
+      aria-hidden
+    >
+      <span className={styles.sortArrowUp} />
+      <span className={styles.sortArrowDown} />
     </span>
   );
 }
@@ -244,6 +307,12 @@ export function TransactionsTable({
     setOpenActionId(null);
     setOpenActionSubmenu(null);
   }, []);
+  const [openActionId, setOpenActionId] = useState(null);
+  const [openActionSubmenu, setOpenActionSubmenu] = useState(null);
+  const quickFilterRefs = useRef(new Map());
+  const previousQuickFilterRef = useRef(null);
+  const actionMenuCloseTimer = useRef(null);
+  const headerCheckboxRef = useRef(null);
 
   const definitionMap = useMemo(
     () => new Map(columnDefinitions.map((definition) => [definition.id, definition])),
@@ -397,6 +466,8 @@ export function TransactionsTable({
 
   useEffect(() => {
     if (!openActionId) {
+  useEffect(() => {
+    if (!openQuickFilter) {
       return undefined;
     }
 
@@ -416,6 +487,16 @@ export function TransactionsTable({
       if (event.key === 'Escape') {
         event.preventDefault();
         closeActionMenu();
+      const container = quickFilterRefs.current.get(openQuickFilter);
+      if (!container || container.contains(event.target)) {
+        return;
+      }
+      setOpenQuickFilter(null);
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setOpenQuickFilter(null);
       }
     };
 
@@ -426,6 +507,35 @@ export function TransactionsTable({
       document.removeEventListener('keydown', handleEscape);
     };
   }, [openActionId, closeActionMenu]);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openQuickFilter]);
+
+  useEffect(() => {
+    const previous = previousQuickFilterRef.current;
+    if (previous && previous !== openQuickFilter) {
+      setQuickFilterSearch((searchState) => {
+        if (!searchState[previous]) {
+          return searchState;
+        }
+        const nextState = { ...searchState };
+        delete nextState[previous];
+        return nextState;
+      });
+    }
+    previousQuickFilterRef.current = openQuickFilter;
+  }, [openQuickFilter]);
+
+  useEffect(() => {
+    return () => {
+      if (actionMenuCloseTimer.current) {
+        clearTimeout(actionMenuCloseTimer.current);
+      }
+    };
+  }, []);
 
   const minTableWidth = useMemo(
     () => computeMinWidth(visibleColumns, definitionMap),
@@ -584,6 +694,32 @@ export function TransactionsTable({
       }
       const next = { ...prev };
       delete next[columnId];
+    }
+
+    if (meta.multi) {
+      return Array.isArray(quickFilters[meta.field]) ? quickFilters[meta.field] : [];
+    }
+
+    return quickFilters[meta.field] ?? 'all';
+  };
+
+  const handleQuickFilterToggle = (columnId) => {
+    const meta = QUICK_FILTER_META[columnId];
+    if (!meta) {
+      return;
+    }
+    setOpenQuickFilter((prev) => {
+      const next = prev === columnId ? null : columnId;
+      if (prev === columnId) {
+        setQuickFilterSearch((searchState) => {
+          if (!searchState[columnId]) {
+            return searchState;
+          }
+          const nextState = { ...searchState };
+          delete nextState[columnId];
+          return nextState;
+        });
+      }
       return next;
     });
     onQuickFilterSearch?.(meta.optionsKey, value);
@@ -683,6 +819,65 @@ export function TransactionsTable({
     if (quickFilters[meta.field] !== 'all') {
       onQuickFilterChange?.(meta.field, 'all');
     }
+  const handleQuickFilterSearchChange = (columnId) => (event) => {
+    const meta = QUICK_FILTER_META[columnId];
+    if (!meta || !meta.searchable) {
+      return;
+    }
+    const value = event.target.value;
+    setQuickFilterSearch((prev) => ({ ...prev, [columnId]: value }));
+    onQuickFilterSearch?.(meta.optionsKey, value);
+  };
+
+  const handleQuickFilterOptionClick = (columnId, option) => (event) => {
+    event.preventDefault();
+    const meta = QUICK_FILTER_META[columnId];
+    if (!meta) {
+      return;
+    }
+
+    if (meta.multi) {
+      const current = new Set(getQuickFilterValue(columnId));
+      if (current.has(option)) {
+        current.delete(option);
+      } else {
+        current.add(option);
+      }
+      onQuickFilterToggle?.(meta.field, option, current.has(option));
+      return;
+    }
+
+    onQuickFilterChange?.(meta.field, option === 'all' ? 'all' : option);
+    setOpenQuickFilter(null);
+  };
+
+  const handleQuickFilterClear = (columnId) => () => {
+    const meta = QUICK_FILTER_META[columnId];
+    if (!meta) {
+      return;
+    }
+
+    if (meta.multi) {
+      const current = new Set(getQuickFilterValue(columnId));
+      if (current.size === 0) {
+        setOpenQuickFilter(null);
+        return;
+      }
+      current.forEach((option) => {
+        onQuickFilterToggle?.(meta.field, option, false);
+      });
+    } else if (quickFilters[meta.field] !== 'all') {
+      onQuickFilterChange?.(meta.field, 'all');
+    }
+
+    setQuickFilterSearch((searchState) => {
+      if (!searchState[columnId]) {
+        return searchState;
+      }
+      const nextState = { ...searchState };
+      delete nextState[columnId];
+      return nextState;
+    });
     setOpenQuickFilter(null);
   };
 
@@ -1048,6 +1243,38 @@ export function TransactionsTable({
         )
       : null;
 
+      setOpenActionId(null);
+      setOpenActionSubmenu(null);
+    }, 100);
+  };
+
+  const handleActionFocus = (transactionId) => {
+    setOpenActionId(transactionId);
+  };
+
+  const handleActionBlur = (event) => {
+    const nextFocus = event?.relatedTarget;
+    if (nextFocus && event.currentTarget.contains(nextFocus)) {
+      return;
+    }
+    actionMenuCloseTimer.current = setTimeout(() => {
+      setOpenActionId(null);
+      setOpenActionSubmenu(null);
+    }, 100);
+  };
+
+  const handleAction = (payload) => () => {
+    onOpenAdvanced?.(payload);
+    setOpenActionId(null);
+    setOpenActionSubmenu(null);
+  };
+
+  const handleSubmenuEnter = (submenuId) => () => {
+    setOpenActionSubmenu(submenuId);
+  };
+
+  const isTotalRowVisible = selectionSet.size > 0;
+
   return (
     <section className={styles.tableCard} aria-label="Transactions history table">
       <div className={styles.tableScroll} data-testid="transactions-table-container">
@@ -1093,6 +1320,7 @@ export function TransactionsTable({
                     : definition?.align === 'center'
                     ? styles.headerAlignCenter
                     : '';
+                const alignClass = definition?.align === 'right' ? styles.headerAlignRight : '';
                 const sortDescriptor = sortLookup.get(column.id);
                 const isSorted = Boolean(sortDescriptor);
                 const sortDirection = sortDescriptor?.direction ?? 'asc';
@@ -1135,6 +1363,47 @@ export function TransactionsTable({
                   : `Toggle sort for ${definition?.label ?? column.id}, currently ${
                       sortDirection === 'asc' ? 'ascending' : 'descending'
                     }`;
+                const meta = QUICK_FILTER_META[column.id];
+                const rawFilterValue = meta ? getQuickFilterValue(column.id) : null;
+                const normalizedFilterValues = meta
+                  ? meta.multi
+                    ? Array.isArray(rawFilterValue)
+                      ? rawFilterValue
+                      : []
+                    : rawFilterValue && rawFilterValue !== 'all'
+                    ? [rawFilterValue]
+                    : []
+                  : [];
+                const headerLabel =
+                  normalizedFilterValues[0] ?? definition?.label ?? column.id;
+                const extraCount = normalizedFilterValues.length > 1 ? normalizedFilterValues.length - 1 : 0;
+                const isFilterActive = meta
+                  ? meta.multi
+                    ? normalizedFilterValues.length > 0
+                    : Boolean(rawFilterValue && rawFilterValue !== 'all')
+                  : false;
+                const filterTooltip =
+                  normalizedFilterValues.length > 1
+                    ? normalizedFilterValues.join(', ')
+                    : normalizedFilterValues.length === 1
+                    ? normalizedFilterValues[0]
+                    : definition?.label ?? column.id;
+                const sortTooltip = isSorted
+                  ? sortDirection === 'desc'
+                    ? 'Sort: Descending'
+                    : 'Sort: Ascending'
+                  : 'Sort: None';
+                const clearQuickFilter = meta ? handleQuickFilterClear(column.id) : null;
+                const searchTerm = meta
+                  ? (quickFilterSearch[column.id] ?? '').trim().toLowerCase()
+                  : '';
+                const availableOptions = meta ? quickFilterOptions[meta.optionsKey] ?? [] : [];
+                const filteredOptions =
+                  meta && searchTerm
+                    ? availableOptions.filter((option) =>
+                        String(option ?? '').toLowerCase().includes(searchTerm),
+                      )
+                    : availableOptions;
 
                 return (
                   <th
@@ -1185,6 +1454,24 @@ export function TransactionsTable({
                           {extraCount > 0 ? (
                             <span className={styles.headerValueOverflow} data-testid={`transactions-quick-filter-${column.id}-more`}>
                               {column.id === 'debtTag' ? '+more' : `+${extraCount}`}
+                          } ${extraCount > 0 ? styles.tooltipTrigger : ''}`.trim()}
+                          onClick={() => handleQuickFilterToggle(column.id)}
+                          data-testid={`transactions-quick-filter-${column.id}`}
+                          data-tooltip={extraCount > 0 ? filterTooltip : undefined}
+                          aria-haspopup="listbox"
+                          aria-expanded={openQuickFilter === column.id}
+                          aria-label={`${meta.label}${
+                            isFilterActive ? ` filtered by ${filterTooltip}` : ''
+                          }`}
+                        >
+                          {meta.icon ? <span className={styles.headerLabelIcon}>{meta.icon}</span> : null}
+                          <span className={styles.headerLabelText}>{headerLabel}</span>
+                          {extraCount > 0 ? (
+                            <span
+                              className={styles.headerValueOverflow}
+                              data-testid={`transactions-quick-filter-${column.id}-more`}
+                            >
+                              +{extraCount}
                             </span>
                           ) : null}
                         </button>
@@ -1192,6 +1479,20 @@ export function TransactionsTable({
                         <span className={styles.headerStaticLabel}>{label}</span>
                       )}
                       <div className={styles.headerControls}>
+                        <span className={styles.headerStaticLabel}>{headerLabel}</span>
+                      )}
+                      <div className={styles.headerControls}>
+                        {isFilterActive && clearQuickFilter ? (
+                          <button
+                            type="button"
+                            className={styles.headerQuickClear}
+                            onClick={clearQuickFilter}
+                            data-testid={`transactions-quick-filter-${column.id}-reset`}
+                            aria-label={`Clear quick filter for ${meta.label}`}
+                          >
+                            <FiX aria-hidden />
+                          </button>
+                        ) : null}
                         {isSortable && onSortChange ? (
                           <button
                             type="button"
@@ -1206,6 +1507,13 @@ export function TransactionsTable({
                             onFocus={(event) => showTooltip(sortTooltip, event.currentTarget)}
                             onMouseLeave={hideTooltip}
                             onBlur={hideTooltip}
+                            } ${styles.tooltipTrigger}`.trim()}
+                            onClick={handleSortToggle(column.id)}
+                            data-testid={`transactions-sort-${column.id}`}
+                            aria-label={`Sort by ${definition?.label ?? column.id}${
+                              sortState?.length > 1 ? ' (shift-click for multi-sort)' : ''
+                            }`}
+                            data-tooltip={sortTooltip}
                           >
                             <SortGlyph direction={isSorted ? sortDirection : undefined} />
                             {isSorted && sortState?.length > 1 ? (
@@ -1214,6 +1522,84 @@ export function TransactionsTable({
                           </button>
                         ) : null}
                       </div>
+                      {meta ? (
+                        <div
+                          className={`${styles.headerQuickFilterPopover} ${
+                            openQuickFilter === column.id ? styles.headerQuickFilterOpen : ''
+                          }`}
+                          role="dialog"
+                          aria-hidden={openQuickFilter === column.id ? 'false' : 'true'}
+                          data-testid={`transactions-quick-filter-${column.id}-popover`}
+                        >
+                          <div className={styles.quickFilterHeader}>
+                            <span>{meta.label}</span>
+                            <button
+                              type="button"
+                              className={styles.quickFilterClear}
+                              onClick={clearQuickFilter}
+                              data-testid={`transactions-quick-filter-${column.id}-clear`}
+                            >
+                              Clear
+                            </button>
+                          </div>
+                          {meta.searchable ? (
+                            <div className={styles.quickFilterSearchRow}>
+                              <input
+                                type="search"
+                                value={quickFilterSearch[column.id] ?? ''}
+                                onChange={handleQuickFilterSearchChange(column.id)}
+                                placeholder={`Search ${meta.label.toLowerCase()}`}
+                                className={styles.quickFilterSearchInput}
+                                data-testid={`transactions-quick-filter-${column.id}-search`}
+                              />
+                            </div>
+                          ) : null}
+                          <ul className={styles.quickFilterList}>
+                            {meta.multi ? null : (
+                              <li>
+                                <button
+                                  type="button"
+                                  className={`${styles.quickFilterOption} ${
+                                    rawFilterValue === 'all' || !rawFilterValue
+                                      ? styles.quickFilterOptionActive
+                                      : ''
+                                  }`}
+                                  onClick={handleQuickFilterOptionClick(column.id, 'all')}
+                                  data-testid={`transactions-quick-filter-${column.id}-option-all`}
+                                >
+                                  All
+                                </button>
+                              </li>
+                            )}
+                            {filteredOptions.length === 0 ? (
+                              <li className={styles.quickFilterEmpty}>No matches</li>
+                            ) : (
+                              filteredOptions.map((option) => {
+                                const optionKey = `${column.id}-${slugify(option)}`;
+                                const isSelected = meta.multi
+                                  ? normalizedFilterValues.includes(option)
+                                  : rawFilterValue === option;
+                                return (
+                                  <li key={optionKey}>
+                                    <button
+                                      type="button"
+                                      className={`${styles.quickFilterOption} ${
+                                        isSelected ? styles.quickFilterOptionActive : ''
+                                      }`}
+                                      onClick={handleQuickFilterOptionClick(column.id, option)}
+                                      data-testid={`transactions-quick-filter-${column.id}-option-${slugify(
+                                        option,
+                                      )}`}
+                                    >
+                                      {option}
+                                    </button>
+                                  </li>
+                                );
+                              })
+                            )}
+                          </ul>
+                        </div>
+                      ) : null}
                     </div>
                   </th>
                 );
@@ -1312,6 +1698,112 @@ export function TransactionsTable({
                         </td>
                       );
                     })}
+                    <td
+                      className={`${styles.cell} ${styles.actionsCell} ${styles.stickyRight} ${styles.stickyRightEdge}`}
+                      data-testid={`transaction-actions-${txn.id}`}
+                    >
+                      <div
+                        className={styles.actionsCellTrigger}
+                        onMouseEnter={() => handleActionTriggerEnter(txn.id)}
+                        onMouseLeave={handleActionTriggerLeave}
+                        onFocus={() => handleActionFocus(txn.id)}
+                        onBlur={handleActionBlur}
+                      >
+                        <button
+                          type="button"
+                          className={`${styles.actionsTriggerButton} ${
+                            openActionId === txn.id ? styles.actionsTriggerButtonActive : ''
+                          }`}
+                          data-testid={`transaction-actions-trigger-${txn.id}`}
+                          aria-haspopup="menu"
+                          aria-expanded={openActionId === txn.id}
+                          aria-label="Show row actions"
+                          onMouseEnter={() => handleActionTriggerEnter(txn.id)}
+                        >
+                          <FiMoreHorizontal aria-hidden />
+                        </button>
+                        <div
+                          className={`${styles.actionsMenu} ${
+                            openActionId === txn.id ? styles.actionsMenuOpen : ''
+                          }`}
+                          role="menu"
+                          data-testid={`transaction-actions-menu-${txn.id}`}
+                        >
+                          <button
+                            type="button"
+                            className={styles.actionsMenuItem}
+                            onMouseEnter={handleSubmenuEnter(null)}
+                            onClick={handleAction({
+                              mode: 'edit',
+                              transaction: txn,
+                            })}
+                            data-testid={`transaction-action-edit-${txn.id}`}
+                          >
+                            <FiEdit2 aria-hidden />
+                            <span>Quick edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.actionsMenuItem} ${styles.actionsMenuDanger}`}
+                            onMouseEnter={handleSubmenuEnter(null)}
+                            onClick={handleAction({
+                              mode: 'delete',
+                              transaction: txn,
+                            })}
+                            data-testid={`transaction-action-delete-${txn.id}`}
+                          >
+                            <FiTrash2 aria-hidden />
+                            <span>Delete</span>
+                          </button>
+                          <div
+                            className={`${styles.actionsMenuItem} ${styles.actionsMenuNested}`}
+                            onMouseEnter={handleSubmenuEnter('more')}
+                            data-testid={`transaction-action-more-${txn.id}`}
+                          >
+                            <div className={styles.actionsMenuNestedLabel}>
+                              <FiMoreHorizontal aria-hidden />
+                              <span>More actions</span>
+                            </div>
+                            <FiChevronRight className={styles.actionsMenuNestedCaret} aria-hidden />
+                            <div
+                              className={`${styles.actionsSubmenu} ${
+                                openActionId === txn.id && openActionSubmenu === 'more'
+                                  ? styles.actionsSubmenuOpen
+                                  : ''
+                              }`}
+                              role="menu"
+                            >
+                              <button
+                                type="button"
+                                className={styles.actionsMenuItem}
+                                onClick={handleAction({
+                                  mode: 'advanced',
+                                  transaction: txn,
+                                  intent: 'advanced-panel',
+                                })}
+                                data-testid={`transaction-action-advanced-${txn.id}`}
+                              >
+                                <FiFilter aria-hidden />
+                                <span>Open advanced panel</span>
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.actionsMenuItem}
+                                onClick={handleAction({
+                                  mode: 'advanced',
+                                  transaction: txn,
+                                  intent: 'duplicate-draft',
+                                })}
+                                data-testid={`transaction-action-duplicate-${txn.id}`}
+                              >
+                                <FiEdit2 aria-hidden />
+                                <span>Duplicate as draft</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
                   </tr>
                 );
               })
@@ -1348,6 +1840,7 @@ export function TransactionsTable({
                     content = (
                       <span className={`${styles.amountValue} ${toneClass}`}>
                         {formatAmountWithTrailing(selectionSummary.amount)}
+                        {formatAmountWithTrailing(Math.abs(selectionSummary.amount))}
                       </span>
                     );
                   } else if (column.id === 'finalPrice') {
@@ -1371,6 +1864,10 @@ export function TransactionsTable({
                     </td>
                   );
                 })}
+                <td
+                  className={`${styles.cell} ${styles.actionsCell} ${styles.stickyRight} ${styles.stickyRightEdge} ${styles.totalLabelCell}`}
+                  aria-hidden="true"
+                />
               </tr>
             ) : null}
           </tbody>

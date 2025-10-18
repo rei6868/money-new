@@ -15,6 +15,8 @@ export function CustomizeColumnsModal({
   const [columnQuery, setColumnQuery] = useState('');
   const dragItemIdRef = useRef(null);
   const [dragState, setDragState] = useState({ draggingId: null, overId: null, placement: 'after' });
+  const itemRefs = useRef(new Map());
+  const [dragState, setDragState] = useState({ draggingId: null, overId: null });
 
   useEffect(() => {
     if (isOpen) {
@@ -101,6 +103,79 @@ export function CustomizeColumnsModal({
     if (fromIndex === -1) {
       return columnsList;
     }
+  };
+
+  const moveColumn = (columnsList, sourceId, targetId) => {
+    if (!sourceId || sourceId === targetId) {
+      return columnsList;
+    }
+
+    const next = [...columnsList];
+    const fromIndex = next.findIndex((column) => column.id === sourceId);
+
+    if (fromIndex === -1) {
+      return columnsList;
+    }
+
+    const [moved] = next.splice(fromIndex, 1);
+
+    if (!targetId) {
+      next.push(moved);
+    } else {
+      const toIndex = next.findIndex((column) => column.id === targetId);
+      if (toIndex === -1) {
+        next.push(moved);
+      } else {
+        next.splice(toIndex, 0, moved);
+      }
+    }
+
+    const isSameOrder =
+      next.length === columnsList.length &&
+      next.every((column, index) => column.id === columnsList[index].id);
+
+    return isSameOrder ? columnsList : next;
+  };
+
+  const measurePositions = (columnsList) => {
+    const positions = new Map();
+    columnsList.forEach((column) => {
+      const node = itemRefs.current.get(column.id);
+      if (node) {
+        positions.set(column.id, node.getBoundingClientRect());
+      }
+    });
+    return positions;
+  };
+
+  const animateToPositions = (previousPositions, columnsList) => {
+    columnsList.forEach((column) => {
+      const node = itemRefs.current.get(column.id);
+      const previous = previousPositions.get(column.id);
+      if (!node || !previous) {
+        return;
+      }
+
+      const nextRect = node.getBoundingClientRect();
+      const deltaX = previous.left - nextRect.left;
+      const deltaY = previous.top - nextRect.top;
+
+      if (deltaX === 0 && deltaY === 0) {
+        return;
+      }
+
+      node.animate(
+        [
+          { transform: `translate(${deltaX}px, ${deltaY}px)` },
+          { transform: 'translate(0, 0)' },
+        ],
+        {
+          duration: 180,
+          easing: 'ease-out',
+        },
+      );
+    });
+  };
 
     const [moved] = next.splice(fromIndex, 1);
 
@@ -129,6 +204,7 @@ export function CustomizeColumnsModal({
     event.dataTransfer.setData('text/plain', String(columnId));
     dragItemIdRef.current = columnId;
     setDragState({ draggingId: columnId, overId: columnId, placement: 'before' });
+    setDragState({ draggingId: columnId, overId: columnId });
   };
 
   const handleDragOver = (event) => {
@@ -157,11 +233,14 @@ export function CustomizeColumnsModal({
       overId: columnId,
       placement: isBefore ? 'before' : 'after',
     });
+    updateColumnsWithAnimation((prev) => moveColumn(prev, sourceId, columnId));
+    setDragState({ draggingId: sourceId, overId: columnId || sourceId });
   };
 
   const handleDragEnd = () => {
     dragItemIdRef.current = null;
     setDragState({ draggingId: null, overId: null, placement: 'after' });
+    setDragState({ draggingId: null, overId: null });
   };
 
   const handleDrop = (targetId) => (event) => {
@@ -177,6 +256,7 @@ export function CustomizeColumnsModal({
     const rect = event.currentTarget.getBoundingClientRect();
     const placement = event.clientY - rect.top < rect.height / 2 ? 'before' : 'after';
     setDraftColumns((prev) => moveColumn(prev, sourceId, targetId, placement));
+    updateColumnsWithAnimation((prev) => moveColumn(prev, sourceId, targetId));
     handleDragEnd();
   };
 
@@ -187,6 +267,7 @@ export function CustomizeColumnsModal({
       return;
     }
     setDraftColumns((prev) => moveColumn(prev, sourceId, null, 'after'));
+    updateColumnsWithAnimation((prev) => moveColumn(prev, sourceId, null));
     handleDragEnd();
   };
 
@@ -303,6 +384,17 @@ export function CustomizeColumnsModal({
                 .join(' ');
               const previewPosition = isOver ? dragState.placement : undefined;
 
+              const isDragging = dragState.draggingId === column.id;
+              const isOver =
+                dragState.overId === column.id && dragState.draggingId !== column.id;
+              const rowClass = [
+                styles.columnRow,
+                isDragging ? styles.columnRowDragging : '',
+                isOver ? styles.columnRowPreview : '',
+              ]
+                .filter(Boolean)
+                .join(' ');
+
               return (
                 <li
                   key={column.id}
@@ -312,6 +404,20 @@ export function CustomizeColumnsModal({
                   onDragOver={handleDragOver}
                   onDrop={handleDrop(column.id)}
                   data-testid={`transactions-customize-row-${column.id}`}
+                  draggable
+                  onDragStart={handleDragStart(column.id)}
+                  onDragEnter={handleDragEnter(column.id)}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop(column.id)}
+                  onDragEnd={handleDragEnd}
+                  data-testid={`transactions-customize-row-${column.id}`}
+                  ref={(node) => {
+                    if (node) {
+                      itemRefs.current.set(column.id, node);
+                    } else {
+                      itemRefs.current.delete(column.id);
+                    }
+                  }}
                 >
                   <button
                     type="button"
