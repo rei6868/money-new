@@ -1,30 +1,99 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
-  FiChevronDown,
+  FiChevronRight,
   FiEdit2,
   FiFilter,
   FiMoreHorizontal,
+  FiRotateCcw,
+  FiSearch,
+  FiTag,
   FiTrash2,
   FiUser,
-  FiTag,
-  FiXCircle,
-  FiRefreshCw,
+  FiX,
 } from 'react-icons/fi';
-
-import styles from '../../styles/TransactionsHistory.module.css';
-import { formatAmount, formatPercent } from '../../lib/numberFormat';
-import { TRANSACTION_COLUMN_DEFINITIONS } from './transactionColumns';
-
-const definitionMap = new Map(
-  TRANSACTION_COLUMN_DEFINITIONS.map((definition) => [definition.id, definition]),
-);
-import { useEffect, useMemo, useRef } from 'react';
-import { FiChevronDown, FiChevronUp, FiEdit2, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi';
+import { createPortal } from 'react-dom';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { formatAmount, formatAmountWithTrailing, formatPercent } from '../../lib/numberFormat';
 
-const STICKY_COLUMN_BUFFER = 252; // checkbox (72px) + actions column (180px) baseline
+const CHECKBOX_COLUMN_WIDTH = 64;
+const ACTIONS_COLUMN_WIDTH = 64;
+const STICKY_COLUMN_BUFFER = CHECKBOX_COLUMN_WIDTH + ACTIONS_COLUMN_WIDTH;
+
+const QUICK_FILTER_META = {
+  type: {
+    field: 'types',
+    label: 'Type',
+    multi: true,
+    optionsKey: 'types',
+  },
+  owner: {
+    field: 'person',
+    label: 'People',
+    multi: false,
+    optionsKey: 'people',
+    searchable: true,
+    icon: <FiUser aria-hidden />,
+  },
+  category: {
+    field: 'category',
+    label: 'Category',
+    multi: false,
+    optionsKey: 'categories',
+    searchable: true,
+    icon: <FiFilter aria-hidden />,
+  },
+  debtTag: {
+    field: 'debtTags',
+    label: 'Debt Tag',
+    multi: true,
+    optionsKey: 'debtTags',
+    icon: <FiTag aria-hidden />,
+  },
+};
+
+const dateFormatters = {
+  'DD/MM/YY': new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+  }),
+  'MM/DD/YY': new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+  }),
+};
+
+function formatTransactionDate(value, format = 'DD/MM/YY') {
+  if (!value) {
+    return '—';
+  }
+
+  const dateValue = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(dateValue.getTime())) {
+    return value;
+  }
+
+  if (format === 'YYYY-MM-DD') {
+    const month = String(dateValue.getMonth() + 1).padStart(2, '0');
+    const day = String(dateValue.getDate()).padStart(2, '0');
+    return `${dateValue.getFullYear()}-${month}-${day}`;
+  }
+
+  const formatter = dateFormatters[format] ?? dateFormatters['DD/MM/YY'];
+  return formatter.format(dateValue);
+}
+
+function getAmountToneClass(type) {
+  if (type === 'Income') {
+    return styles.amountIncome;
+  }
+  if (type === 'Transfer') {
+    return styles.amountTransfer;
+  }
+  return styles.amountExpense;
+}
 
 function TotalBackCell({ transaction }) {
   const totalBack = formatAmount(transaction.totalBack);
@@ -48,8 +117,8 @@ function TotalBackCell({ transaction }) {
 }
 
 const columnRenderers = {
-  date: (txn) => txn.displayDate ?? txn.date ?? '—',
-  type: (txn, stylesRef) => (
+  date: (txn, column) => formatTransactionDate(txn.date, column.format),
+  type: (txn, _column, stylesRef) => (
     <span
       className={
         txn.type === 'Income'
@@ -67,7 +136,10 @@ const columnRenderers = {
     const numeric = Math.abs(Number(txn.amount ?? 0));
     const toneClass = getAmountToneClass(txn.type);
     return (
-      <span className={`${stylesRef.amountValue} ${toneClass}`} data-testid={`transaction-amount-${txn.id}`}>
+      <span
+        className={`${stylesRef.amountValue} ${toneClass}`}
+        data-testid={`transaction-amount-${txn.id}`}
+      >
         {formatAmount(numeric)}
       </span>
     );
@@ -93,6 +165,10 @@ function renderCellContent(column, transaction) {
 }
 
 function computeMinWidth(columns, definitionMap) {
+  if (!Array.isArray(columns) || columns.length === 0) {
+    return 0;
+  }
+
   return columns.reduce((total, column) => {
     const definition = definitionMap.get(column.id);
     const minWidth = column.width || definition?.minWidth || 120;
@@ -100,18 +176,29 @@ function computeMinWidth(columns, definitionMap) {
   }, 0);
 }
 
-const QUICK_FILTER_CONFIG = {
-  category: { type: 'single', icon: FiTag, label: 'Category' },
-  owner: { type: 'single', icon: FiUser, label: 'People' },
-  type: { type: 'multi', icon: FiFilter, label: 'Type' },
-  debtTag: { type: 'multi', icon: FiTag, label: 'Debt Tag' },
-};
+function slugify(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'value';
+}
 
-const TOTAL_FIELDS = new Map([
-  ['amount', (summary) => formatAmount(summary.amount)],
-  ['finalPrice', (summary) => formatAmount(summary.finalPrice)],
-  ['totalBack', (summary) => formatAmount(summary.totalBack)],
-]);
+function SortGlyph({ direction }) {
+  const stateClass =
+    direction === 'asc'
+      ? styles.sortGlyphAsc
+      : direction === 'desc'
+      ? styles.sortGlyphDesc
+      : styles.sortGlyphIdle;
+
+  return (
+    <span className={`${styles.sortGlyph} ${stateClass}`} aria-hidden>
+      <svg className={styles.sortGlyphIcon} viewBox="0 0 16 16" focusable="false">
+        <path d="M8 3l5 6.5H3z" />
+      </svg>
+    </span>
+  );
+}
 
 export function TransactionsTable({
   transactions,
@@ -123,28 +210,52 @@ export function TransactionsTable({
   columnDefinitions = [],
   visibleColumns,
   pagination,
-  sortState,
-  onSort,
-  quickFilters,
-  quickFilterOptions,
-  onQuickFilterChange,
   sortState = [],
   onSortChange,
+  quickFilters = {},
+  quickFilterOptions = {},
+  onQuickFilterChange,
+  onQuickFilterToggle,
+  onQuickFilterSearch,
 }) {
+  const [openQuickFilter, setOpenQuickFilter] = useState(null);
+  const [quickFilterSearch, setQuickFilterSearch] = useState({});
+  const [quickFilterRestore, setQuickFilterRestore] = useState({});
+  const [focusedQuickFilterSearch, setFocusedQuickFilterSearch] = useState(null);
+  const [quickFilterPosition, setQuickFilterPosition] = useState(null);
+  const [openActionId, setOpenActionId] = useState(null);
+  const [openActionSubmenu, setOpenActionSubmenu] = useState(null);
+  const quickFilterRefs = useRef(new Map());
+  const quickFilterSearchRefs = useRef(new Map());
+  const quickFilterPortalRef = useRef(null);
+  const actionMenuCloseTimer = useRef(null);
+  const headerCheckboxRef = useRef(null);
+  const actionAnchorRefs = useRef(new Map());
+  const actionMenuPortalRef = useRef(null);
+  const [actionMenuPosition, setActionMenuPosition] = useState(null);
+
+  const closeActionMenu = useCallback(() => {
+    if (actionMenuCloseTimer.current) {
+      clearTimeout(actionMenuCloseTimer.current);
+      actionMenuCloseTimer.current = null;
+    }
+    setOpenActionId(null);
+    setOpenActionSubmenu(null);
+  }, []);
+
   const definitionMap = useMemo(
     () => new Map(columnDefinitions.map((definition) => [definition.id, definition])),
     [columnDefinitions],
   );
+
   const selectionSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allSelected =
     transactions.length > 0 && transactions.every((txn) => selectionSet.has(txn.id));
   const isIndeterminate = selectionSet.size > 0 && !allSelected;
-  const headerCheckboxRef = useRef(null);
-  const [activeActionId, setActiveActionId] = useState(null);
-  const closeActionTimer = useRef(null);
-  const [openFilterId, setOpenFilterId] = useState(null);
-  const [filterSearch, setFilterSearch] = useState('');
-  const filterPopoverRef = useRef(null);
+  const openActionTransaction = useMemo(
+    () => transactions.find((txn) => txn.id === openActionId) ?? null,
+    [transactions, openActionId],
+  );
 
   const sortLookup = useMemo(() => {
     const lookup = new Map();
@@ -160,31 +271,169 @@ export function TransactionsTable({
     }
   }, [isIndeterminate]);
 
-  useEffect(() => () => {
-    if (closeActionTimer.current) {
-      clearTimeout(closeActionTimer.current);
-    }
-  }, []);
-
   useEffect(() => {
-    if (!openFilterId) {
+    if (!openQuickFilter) {
       return undefined;
     }
 
-    const handleOutsideClick = (event) => {
-      if (filterPopoverRef.current && !filterPopoverRef.current.contains(event.target)) {
-        setOpenFilterId(null);
-        setFilterSearch('');
+    const handlePointerDown = (event) => {
+      const container = quickFilterRefs.current.get(openQuickFilter);
+      const portalNode = quickFilterPortalRef.current;
+      if (
+        !container ||
+        container.contains(event.target) ||
+        (portalNode && portalNode.contains(event.target))
+      ) {
+        return;
+      }
+      setOpenQuickFilter(null);
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setOpenQuickFilter(null);
       }
     };
 
-    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [openFilterId]);
+  }, [openQuickFilter]);
 
-  const minTableWidth = useMemo(() => computeMinWidth(visibleColumns), [visibleColumns]);
+  useEffect(() => {
+    if (!openQuickFilter) {
+      setFocusedQuickFilterSearch(null);
+    }
+  }, [openQuickFilter]);
+
+  useLayoutEffect(() => {
+    if (!openQuickFilter) {
+      setQuickFilterPosition(null);
+      return undefined;
+    }
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const anchor = quickFilterRefs.current.get(openQuickFilter);
+    if (!anchor) {
+      return undefined;
+    }
+
+    const updatePosition = () => {
+      const rect = anchor.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const desiredWidth = Math.max(rect.width, 240);
+      let left = rect.left + window.scrollX;
+      let top = rect.bottom + window.scrollY + 8;
+
+      if (left + desiredWidth > viewportWidth - 16) {
+        left = Math.max(16, viewportWidth - desiredWidth - 16);
+      }
+
+      setQuickFilterPosition({
+        top,
+        left,
+        width: desiredWidth,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [openQuickFilter, visibleColumns, quickFilters]);
+
+  useEffect(() => {
+    return () => {
+      if (actionMenuCloseTimer.current) {
+        clearTimeout(actionMenuCloseTimer.current);
+      }
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!openActionId) {
+      setActionMenuPosition(null);
+      return undefined;
+    }
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const anchor = actionAnchorRefs.current.get(openActionId);
+    if (!anchor) {
+      return undefined;
+    }
+
+    const updatePosition = () => {
+      const rect = anchor.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const menuWidth = 240;
+      let left = rect.left + window.scrollX + rect.width - menuWidth;
+      let top = rect.bottom + window.scrollY + 8;
+
+      if (left < 16) {
+        left = 16;
+      }
+      if (left + menuWidth > viewportWidth - 16) {
+        left = Math.max(16, viewportWidth - menuWidth - 16);
+      }
+
+      setActionMenuPosition({
+        top,
+        left,
+        width: menuWidth,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [openActionId]);
+
+  useEffect(() => {
+    if (!openActionId) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event) => {
+      const anchor = actionAnchorRefs.current.get(openActionId);
+      const menuNode = actionMenuPortalRef.current;
+      if (
+        (anchor && anchor.contains(event.target)) ||
+        (menuNode && menuNode.contains(event.target))
+      ) {
+        return;
+      }
+      closeActionMenu();
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeActionMenu();
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [openActionId, closeActionMenu]);
+
   const minTableWidth = useMemo(
     () => computeMinWidth(visibleColumns, definitionMap),
     [visibleColumns, definitionMap],
@@ -202,181 +451,520 @@ export function TransactionsTable({
     [onSortChange],
   );
 
-  const totals = useMemo(
-    () =>
-      transactions.reduce(
-        (acc, txn) => {
-          const amount = Number(txn.amount) || 0;
-          const finalPrice = Number(txn.finalPrice) || 0;
-          const totalBack = Number(txn.totalBack) || 0;
-
-          acc.amount += amount;
-          acc.finalPrice += finalPrice;
-          acc.totalBack += totalBack;
-          return acc;
-        },
-        { amount: 0, finalPrice: 0, totalBack: 0 },
-      ),
-    [transactions],
-  );
-
-  const handleActionAreaEnter = (id) => {
-    if (closeActionTimer.current) {
-      clearTimeout(closeActionTimer.current);
-      closeActionTimer.current = null;
+  const getQuickFilterValue = (columnId) => {
+    const meta = QUICK_FILTER_META[columnId];
+    if (!meta) {
+      return null;
     }
-    setActiveActionId(id);
+
+    if (meta.multi) {
+      return Array.isArray(quickFilters[meta.field]) ? quickFilters[meta.field] : [];
+    }
+
+    return quickFilters[meta.field] ?? 'all';
   };
 
-  const handleActionAreaLeave = () => {
-    if (closeActionTimer.current) {
-      clearTimeout(closeActionTimer.current);
+  const computeHeaderLabel = (column, definition) => {
+    const meta = QUICK_FILTER_META[column.id];
+    if (!meta) {
+      return definition?.label ?? column.id;
     }
-    closeActionTimer.current = setTimeout(() => {
-      setActiveActionId(null);
-    }, 80);
-  };
 
-  const handleFilterToggle = (columnId) => {
-    setOpenFilterId((prev) => {
-      if (prev === columnId) {
-        setFilterSearch('');
-        return null;
+    const value = getQuickFilterValue(column.id);
+    if (meta.multi) {
+      if (!value.length) {
+        return definition?.label ?? column.id;
       }
-      setFilterSearch('');
-      return columnId;
+      if (value.length === 1) {
+        return value[0];
+      }
+      return `${value[0]}`;
+    }
+
+    if (value && value !== 'all') {
+      return value;
+    }
+    return definition?.label ?? column.id;
+  };
+
+  const handleQuickFilterToggle = (columnId) => {
+    const meta = QUICK_FILTER_META[columnId];
+    if (!meta) {
+      return;
+    }
+    setOpenQuickFilter((prev) => (prev === columnId ? null : columnId));
+  };
+
+  const handleQuickFilterSearchChange = (columnId) => (event) => {
+    const meta = QUICK_FILTER_META[columnId];
+    if (!meta || !meta.searchable) {
+      return;
+    }
+    const value = event.target.value;
+    const previousValue = quickFilterSearch[columnId] ?? '';
+    setQuickFilterSearch((prev) => ({ ...prev, [columnId]: value }));
+    setQuickFilterRestore((prev) => {
+      if (!value) {
+        if (!previousValue) {
+          return prev;
+        }
+        return { ...prev, [columnId]: previousValue };
+      }
+      if (!prev[columnId]) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next[columnId];
+      return next;
+    });
+    onQuickFilterSearch?.(meta.optionsKey, value);
+  };
+
+  const handleQuickFilterOptionClick = (columnId, option) => (event) => {
+    event.preventDefault();
+    const meta = QUICK_FILTER_META[columnId];
+    if (!meta) {
+      return;
+    }
+
+    if (meta.multi) {
+      const current = new Set(getQuickFilterValue(columnId));
+      if (current.has(option)) {
+        current.delete(option);
+      } else {
+        current.add(option);
+      }
+      onQuickFilterToggle?.(meta.field, option, current.has(option));
+      return;
+    }
+
+    onQuickFilterChange?.(meta.field, option === 'all' ? 'all' : option);
+    setOpenQuickFilter(null);
+  };
+
+  const handleQuickFilterSearchFocus = (columnId) => () => {
+    setFocusedQuickFilterSearch(columnId);
+  };
+
+  const handleQuickFilterSearchBlur = () => {
+    setFocusedQuickFilterSearch(null);
+  };
+
+  const handleQuickFilterSearchClear = (columnId) => (event) => {
+    event.preventDefault();
+    const meta = QUICK_FILTER_META[columnId];
+    if (!meta || !meta.searchable) {
+      return;
+    }
+    const currentValue = quickFilterSearch[columnId] ?? '';
+    if (!currentValue) {
+      return;
+    }
+    setQuickFilterRestore((prev) => ({ ...prev, [columnId]: currentValue }));
+    setQuickFilterSearch((prev) => ({ ...prev, [columnId]: '' }));
+    onQuickFilterSearch?.(meta.optionsKey, '');
+    setFocusedQuickFilterSearch(columnId);
+    requestAnimationFrame(() => {
+      const node = quickFilterSearchRefs.current.get(columnId);
+      node?.focus();
     });
   };
 
-  const handleFilterSearchChange = (event) => {
-    setFilterSearch(event.target.value);
-  };
-
-  const handleClearFilter = (columnId) => {
-    const config = QUICK_FILTER_CONFIG[columnId];
-    if (!config) {
+  const handleQuickFilterSearchRestore = (columnId) => (event) => {
+    event.preventDefault();
+    const meta = QUICK_FILTER_META[columnId];
+    if (!meta || !meta.searchable) {
       return;
     }
-    if (config.type === 'multi') {
-      onQuickFilterChange(columnId, []);
+    const cached = quickFilterRestore[columnId];
+    if (!cached) {
+      return;
+    }
+    setQuickFilterSearch((prev) => ({ ...prev, [columnId]: cached }));
+    onQuickFilterSearch?.(meta.optionsKey, cached);
+    setQuickFilterRestore((prev) => {
+      const next = { ...prev };
+      delete next[columnId];
+      return next;
+    });
+    setFocusedQuickFilterSearch(columnId);
+    requestAnimationFrame(() => {
+      const node = quickFilterSearchRefs.current.get(columnId);
+      node?.focus();
+    });
+  };
+
+  const handleQuickFilterClear = (columnId) => () => {
+    const meta = QUICK_FILTER_META[columnId];
+    if (!meta) {
+      return;
+    }
+
+    if (meta.multi) {
+      const current = new Set(getQuickFilterValue(columnId));
+      if (current.size === 0) {
+        return;
+      }
+      current.forEach((option) => {
+        onQuickFilterToggle?.(meta.field, option, false);
+      });
+      return;
+    }
+
+    if (quickFilters[meta.field] !== 'all') {
+      onQuickFilterChange?.(meta.field, 'all');
+    }
+    setOpenQuickFilter(null);
+  };
+
+  const registerQuickFilterRef = (columnId) => (node) => {
+    if (node) {
+      quickFilterRefs.current.set(columnId, node);
     } else {
-      onQuickFilterChange(columnId, '');
+      quickFilterRefs.current.delete(columnId);
     }
   };
 
-  const renderFilterOptions = (columnId) => {
-    const config = QUICK_FILTER_CONFIG[columnId];
-    if (!config) {
-      return null;
-    }
-    const options = quickFilterOptions[columnId] ?? [];
-    const value = quickFilters[columnId] ?? (config.type === 'multi' ? [] : '');
-    const loweredSearch = filterSearch.trim().toLowerCase();
-    const filteredOptions = options.filter((option) =>
-      option.toLowerCase().includes(loweredSearch),
-    );
+  const registerActionAnchor = useCallback(
+    (transactionId) => (node) => {
+      if (node) {
+        actionAnchorRefs.current.set(transactionId, node);
+      } else {
+        actionAnchorRefs.current.delete(transactionId);
+      }
+    },
+    [],
+  );
 
-    if (config.type === 'single') {
-      return (
-        <ul className={styles.filterList} role="listbox">
-          {filteredOptions.map((option) => {
-            const isSelected = value === option;
-            return (
-              <li key={option}>
+  const registerQuickFilterSearchRef = useCallback(
+    (columnId) => (node) => {
+      if (node) {
+        quickFilterSearchRefs.current.set(columnId, node);
+      } else {
+        quickFilterSearchRefs.current.delete(columnId);
+      }
+    },
+    [],
+  );
+
+  const handleActionTriggerEnter = (transactionId) => {
+    if (actionMenuCloseTimer.current) {
+      clearTimeout(actionMenuCloseTimer.current);
+      actionMenuCloseTimer.current = null;
+    }
+    setOpenActionId(transactionId);
+  };
+
+  const handleActionTriggerLeave = () => {
+    if (actionMenuCloseTimer.current) {
+      clearTimeout(actionMenuCloseTimer.current);
+    }
+    actionMenuCloseTimer.current = setTimeout(() => {
+      closeActionMenu();
+    }, 120);
+  };
+
+  const handleActionToggleClick = (transactionId) => () => {
+    if (actionMenuCloseTimer.current) {
+      clearTimeout(actionMenuCloseTimer.current);
+      actionMenuCloseTimer.current = null;
+    }
+    setOpenActionSubmenu(null);
+    setOpenActionId((prev) => (prev === transactionId ? null : transactionId));
+  };
+
+  const handleActionFocus = (transactionId) => {
+    setOpenActionId(transactionId);
+  };
+
+  const handleActionBlur = (event) => {
+    const nextFocus = event?.relatedTarget;
+    const portalNode = actionMenuPortalRef.current;
+    if (
+      nextFocus &&
+      (event.currentTarget.contains(nextFocus) ||
+        (portalNode && portalNode.contains(nextFocus)))
+    ) {
+      return;
+    }
+    actionMenuCloseTimer.current = setTimeout(() => {
+      closeActionMenu();
+    }, 100);
+  };
+
+  const handleAction = (payload) => () => {
+    onOpenAdvanced?.(payload);
+    closeActionMenu();
+  };
+
+  const handleSubmenuEnter = (submenuId) => () => {
+    setOpenActionSubmenu(submenuId);
+  };
+
+  const activeQuickFilterMeta = openQuickFilter ? QUICK_FILTER_META[openQuickFilter] : null;
+  const activeQuickFilterOptions =
+    activeQuickFilterMeta && openQuickFilter
+      ? quickFilterOptions[activeQuickFilterMeta.optionsKey] ?? []
+      : [];
+  const activeQuickFilterValues = activeQuickFilterMeta
+    ? getQuickFilterValue(openQuickFilter)
+    : null;
+  const activeQuickFilterSearchValue =
+    openQuickFilter && activeQuickFilterMeta?.searchable
+      ? quickFilterSearch[openQuickFilter] ?? ''
+      : '';
+  const activeQuickFilterRestoreValue =
+    openQuickFilter && activeQuickFilterMeta?.searchable
+      ? quickFilterRestore[openQuickFilter] ?? ''
+      : '';
+  const showQuickFilterRestoreButton =
+    Boolean(activeQuickFilterRestoreValue) &&
+    !activeQuickFilterSearchValue &&
+    focusedQuickFilterSearch === openQuickFilter;
+  const showQuickFilterSearchClearButton = Boolean(activeQuickFilterSearchValue);
+
+  const isTotalRowVisible = selectionSet.size > 0;
+
+  const quickFilterPopover =
+    openQuickFilter &&
+    quickFilterPosition &&
+    activeQuickFilterMeta &&
+    typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            ref={(node) => {
+              quickFilterPortalRef.current = node;
+            }}
+            className={`${styles.headerQuickFilterPopover} ${styles.headerQuickFilterOpen}`}
+            style={{
+              top: `${quickFilterPosition.top}px`,
+              left: `${quickFilterPosition.left}px`,
+              width: `${quickFilterPosition.width}px`,
+            }}
+            role="dialog"
+            aria-modal="false"
+            data-testid={`transactions-quick-filter-${openQuickFilter}-popover`}
+          >
+            <div className={styles.quickFilterHeader}>
+              <span>{activeQuickFilterMeta.label}</span>
+              <button
+                type="button"
+                className={styles.quickFilterClear}
+                onClick={handleQuickFilterClear(openQuickFilter)}
+                data-testid={`transactions-quick-filter-${openQuickFilter}-clear`}
+              >
+                Clear filter
+              </button>
+            </div>
+            {activeQuickFilterMeta.searchable ? (
+              <div className={styles.quickFilterSearchRow}>
+                <div className={styles.quickFilterSearchField}>
+                  <FiSearch aria-hidden className={styles.quickFilterSearchIcon} />
+                  <input
+                    ref={registerQuickFilterSearchRef(openQuickFilter)}
+                    type="search"
+                    value={activeQuickFilterSearchValue}
+                    onChange={handleQuickFilterSearchChange(openQuickFilter)}
+                    onFocus={handleQuickFilterSearchFocus(openQuickFilter)}
+                    onBlur={handleQuickFilterSearchBlur}
+                    className={styles.quickFilterSearchInput}
+                    placeholder={`Search ${activeQuickFilterMeta.label.toLowerCase()}`}
+                    data-testid={`transactions-quick-filter-${openQuickFilter}-search`}
+                  />
+                  <div className={styles.quickFilterSearchTrailing}>
+                    {showQuickFilterRestoreButton ? (
+                      <button
+                        type="button"
+                        className={`${styles.quickFilterSearchButton} ${styles.quickFilterRestoreButton}`}
+                        onClick={handleQuickFilterSearchRestore(openQuickFilter)}
+                        aria-label="Restore last search"
+                        data-testid={`transactions-quick-filter-${openQuickFilter}-restore-search`}
+                      >
+                        <FiRotateCcw aria-hidden />
+                      </button>
+                    ) : null}
+                    {showQuickFilterSearchClearButton ? (
+                      <button
+                        type="button"
+                        className={`${styles.quickFilterSearchButton} ${styles.quickFilterClearButton}`}
+                        onClick={handleQuickFilterSearchClear(openQuickFilter)}
+                        aria-label="Clear search"
+                        data-testid={`transactions-quick-filter-${openQuickFilter}-clear-search`}
+                      >
+                        <FiX aria-hidden />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <ul className={styles.quickFilterList}>
+              {activeQuickFilterMeta.multi
+                ? activeQuickFilterOptions.map((option) => {
+                    const optionKey = `${openQuickFilter}-${slugify(option)}`;
+                    const isSelected = (activeQuickFilterValues ?? []).includes(option);
+                    return (
+                      <li key={optionKey}>
+                        <button
+                          type="button"
+                          className={`${styles.quickFilterOption} ${
+                            isSelected ? styles.quickFilterOptionActive : ''
+                          }`}
+                          onClick={handleQuickFilterOptionClick(openQuickFilter, option)}
+                          data-testid={`transactions-quick-filter-${openQuickFilter}-option-${slugify(
+                            option,
+                          )}`}
+                        >
+                          {option}
+                        </button>
+                      </li>
+                    );
+                  })
+                : [
+                    <li key="all-option">
+                      <button
+                        type="button"
+                        className={`${styles.quickFilterOption} ${
+                          activeQuickFilterValues === 'all' ? styles.quickFilterOptionActive : ''
+                        }`}
+                        onClick={handleQuickFilterOptionClick(openQuickFilter, 'all')}
+                        data-testid={`transactions-quick-filter-${openQuickFilter}-option-all`}
+                      >
+                        All
+                      </button>
+                    </li>,
+                    ...activeQuickFilterOptions.map((option) => {
+                      const optionKey = `${openQuickFilter}-${slugify(option)}`;
+                      return (
+                        <li key={optionKey}>
+                          <button
+                            type="button"
+                            className={`${styles.quickFilterOption} ${
+                              activeQuickFilterValues === option ? styles.quickFilterOptionActive : ''
+                            }`}
+                            onClick={handleQuickFilterOptionClick(openQuickFilter, option)}
+                            data-testid={`transactions-quick-filter-${openQuickFilter}-option-${slugify(
+                              option,
+                            )}`}
+                          >
+                            {option}
+                          </button>
+                        </li>
+                      );
+                    }),
+                  ]}
+            </ul>
+          </div>,
+          document.body,
+        )
+      : null;
+
+  const actionMenuPortal =
+    openActionId &&
+    actionMenuPosition &&
+    openActionTransaction &&
+    typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            ref={(node) => {
+              actionMenuPortalRef.current = node;
+            }}
+            className={`${styles.actionsMenu} ${styles.actionsMenuOpen}`}
+            style={{
+              top: `${actionMenuPosition.top}px`,
+              left: `${actionMenuPosition.left}px`,
+              width: `${actionMenuPosition.width}px`,
+            }}
+            role="menu"
+            data-testid={`transaction-actions-menu-${openActionId}`}
+            id={`transaction-actions-menu-${openActionId}`}
+            aria-labelledby={`transaction-actions-trigger-${openActionId}`}
+            onMouseEnter={() => handleActionTriggerEnter(openActionId)}
+            onMouseLeave={handleActionTriggerLeave}
+            onFocusCapture={() => handleActionTriggerEnter(openActionId)}
+          >
+            <button
+              type="button"
+              className={styles.actionsMenuItem}
+              onMouseEnter={handleSubmenuEnter(null)}
+              onClick={handleAction({
+                mode: 'edit',
+                transaction: openActionTransaction,
+              })}
+              data-testid={`transaction-action-edit-${openActionId}`}
+            >
+              <FiEdit2 aria-hidden />
+              <span>Quick edit</span>
+            </button>
+            <button
+              type="button"
+              className={`${styles.actionsMenuItem} ${styles.actionsMenuDanger}`}
+              onMouseEnter={handleSubmenuEnter(null)}
+              onClick={handleAction({
+                mode: 'delete',
+                transaction: openActionTransaction,
+              })}
+              data-testid={`transaction-action-delete-${openActionId}`}
+            >
+              <FiTrash2 aria-hidden />
+              <span>Delete</span>
+            </button>
+            <div
+              className={`${styles.actionsMenuItem} ${styles.actionsMenuNested}`}
+              onMouseEnter={handleSubmenuEnter('more')}
+              data-testid={`transaction-action-more-${openActionId}`}
+            >
+              <div className={styles.actionsMenuNestedLabel}>
+                <FiMoreHorizontal aria-hidden />
+                <span>More actions</span>
+              </div>
+              <FiChevronRight className={styles.actionsMenuNestedCaret} aria-hidden />
+              <div
+                className={`${styles.actionsSubmenu} ${
+                  openActionSubmenu === 'more' ? styles.actionsSubmenuOpen : ''
+                }`}
+                role="menu"
+              >
                 <button
                   type="button"
-                  className={`${styles.filterOptionButton} ${
-                    isSelected ? styles.filterOptionButtonActive : ''
-                  }`}
-                  onClick={() => {
-                    onQuickFilterChange(columnId, isSelected ? '' : option);
-                    setOpenFilterId(null);
-                    setFilterSearch('');
-                  }}
-                  role="option"
-                  aria-selected={isSelected}
-                  data-testid={`transactions-filter-${columnId}-${option}`}
+                  className={styles.actionsMenuItem}
+                  onClick={handleAction({
+                    mode: 'advanced',
+                    transaction: openActionTransaction,
+                    intent: 'advanced-panel',
+                  })}
+                  data-testid={`transaction-action-advanced-${openActionId}`}
                 >
-                  {option}
+                  <FiFilter aria-hidden />
+                  <span>Open advanced panel</span>
                 </button>
-              </li>
-            );
-          })}
-        </ul>
-      );
-    }
-
-    return (
-      <ul className={styles.filterList} role="listbox" aria-multiselectable>
-        {filteredOptions.map((option) => {
-          const isSelected = value.includes(option);
-          return (
-            <li key={option}>
-              <label className={`${styles.filterCheckboxLabel} ${
-                isSelected ? styles.filterCheckboxLabelActive : ''
-              }`}>
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => {
-                    const next = isSelected
-                      ? value.filter((item) => item !== option)
-                      : [...value, option];
-                    onQuickFilterChange(columnId, next);
-                  }}
-                  className={styles.filterCheckbox}
-                  data-testid={`transactions-filter-${columnId}-toggle-${option}`}
-                />
-                <span>{option}</span>
-              </label>
-            </li>
-          );
-        })}
-      </ul>
-    );
-  };
-
-  const renderFilterBadges = (columnId) => {
-    const config = QUICK_FILTER_CONFIG[columnId];
-    if (!config) {
-      return null;
-    }
-    const value = quickFilters[columnId];
-
-    if (config.type === 'multi') {
-      if (!value || value.length === 0) {
-        return null;
-      }
-      return value.map((item) => (
-        <span key={item} className={styles.filterBadge} data-testid={`filter-badge-${columnId}-${item}`}>
-          {item}
-        </span>
-      ));
-    }
-
-    if (!value) {
-      return null;
-    }
-    return (
-      <span className={styles.filterBadge} data-testid={`filter-badge-${columnId}`}>
-        {value}
-      </span>
-    );
-  };
-
-  const handleScroll = () => {
-    setOpenFilterId(null);
-    setFilterSearch('');
-  };
+                <button
+                  type="button"
+                  className={styles.actionsMenuItem}
+                  onClick={handleAction({
+                    mode: 'advanced',
+                    transaction: openActionTransaction,
+                    intent: 'duplicate-draft',
+                  })}
+                  data-testid={`transaction-action-duplicate-${openActionId}`}
+                >
+                  <FiEdit2 aria-hidden />
+                  <span>Duplicate as draft</span>
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <section className={styles.tableCard} aria-label="Transactions history table">
-      <div
-        className={styles.tableScroll}
-        data-testid="transactions-table-container"
-        onScroll={handleScroll}
-      >
-        <table className={styles.table} style={{ minWidth: `${minTableWidth + STICKY_COLUMN_BUFFER}px` }}>
+      <div className={styles.tableScroll} data-testid="transactions-table-container">
+        <table
+          className={styles.table}
+          style={{ minWidth: `${minTableWidth + STICKY_COLUMN_BUFFER}px` }}
+        >
           <thead>
             <tr>
               <th
@@ -392,128 +980,14 @@ export function TransactionsTable({
                   data-testid="transaction-select-all"
                 />
               </th>
-              {visibleColumns.map((column) => {
-                const definition = definitionMap.get(column.id);
-                const alignClass = definition?.align === 'right' ? styles.headerAlignRight : '';
-                const isSorted = sortState?.column === column.id;
-                const ariaSort = isSorted ? (sortState.direction === 'asc' ? 'ascending' : 'descending') : 'none';
-                const IconComponent = QUICK_FILTER_CONFIG[column.id]?.icon ?? FiFilter;
-                const sortDescriptor = sortLookup.get(column.id);
-                const isSorted = Boolean(sortDescriptor);
-                const sortDirection = sortDescriptor?.direction ?? 'asc';
-                const sortOrder = sortDescriptor ? sortDescriptor.index + 1 : null;
-                const isSortable = definition?.sortable;
-                return (
-                  <th
-                    key={column.id}
-                    scope="col"
-                    className={`${styles.headerCell} ${alignClass}`}
-                    aria-sort={ariaSort}
-                    style={{
-                      minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
-                      width: `${column.width}px`,
-                    }}
-                    ref={registerQuickFilterRef(column.id)}
-                  >
-                    <button
-                      type="button"
-                      className={styles.headerSortButton}
-                      onClick={() => onSort(column.id)}
-                      data-testid={`transactions-sort-${column.id}`}
-                    >
-                      <span className={styles.headerContent}>{definition?.label ?? column.id}</span>
-                      <FiChevronDown
-                        aria-hidden
-                        className={`${styles.sortIcon} ${
-                          isSorted
-                            ? sortState.direction === 'asc'
-                              ? styles.sortIconAsc
-                              : styles.sortIconDesc
-                            : styles.sortIconIdle
-                        }`}
-                      />
-                    </button>
-                    {QUICK_FILTER_CONFIG[column.id] ? (
-                      <div className={styles.headerFilterBar}>
-                        <button
-                          type="button"
-                          className={`${styles.filterTrigger} ${
-                            (QUICK_FILTER_CONFIG[column.id].type === 'multi'
-                            ? (quickFilters[column.id] ?? []).length > 0
-                            : Boolean(quickFilters[column.id]))
-                              ? styles.filterTriggerActive
-                              : ''
-                          }`}
-                          onClick={() => handleFilterToggle(column.id)}
-                          aria-haspopup="dialog"
-                          aria-expanded={openFilterId === column.id}
-                          data-testid={`transactions-quick-filter-${column.id}`}
-                        >
-                          <IconComponent aria-hidden />
-                        </button>
-                        <div className={styles.filterBadges}>{renderFilterBadges(column.id)}</div>
-                      </div>
-                    ) : null}
-                    {openFilterId === column.id ? (
-                      <div className={styles.filterPopover} ref={filterPopoverRef} role="dialog">
-                        {QUICK_FILTER_CONFIG[column.id]?.type === 'single' ? (
-                          <div className={styles.filterSearchRow}>
-                            <input
-                              type="search"
-                              value={filterSearch}
-                              onChange={handleFilterSearchChange}
-                              className={styles.filterSearchInput}
-                              placeholder={`Search ${QUICK_FILTER_CONFIG[column.id].label}`}
-                              data-testid={`transactions-quick-filter-search-${column.id}`}
-                            />
-                          </div>
-                        ) : null}
-                        <div className={styles.filterOptionsWrapper}>{renderFilterOptions(column.id)}</div>
-                        <div className={styles.filterFooter}>
-                          <button
-                            type="button"
-                            className={styles.filterClearButton}
-                            onClick={() => handleClearFilter(column.id)}
-                            data-testid={`transactions-quick-filter-clear-${column.id}`}
-                          >
-                            Clear
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                    {isSortable && onSortChange ? (
-                      <button
-                        type="button"
-                        className={`${styles.headerSortButton} ${
-                          isSorted ? styles.headerSortActive : ''
-                        }`}
-                        onClick={handleSortToggle(column.id)}
-                        data-testid={`transactions-sort-${column.id}`}
-                        aria-label={`Sort by ${definition?.label ?? column.id}${
-                          sortState?.length > 1 ? ' (shift-click for multi-sort)' : ''
-                        }`}
-                      >
-                        <span className={styles.headerSortLabel}>{definition?.label ?? column.id}</span>
-                        <span className={styles.headerSortIcon} aria-hidden>
-                          {isSorted ? (
-                            sortDirection === 'desc' ? <FiChevronDown /> : <FiChevronUp />
-                          ) : (
-                            <FiChevronUp />
-                          )}
-                        </span>
-                        {isSorted && sortState?.length > 1 ? (
-                          <span className={styles.headerSortOrder}>{sortOrder}</span>
-                        ) : null}
-                      </button>
-                    ) : (
-                      <span className={styles.headerContent}>{definition?.label ?? column.id}</span>
-                    )}
-                  </th>
-                );
-              })}
               <th
                 scope="col"
-                className={`${styles.headerCell} ${styles.stickyRight} ${styles.stickyRightEdge} ${styles.actionsCell}`}
+                className={`${styles.headerCell} ${styles.stickyLeft} ${styles.actionsCell}`}
+                style={{
+                  left: `${CHECKBOX_COLUMN_WIDTH}px`,
+                  minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
+                  width: `${ACTIONS_COLUMN_WIDTH}px`,
+                }}
                 aria-label="Row actions"
                 title="Row actions"
               >
@@ -521,6 +995,102 @@ export function TransactionsTable({
                   …
                 </span>
               </th>
+              {visibleColumns.map((column) => {
+                const definition = definitionMap.get(column.id);
+                const alignClass = definition?.align === 'right' ? styles.headerAlignRight : '';
+                const sortDescriptor = sortLookup.get(column.id);
+                const isSorted = Boolean(sortDescriptor);
+                const sortDirection = sortDescriptor?.direction ?? 'asc';
+                const sortOrder = sortDescriptor ? sortDescriptor.index + 1 : null;
+                const isSortable = definition?.sortable;
+                const label = computeHeaderLabel(column, definition);
+                const meta = QUICK_FILTER_META[column.id];
+                const filterValues = meta ? getQuickFilterValue(column.id) : null;
+                const extraCount =
+                  Array.isArray(filterValues) && filterValues.length > 1
+                    ? filterValues.length - 1
+                    : 0;
+                const isFilterActive = meta
+                  ? meta.multi
+                    ? (filterValues ?? []).length > 0
+                    : filterValues && filterValues !== 'all'
+                  : false;
+                const baseSortTooltip = !isSorted
+                  ? 'No sort applied'
+                  : sortDirection === 'asc'
+                  ? 'Sorted ascending'
+                  : 'Sorted descending';
+                const sortTooltip = onSortChange
+                  ? `${baseSortTooltip} • Shift+Click to multi-sort`
+                  : baseSortTooltip;
+                const sortAriaLabel = !isSorted
+                  ? `Sort ${definition?.label ?? column.id}`
+                  : `Toggle sort for ${definition?.label ?? column.id}, currently ${
+                      sortDirection === 'asc' ? 'ascending' : 'descending'
+                    }`;
+
+                return (
+                  <th
+                    key={column.id}
+                    scope="col"
+                    className={`${styles.headerCell} ${alignClass}`}
+                    style={{
+                      minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
+                      width: `${column.width}px`,
+                    }}
+                    ref={registerQuickFilterRef(column.id)}
+                  >
+                    <div className={styles.headerInner}>
+                      {meta ? (
+                        <button
+                          type="button"
+                          className={`${styles.headerLabelButton} ${
+                            isFilterActive ? styles.headerFilterActive : ''
+                          }`}
+                          onClick={() => handleQuickFilterToggle(column.id)}
+                          data-testid={`transactions-quick-filter-${column.id}`}
+                          title={
+                            Array.isArray(filterValues) && filterValues.length > 1
+                              ? filterValues.join(', ')
+                              : label
+                          }
+                          aria-haspopup="listbox"
+                          aria-expanded={openQuickFilter === column.id}
+                        >
+                          {meta.icon ? <span className={styles.headerLabelIcon}>{meta.icon}</span> : null}
+                          <span className={styles.headerLabelText}>{label}</span>
+                          {extraCount > 0 ? (
+                            <span className={styles.headerValueOverflow} data-testid={`transactions-quick-filter-${column.id}-more`}>
+                              +{extraCount}
+                            </span>
+                          ) : null}
+                        </button>
+                      ) : (
+                        <span className={styles.headerStaticLabel}>{label}</span>
+                      )}
+                      <div className={styles.headerControls}>
+                        {isSortable && onSortChange ? (
+                          <button
+                            type="button"
+                            className={`${styles.headerSortButton} ${styles.tooltipTrigger} ${
+                              isSorted ? styles.headerSortActive : ''
+                            }`}
+                            onClick={handleSortToggle(column.id)}
+                            data-testid={`transactions-sort-${column.id}`}
+                            data-tooltip={sortTooltip}
+                            aria-label={sortAriaLabel}
+                          >
+                            <SortGlyph direction={isSorted ? sortDirection : undefined} />
+                            {isSorted && sortState?.length > 1 ? (
+                              <span className={styles.headerSortOrder}>{sortOrder}</span>
+                            ) : null}
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody style={{ minWidth: `${minTableWidth + STICKY_COLUMN_BUFFER}px` }}>
@@ -552,6 +1122,41 @@ export function TransactionsTable({
                         data-testid={`transaction-select-${txn.id}`}
                       />
                     </td>
+                    <td
+                      className={`${styles.cell} ${styles.actionsCell} ${styles.stickyLeft}`}
+                      style={{
+                        left: `${CHECKBOX_COLUMN_WIDTH}px`,
+                        minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
+                        width: `${ACTIONS_COLUMN_WIDTH}px`,
+                      }}
+                      data-testid={`transaction-actions-${txn.id}`}
+                    >
+                      <div
+                        ref={registerActionAnchor(txn.id)}
+                        className={styles.actionsCellTrigger}
+                        onMouseEnter={() => handleActionTriggerEnter(txn.id)}
+                        onMouseLeave={handleActionTriggerLeave}
+                        onFocus={() => handleActionFocus(txn.id)}
+                        onBlur={handleActionBlur}
+                      >
+                        <button
+                          type="button"
+                          className={`${styles.actionsTriggerButton} ${
+                            openActionId === txn.id ? styles.actionsTriggerButtonActive : ''
+                          }`}
+                          id={`transaction-actions-trigger-${txn.id}`}
+                          data-testid={`transaction-actions-trigger-${txn.id}`}
+                          aria-haspopup="menu"
+                          aria-expanded={openActionId === txn.id}
+                          aria-controls={`transaction-actions-menu-${txn.id}`}
+                          aria-label="Show row actions"
+                          onMouseEnter={() => handleActionTriggerEnter(txn.id)}
+                          onClick={handleActionToggleClick(txn.id)}
+                        >
+                          <FiMoreHorizontal aria-hidden />
+                        </button>
+                      </div>
+                    </td>
                     {visibleColumns.map((column) => {
                       const definition = definitionMap.get(column.id);
                       const alignClass = definition?.align === 'right' ? styles.cellAlignRight : '';
@@ -575,126 +1180,50 @@ export function TransactionsTable({
                         </td>
                       );
                     })}
-                    <td
-                      className={`${styles.cell} ${styles.actionsCell} ${styles.stickyRight} ${styles.stickyRightEdge}`}
-                      data-testid={`transaction-actions-${txn.id}`}
-                      onMouseEnter={() => handleActionAreaEnter(txn.id)}
-                      onFocus={() => handleActionAreaEnter(txn.id)}
-                      onMouseLeave={handleActionAreaLeave}
-                      onBlur={handleActionAreaLeave}
-                    >
-                      <div className={styles.actionWrapper}>
-                        <button
-                          type="button"
-                          className={styles.moreActionsButton}
-                          aria-label={`Show actions for ${txn.id}`}
-                          aria-haspopup="menu"
-                          aria-expanded={activeActionId === txn.id}
-                          data-testid={`transaction-more-${txn.id}`}
-                          onMouseEnter={() => handleActionAreaEnter(txn.id)}
-                          onFocus={() => handleActionAreaEnter(txn.id)}
-                        >
-                          <FiMoreHorizontal aria-hidden />
-                        </button>
-                        {activeActionId === txn.id ? (
-                          <div className={styles.actionsPopover} role="menu">
-                            <button
-                              type="button"
-                              className={styles.actionsPopoverItem}
-                              onClick={() => onOpenAdvanced({ mode: 'edit', transaction: txn })}
-                              data-testid={`transaction-popover-edit-${txn.id}`}
-                              role="menuitem"
-                            >
-                              <FiEdit2 aria-hidden />
-                              Edit transaction
-                            </button>
-                            <button
-                              type="button"
-                              className={`${styles.actionsPopoverItem} ${styles.actionsPopoverDanger}`}
-                              onClick={() => onOpenAdvanced({ mode: 'delete', transaction: txn })}
-                              data-testid={`transaction-popover-delete-${txn.id}`}
-                              role="menuitem"
-                            >
-                              <FiTrash2 aria-hidden />
-                              Delete transaction
-                            </button>
-                            <div className={styles.actionsNestedGroup}>
-                              <span className={styles.actionsNestedLabel}>More actions</span>
-                              <div className={styles.actionsNestedList} role="menu">
-                                <button
-                                  type="button"
-                                  className={styles.actionsPopoverItem}
-                                  onClick={() => onOpenAdvanced({ mode: 'advanced', transaction: txn, action: 'cancel' })}
-                                  data-testid={`transaction-popover-cancel-${txn.id}`}
-                                  role="menuitem"
-                                >
-                                  <FiXCircle aria-hidden />
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  className={styles.actionsPopoverItem}
-                                  onClick={() => onOpenAdvanced({ mode: 'advanced', transaction: txn, action: 'partial-repay' })}
-                                  data-testid={`transaction-popover-partial-${txn.id}`}
-                                  role="menuitem"
-                                >
-                                  <FiRefreshCw aria-hidden />
-                                  Partial repay
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ) : null}
-                      </div>
-                    </td>
                   </tr>
                 );
               })
             )}
-            {selectionSummary.count > 0 ? (
-              <tr className={`${styles.row} ${styles.totalRow}`}>
-                <td
-                  className={`${styles.cell} ${styles.checkboxCell} ${styles.stickyLeft} ${styles.stickyLeftEdge} ${styles.totalCell}`}
-                  data-testid="transactions-total-row-label"
-                >
-                  Selected totals
-                </td>
-                {visibleColumns.map((column) => {
-                  const definition = getColumnDefinition(column.id);
-                  const alignClass = definition?.align === 'right' ? styles.cellAlignRight : '';
-                  const formatter = TOTAL_FIELDS.get(column.id);
-                  return (
-                    <td
-                      key={column.id}
-                      className={`${styles.cell} ${styles.totalCell} ${alignClass}`}
-            {transactions.length > 0 ? (
-              <tr className={`${styles.row} ${styles.totalRow}`} data-testid="transactions-total-row">
+            {isTotalRowVisible ? (
+              <tr
+                className={`${styles.row} ${styles.totalRow}`}
+                data-testid="transactions-total-row"
+              >
                 <td
                   className={`${styles.cell} ${styles.checkboxCell} ${styles.stickyLeft} ${styles.stickyLeftEdge} ${styles.totalLabelCell}`}
-                  aria-hidden
+                  aria-hidden="true"
+                />
+                <td
+                  className={`${styles.cell} ${styles.actionsCell} ${styles.stickyLeft} ${styles.totalLabelCell}`}
+                  style={{
+                    left: `${CHECKBOX_COLUMN_WIDTH}px`,
+                    minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
+                    width: `${ACTIONS_COLUMN_WIDTH}px`,
+                  }}
+                  aria-hidden="true"
                 />
                 {visibleColumns.map((column, index) => {
-                  const definition = getColumnDefinition(column.id);
+                  const definition = definitionMap.get(column.id);
                   const alignClass = definition?.align === 'right' ? styles.cellAlignRight : '';
                   let content = '';
                   if (column.id === 'amount') {
                     const toneClass =
-                      totals.amount === 0
+                      selectionSummary.amount === 0
                         ? ''
-                        : totals.amount > 0
+                        : selectionSummary.amount > 0
                         ? styles.amountIncome
                         : styles.amountExpense;
                     content = (
                       <span className={`${styles.amountValue} ${toneClass}`}>
-                        {formatAmountWithTrailing(Math.abs(totals.amount))}
+                        {formatAmountWithTrailing(selectionSummary.amount)}
                       </span>
                     );
                   } else if (column.id === 'finalPrice') {
-                    content = formatAmountWithTrailing(totals.finalPrice);
+                    content = formatAmountWithTrailing(selectionSummary.finalPrice);
                   } else if (column.id === 'totalBack') {
-                    content = formatAmountWithTrailing(totals.totalBack);
+                    content = formatAmountWithTrailing(selectionSummary.totalBack);
                   } else if (index === 0) {
-                    content = <span className={styles.totalLabel}>Totals</span>;
+                    content = <span className={styles.totalLabel}>Selected totals</span>;
                   }
 
                   return (
@@ -706,23 +1235,17 @@ export function TransactionsTable({
                         width: `${column.width}px`,
                       }}
                     >
-                      <div className={styles.cellText}>
-                        {formatter ? formatter(selectionSummary) : '—'}
-                      </div>
                       <div className={styles.cellText}>{content}</div>
                     </td>
                   );
                 })}
-                <td
-                  className={`${styles.cell} ${styles.actionsCell} ${styles.stickyRight} ${styles.stickyRightEdge} ${styles.totalCell}`}
-                  className={`${styles.cell} ${styles.actionsCell} ${styles.stickyRight} ${styles.stickyRightEdge} ${styles.totalLabelCell}`}
-                  aria-hidden
-                />
               </tr>
             ) : null}
           </tbody>
         </table>
       </div>
+      {quickFilterPopover}
+      {actionMenuPortal}
 
       <div className={styles.paginationBar} data-testid="transactions-pagination">
         <div className={styles.pageSizeGroup}>
@@ -764,7 +1287,6 @@ export function TransactionsTable({
           </button>
         </div>
       </div>
-
     </section>
   );
 }

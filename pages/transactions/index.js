@@ -768,6 +768,7 @@ export default function TransactionsHistoryPage() {
           onRestoreQuery={handleRestoreQuery}
           onFilterClick={handleOpenFilters}
           filterCount={filterCount}
+          onClearFilters={handleFilterReset}
           onAddTransaction={handleAddTransaction}
           onCustomizeColumns={() => setIsCustomizeOpen(true)}
           selectionSummary={selectionSummary}
