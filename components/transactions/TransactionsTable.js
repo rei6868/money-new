@@ -1,43 +1,85 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { FiMoreHorizontal } from 'react-icons/fi';
+import { FiEdit2, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
+import { formatAmount, formatAmountWithTrailing, formatPercent } from '../../lib/numberFormat';
+import { TRANSACTION_COLUMN_DEFINITIONS } from './transactionColumns';
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 2,
-});
+const definitionMap = new Map(
+  TRANSACTION_COLUMN_DEFINITIONS.map((definition) => [definition.id, definition]),
+);
 
-function formatCurrency(value) {
-  return currencyFormatter.format(value ?? 0);
+const STICKY_COLUMN_BUFFER = 252; // checkbox (72px) + actions column (180px) baseline
+
+function getColumnDefinition(columnId) {
+  return definitionMap.get(columnId);
 }
 
-function formatPercent(value) {
-  if (value === undefined || value === null) {
-    return '0%';
-  }
-  return `${Number(value).toFixed(2).replace(/\.00$/, '')}%`;
+function TotalBackCell({ transaction }) {
+  const totalBack = formatAmount(transaction.totalBack);
+  const percentBack = Number(transaction.percentBack ?? 0);
+  const fixedBack = Number(transaction.fixedBack ?? 0);
+  const amount = Number(transaction.amount ?? 0);
+  const hasPercent = percentBack > 0;
+  const hasFixed = fixedBack > 0;
+  const canShowFormula =
+    Number(transaction.totalBack ?? 0) > 0 && hasPercent && hasFixed && amount > 0;
+  const formulaText = `${formatAmount(amount)}×${formatPercent(percentBack)} + ${formatAmount(
+    fixedBack,
+  )}`;
+
+  return (
+    <div className={styles.totalBackCell} title={canShowFormula ? formulaText : undefined}>
+      <span className={styles.totalBackValue}>{totalBack}</span>
+      {canShowFormula ? <span className={styles.totalBackFormula}>{formulaText}</span> : null}
+    </div>
+  );
 }
 
-const COLUMN_WIDTHS = {
-  date: '120px',
-  type: '132px',
-  account: '182px',
-  shop: '180px',
-  notes: '240px',
-  amount: '140px',
-  percentBack: '120px',
-  fixedBack: '140px',
-  totalBack: '150px',
-  finalPrice: '160px',
-  debtTag: '160px',
-  cycleTag: '150px',
-  category: '150px',
-  linkedTxn: '160px',
-  owner: '130px',
-  actions: '190px',
+const columnRenderers = {
+  date: (txn) => txn.date ?? '—',
+  type: (txn, stylesRef) => (
+    <span
+      className={
+        txn.type === 'Income'
+          ? `${stylesRef.pill} ${stylesRef.pillIncome}`
+          : `${stylesRef.pill} ${stylesRef.pillExpense}`
+      }
+    >
+      {txn.type}
+    </span>
+  ),
+  account: (txn) => txn.account ?? '—',
+  shop: (txn) => txn.shop ?? '—',
+  notes: (txn) => txn.notes ?? '—',
+  amount: (txn) => formatAmount(txn.amount),
+  percentBack: (txn) => formatPercent(txn.percentBack),
+  fixedBack: (txn) => formatAmount(txn.fixedBack),
+  totalBack: (txn) => <TotalBackCell transaction={txn} />,
+  finalPrice: (txn) => formatAmount(txn.finalPrice),
+  debtTag: (txn) => txn.debtTag ?? '—',
+  cycleTag: (txn) => txn.cycleTag ?? '—',
+  category: (txn) => txn.category ?? '—',
+  linkedTxn: (txn) => txn.linkedTxn ?? '—',
+  owner: (txn) => txn.owner ?? '—',
+  id: (txn) => txn.id ?? '—',
 };
+
+function renderCellContent(columnId, transaction) {
+  const renderer = columnRenderers[columnId];
+  if (!renderer) {
+    return transaction[columnId] ?? '—';
+  }
+  return renderer(transaction, styles);
+}
+
+function computeMinWidth(columns) {
+  return columns.reduce((total, column) => {
+    const definition = getColumnDefinition(column.id);
+    const minWidth = column.width || definition?.minWidth || 120;
+    return total + minWidth;
+  }, 0);
+}
 
 export function TransactionsTable({
   transactions,
@@ -46,6 +88,11 @@ export function TransactionsTable({
   onSelectAll,
   selectionSummary,
   onOpenAdvanced,
+  visibleColumns,
+  onDeselectAll,
+  onToggleShowSelected,
+  isShowingSelectedOnly,
+  pagination,
 }) {
   const selectionSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allSelected = transactions.length > 0 && transactions.every((txn) => selectionSet.has(txn.id));
@@ -58,15 +105,17 @@ export function TransactionsTable({
     }
   }, [isIndeterminate]);
 
+  const minTableWidth = useMemo(() => computeMinWidth(visibleColumns), [visibleColumns]);
+
   return (
     <section className={styles.tableCard} aria-label="Transactions history table">
       <div className={styles.tableScroll} data-testid="transactions-table-container">
-        <table className={styles.table}>
+        <table className={styles.table} style={{ minWidth: `${minTableWidth + STICKY_COLUMN_BUFFER}px` }}>
           <thead>
             <tr>
               <th
                 scope="col"
-                className={`${styles.headerCell} ${styles.stickyLeft} ${styles.checkboxCell}`}
+                className={`${styles.headerCell} ${styles.stickyLeft} ${styles.stickyLeftEdge} ${styles.checkboxCell}`}
               >
                 <input
                   ref={headerCheckboxRef}
@@ -77,63 +126,26 @@ export function TransactionsTable({
                   data-testid="transaction-select-all"
                 />
               </th>
-              <th scope="col" className={styles.headerCell} style={{ minWidth: COLUMN_WIDTHS.date }}>
-                Date
-              </th>
-              <th scope="col" className={styles.headerCell} style={{ minWidth: COLUMN_WIDTHS.type }}>
-                Type
-              </th>
-              <th scope="col" className={styles.headerCell} style={{ minWidth: COLUMN_WIDTHS.account }}>
-                Account
-              </th>
-              <th scope="col" className={styles.headerCell} style={{ minWidth: COLUMN_WIDTHS.shop }}>
-                Shop
-              </th>
-              <th scope="col" className={styles.headerCell} style={{ minWidth: COLUMN_WIDTHS.notes }}>
-                Notes
-              </th>
-              <th scope="col" className={styles.headerCell} style={{ minWidth: COLUMN_WIDTHS.amount }}>
-                Amount
-              </th>
+              {visibleColumns.map((column) => {
+                const definition = getColumnDefinition(column.id);
+                const alignClass = definition?.align === 'right' ? styles.headerAlignRight : '';
+                return (
+                  <th
+                    key={column.id}
+                    scope="col"
+                    className={`${styles.headerCell} ${alignClass}`}
+                    style={{
+                      minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
+                      width: `${column.width}px`,
+                    }}
+                  >
+                    <span className={styles.headerContent}>{definition?.label ?? column.id}</span>
+                  </th>
+                );
+              })}
               <th
                 scope="col"
-                className={styles.headerCell}
-                style={{ minWidth: COLUMN_WIDTHS.percentBack }}
-              >
-                % Back
-              </th>
-              <th scope="col" className={styles.headerCell} style={{ minWidth: COLUMN_WIDTHS.fixedBack }}>
-                Fix Back
-              </th>
-              <th scope="col" className={styles.headerCell} style={{ minWidth: COLUMN_WIDTHS.totalBack }}>
-                Total Back
-              </th>
-              <th
-                scope="col"
-                className={styles.headerCell}
-                style={{ minWidth: COLUMN_WIDTHS.finalPrice }}
-              >
-                Final Price
-              </th>
-              <th scope="col" className={styles.headerCell} style={{ minWidth: COLUMN_WIDTHS.debtTag }}>
-                Debt Tag
-              </th>
-              <th scope="col" className={styles.headerCell} style={{ minWidth: COLUMN_WIDTHS.cycleTag }}>
-                Cycle Tag
-              </th>
-              <th scope="col" className={styles.headerCell} style={{ minWidth: COLUMN_WIDTHS.category }}>
-                Category
-              </th>
-              <th scope="col" className={styles.headerCell} style={{ minWidth: COLUMN_WIDTHS.linkedTxn }}>
-                Linked TXN
-              </th>
-              <th scope="col" className={styles.headerCell} style={{ minWidth: COLUMN_WIDTHS.owner }}>
-                Owner
-              </th>
-              <th
-                scope="col"
-                className={`${styles.headerCell} ${styles.stickyRight} ${styles.actionsCell}`}
-                style={{ minWidth: COLUMN_WIDTHS.actions }}
+                className={`${styles.headerCell} ${styles.stickyRight} ${styles.stickyRightEdge} ${styles.actionsCell}`}
               >
                 Actions
               </th>
@@ -142,7 +154,7 @@ export function TransactionsTable({
           <tbody>
             {transactions.length === 0 ? (
               <tr>
-                <td colSpan={17} className={styles.emptyState} data-testid="transactions-empty-state">
+                <td colSpan={visibleColumns.length + 2} className={styles.emptyState} data-testid="transactions-empty-state">
                   No transactions match the current search or filters.
                 </td>
               </tr>
@@ -150,15 +162,11 @@ export function TransactionsTable({
               transactions.map((txn) => {
                 const isSelected = selectionSet.has(txn.id);
                 const rowClass = `${styles.row} ${isSelected ? styles.rowSelected : ''}`;
-                const pillClass =
-                  txn.type === 'Income'
-                    ? `${styles.pill} ${styles.pillIncome}`
-                    : `${styles.pill} ${styles.pillExpense}`;
 
                 return (
                   <tr key={txn.id} className={rowClass} data-testid={`transaction-row-${txn.id}`}>
                     <td
-                      className={`${styles.cell} ${styles.checkboxCell} ${styles.stickyLeft}`}
+                      className={`${styles.cell} ${styles.checkboxCell} ${styles.stickyLeft} ${styles.stickyLeftEdge}`}
                       data-testid={`transaction-select-cell-${txn.id}`}
                     >
                       <input
@@ -169,82 +177,55 @@ export function TransactionsTable({
                         data-testid={`transaction-select-${txn.id}`}
                       />
                     </td>
-                    <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.date }}>
-                      {txn.date}
-                    </td>
-                    <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.type }}>
-                      <span className={pillClass}>{txn.type}</span>
-                    </td>
-                    <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.account }}>
-                      {txn.account}
-                    </td>
-                    <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.shop }}>
-                      {txn.shop}
-                    </td>
-                    <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.notes }}>
-                      <div>
-                        <span>{txn.notes}</span>
-                        <div className={styles.noteText}>{txn.id}</div>
-                      </div>
-                    </td>
-                    <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.amount }}>
-                      {formatCurrency(txn.amount)}
-                    </td>
-                    <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.percentBack }}>
-                      {formatPercent(txn.percentBack)}
-                    </td>
-                    <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.fixedBack }}>
-                      {formatCurrency(txn.fixedBack)}
-                    </td>
-                    <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.totalBack }}>
-                      {formatCurrency(txn.totalBack)}
-                    </td>
-                    <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.finalPrice }}>
-                      {formatCurrency(txn.finalPrice)}
-                    </td>
-                    <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.debtTag }}>
-                      {txn.debtTag}
-                    </td>
-                    <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.cycleTag }}>
-                      {txn.cycleTag}
-                    </td>
-                    <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.category }}>
-                      {txn.category}
-                    </td>
-                    <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.linkedTxn }}>
-                      {txn.linkedTxn}
-                    </td>
-                    <td className={styles.cell} style={{ minWidth: COLUMN_WIDTHS.owner }}>
-                      {txn.owner}
-                    </td>
+                    {visibleColumns.map((column) => {
+                      const definition = getColumnDefinition(column.id);
+                      const alignClass = definition?.align === 'right' ? styles.cellAlignRight : '';
+                      return (
+                        <td
+                          key={column.id}
+                          className={`${styles.cell} ${alignClass}`}
+                          style={{
+                            minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
+                            width: `${column.width}px`,
+                          }}
+                          title={typeof txn[column.id] === 'string' ? txn[column.id] : undefined}
+                        >
+                          <div className={styles.cellText}>{renderCellContent(column.id, txn)}</div>
+                        </td>
+                      );
+                    })}
                     <td
-                      className={`${styles.cell} ${styles.actionsCell} ${styles.stickyRight}`}
-                      style={{ minWidth: COLUMN_WIDTHS.actions }}
+                      className={`${styles.cell} ${styles.actionsCell} ${styles.stickyRight} ${styles.stickyRightEdge}`}
                       data-testid={`transaction-actions-${txn.id}`}
                     >
-                      <div className={styles.actionsGroup}>
+                      <div className={styles.tableActionsGroup}>
                         <button
                           type="button"
-                          className={styles.ghostButton}
+                          className={`${styles.tableActionIconButton} ${styles.tooltipTrigger}`}
                           onClick={() => onOpenAdvanced({ mode: 'edit', transaction: txn })}
                           data-testid={`transaction-edit-${txn.id}`}
+                          aria-label={`Edit ${txn.id}`}
+                          data-tooltip="Edit"
                         >
-                          Edit
+                          <FiEdit2 aria-hidden />
                         </button>
                         <button
                           type="button"
-                          className={`${styles.ghostButton} ${styles.dangerButton}`}
+                          className={`${styles.tableActionIconButton} ${styles.tableDangerIconButton} ${styles.tooltipTrigger}`}
                           onClick={() => onOpenAdvanced({ mode: 'delete', transaction: txn })}
                           data-testid={`transaction-delete-${txn.id}`}
+                          aria-label={`Delete ${txn.id}`}
+                          data-tooltip="Delete"
                         >
-                          Delete
+                          <FiTrash2 aria-hidden />
                         </button>
                         <button
                           type="button"
-                          className={styles.advancedButton}
+                          className={`${styles.advancedButton} ${styles.tooltipTrigger}`}
                           onClick={() => onOpenAdvanced({ mode: 'advanced', transaction: txn })}
                           data-testid={`transaction-advanced-${txn.id}`}
                           aria-label={`Open advanced options for ${txn.id}`}
+                          data-tooltip="More actions"
                         >
                           <FiMoreHorizontal aria-hidden />
                         </button>
@@ -258,16 +239,77 @@ export function TransactionsTable({
         </table>
       </div>
 
+      <div className={styles.paginationBar} data-testid="transactions-pagination">
+        <div className={styles.pageSizeGroup}>
+          <label htmlFor="transactions-page-size">Rows per page</label>
+          <select
+            id="transactions-page-size"
+            className={styles.pageSizeSelect}
+            value={pagination.pageSize}
+            onChange={(event) => pagination.onPageSizeChange(Number(event.target.value))}
+          >
+            {pagination.pageSizeOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className={styles.paginationControls}>
+          <button
+            type="button"
+            className={styles.paginationButton}
+            onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
+            disabled={pagination.currentPage === 1}
+            aria-label="Previous page"
+          >
+            Prev
+          </button>
+          <span className={styles.paginationStatus}>
+            Page {pagination.currentPage} of {pagination.totalPages}
+          </span>
+          <button
+            type="button"
+            className={styles.paginationButton}
+            onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
+            disabled={pagination.currentPage === pagination.totalPages}
+            aria-label="Next page"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
       {selectionSummary.count > 0 ? (
         <div className={styles.tableFooter}>
           <div className={styles.selectionBar} data-testid="transactions-selection-bar">
-            <span>
-              {selectionSummary.count} transaction{selectionSummary.count > 1 ? 's' : ''} selected
-            </span>
-            <div className={styles.selectionTotals}>
-              <span>Total amount {formatCurrency(selectionSummary.amount)}</span>
-              <span>Final price {formatCurrency(selectionSummary.finalPrice)}</span>
-              <span>Total back {formatCurrency(selectionSummary.totalBack)}</span>
+            <div className={styles.selectionSummaryText}>
+              <span>
+                {selectionSummary.count} transaction{selectionSummary.count > 1 ? 's' : ''} selected
+              </span>
+              <div className={styles.selectionTotals}>
+                <span>Total amount {formatAmountWithTrailing(selectionSummary.amount)}</span>
+                <span>Final price {formatAmountWithTrailing(selectionSummary.finalPrice)}</span>
+                <span>Total back {formatAmountWithTrailing(selectionSummary.totalBack)}</span>
+              </div>
+            </div>
+            <div className={styles.selectionButtons}>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={onDeselectAll}
+                data-testid="transactions-selection-clear"
+              >
+                De-select
+              </button>
+              <button
+                type="button"
+                className={styles.primaryButton}
+                onClick={onToggleShowSelected}
+                data-testid="transactions-selection-toggle"
+              >
+                {isShowingSelectedOnly ? 'Show all rows' : 'Show selected rows'}
+              </button>
             </div>
           </div>
         </div>

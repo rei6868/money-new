@@ -1,4 +1,5 @@
-import { FiPlus, FiRotateCcw, FiSearch, FiSliders, FiX } from 'react-icons/fi';
+import { useEffect, useRef, useState } from 'react';
+import { FiPlus, FiRotateCcw, FiSearch, FiSettings, FiSliders, FiX } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 
@@ -11,10 +12,74 @@ export function TransactionsToolbar({
   onFilterClick,
   filterCount,
   onAddTransaction,
+  onCustomizeColumns,
 }) {
   const hasQuery = Boolean(query);
   const canRestore = Boolean(previousQuery);
   const hasFilters = filterCount > 0;
+  const searchInputRef = useRef(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+
+  const showClearButton = isSearchFocused && hasQuery;
+
+  const handleFocus = () => {
+    setIsSearchFocused(true);
+  };
+
+  const handleClearMouseDown = (event) => {
+    event.preventDefault();
+  };
+
+  const handleClearClick = () => {
+    if (!hasQuery) {
+      return;
+    }
+    setIsConfirmingClear(true);
+  };
+
+  const handleSearchKeyDown = (event) => {
+    if (event.key === 'Escape' && hasQuery) {
+      event.preventDefault();
+      setIsConfirmingClear(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!isConfirmingClear) {
+      return undefined;
+    }
+
+    const handleKey = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsConfirmingClear(false);
+        requestAnimationFrame(() => {
+          searchInputRef.current?.focus();
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [isConfirmingClear]);
+
+  const handleConfirmClear = () => {
+    setIsConfirmingClear(false);
+    onClearQuery();
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+  };
+
+  const handleCancelClear = () => {
+    setIsConfirmingClear(false);
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+  };
 
   return (
     <section className={styles.toolbarCard} aria-label="Transactions controls">
@@ -22,19 +87,24 @@ export function TransactionsToolbar({
         <div className={styles.searchGroup}>
           <FiSearch className={styles.searchIcon} aria-hidden />
           <input
+            ref={searchInputRef}
             type="search"
             placeholder="Search all transactions"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
+            onFocus={handleFocus}
+            onBlur={() => setIsSearchFocused(false)}
+            onKeyDown={handleSearchKeyDown}
             className={styles.searchInput}
             data-testid="transactions-search-input"
             aria-label="Search transactions"
           />
-          {hasQuery ? (
+          {showClearButton ? (
             <button
               type="button"
-              className={styles.iconButton}
-              onClick={onClearQuery}
+              className={styles.searchClearButton}
+              onMouseDown={handleClearMouseDown}
+              onClick={handleClearClick}
               data-testid="transactions-search-clear"
               aria-label="Clear search"
             >
@@ -46,14 +116,13 @@ export function TransactionsToolbar({
         {canRestore ? (
           <button
             type="button"
-            className={styles.restoreChip}
+            className={styles.restoreIconButton}
             onClick={() => onRestoreQuery(previousQuery)}
             data-testid="transactions-search-restore"
-            aria-label="Restore previous search"
+            aria-label={`Restore search ${previousQuery}`}
+            title={`Restore “${previousQuery}”`}
           >
             <FiRotateCcw aria-hidden />
-            <span>Restore</span>
-            <span className={styles.wrap}>&ldquo;{previousQuery}&rdquo;</span>
           </button>
         ) : null}
       </div>
@@ -73,6 +142,17 @@ export function TransactionsToolbar({
 
         <button
           type="button"
+          className={styles.filterButton}
+          onClick={onCustomizeColumns}
+          data-testid="transactions-customize-columns-trigger"
+          aria-label="Customize table columns"
+        >
+          <FiSettings aria-hidden />
+          Customize columns
+        </button>
+
+        <button
+          type="button"
           className={styles.primaryButton}
           onClick={onAddTransaction}
           data-testid="transactions-add-button"
@@ -81,6 +161,32 @@ export function TransactionsToolbar({
           Add transaction
         </button>
       </div>
+
+      {isConfirmingClear ? (
+        <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
+          <div className={styles.confirmDialog}>
+            <p className={styles.confirmMessage}>Clear the current search text?</p>
+            <div className={styles.confirmActions}>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={handleCancelClear}
+                data-testid="transactions-search-cancel-clear"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.primaryButton}
+                onClick={handleConfirmClear}
+                data-testid="transactions-search-confirm-clear"
+              >
+                Clear search
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
