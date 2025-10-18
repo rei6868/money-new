@@ -1,117 +1,98 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  FiChevronDown,
-  FiEdit2,
-  FiFilter,
-  FiMoreHorizontal,
-  FiTrash2,
-  FiUser,
-  FiTag,
-  FiXCircle,
-  FiRefreshCw,
-} from 'react-icons/fi';
-
-import styles from '../../styles/TransactionsHistory.module.css';
-import { formatAmount, formatPercent } from '../../lib/numberFormat';
-import { TRANSACTION_COLUMN_DEFINITIONS } from './transactionColumns';
-
-const definitionMap = new Map(
-  TRANSACTION_COLUMN_DEFINITIONS.map((definition) => [definition.id, definition]),
-);
-import { useEffect, useMemo, useRef } from 'react';
-import { FiChevronDown, FiChevronUp, FiEdit2, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiEdit2, FiMoreHorizontal, FiTrash2, FiX } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { formatAmount, formatAmountWithTrailing, formatPercent } from '../../lib/numberFormat';
+import { TRANSACTION_COLUMN_DEFINITIONS } from './transactionColumns';
 
-const STICKY_COLUMN_BUFFER = 252; // checkbox (72px) + actions column (180px) baseline
-
-function TotalBackCell({ transaction }) {
-  const totalBack = formatAmount(transaction.totalBack);
-  const percentBack = Number(transaction.percentBack ?? 0);
-  const fixedBack = Number(transaction.fixedBack ?? 0);
-  const amount = Number(transaction.amount ?? 0);
-  const hasPercent = percentBack > 0;
-  const hasFixed = fixedBack > 0;
-  const canShowFormula =
-    Number(transaction.totalBack ?? 0) > 0 && hasPercent && hasFixed && amount > 0;
-  const formulaText = `${formatAmount(amount)}×${formatPercent(percentBack)} + ${formatAmount(
-    fixedBack,
-  )}`;
-
-  return (
-    <div className={styles.totalBackCell} title={canShowFormula ? formulaText : undefined}>
-      <span className={styles.totalBackValue}>{totalBack}</span>
-      {canShowFormula ? <span className={styles.totalBackFormula}>{formulaText}</span> : null}
-    </div>
-  );
-}
-
-const columnRenderers = {
-  date: (txn) => txn.displayDate ?? txn.date ?? '—',
-  type: (txn, stylesRef) => (
-    <span
-      className={
-        txn.type === 'Income'
-          ? `${stylesRef.pill} ${stylesRef.pillIncome}`
-          : `${stylesRef.pill} ${stylesRef.pillExpense}`
-      }
-    >
-      {txn.type}
-    </span>
-  ),
-  account: (txn) => txn.account ?? '—',
-  shop: (txn) => txn.shop ?? '—',
-  notes: (txn) => txn.notes ?? '—',
-  amount: (txn, column, stylesRef) => {
-    const numeric = Math.abs(Number(txn.amount ?? 0));
-    const toneClass = getAmountToneClass(txn.type);
-    return (
-      <span className={`${stylesRef.amountValue} ${toneClass}`} data-testid={`transaction-amount-${txn.id}`}>
-        {formatAmount(numeric)}
-      </span>
-    );
-  },
-  percentBack: (txn) => formatPercent(txn.percentBack),
-  fixedBack: (txn) => formatAmount(txn.fixedBack),
-  totalBack: (txn) => <TotalBackCell transaction={txn} />,
-  finalPrice: (txn) => formatAmount(txn.finalPrice),
-  debtTag: (txn) => txn.debtTag ?? '—',
-  cycleTag: (txn) => txn.cycleTag ?? '—',
-  category: (txn) => txn.category ?? '—',
-  linkedTxn: (txn) => txn.linkedTxn ?? '—',
-  owner: (txn) => txn.owner ?? '—',
-  id: (txn) => txn.id ?? '—',
-};
-
-function renderCellContent(column, transaction) {
-  const renderer = columnRenderers[column.id];
-  if (!renderer) {
-    return transaction[column.id] ?? '—';
-  }
-  return renderer(transaction, column, styles);
-}
-
-function computeMinWidth(columns, definitionMap) {
-  return columns.reduce((total, column) => {
-    const definition = definitionMap.get(column.id);
-    const minWidth = column.width || definition?.minWidth || 120;
-    return total + minWidth;
-  }, 0);
-}
+const ACTION_MENU_CLOSE_DELAY = 160;
 
 const QUICK_FILTER_CONFIG = {
-  category: { type: 'single', icon: FiTag, label: 'Category' },
-  owner: { type: 'single', icon: FiUser, label: 'People' },
-  type: { type: 'multi', icon: FiFilter, label: 'Type' },
-  debtTag: { type: 'multi', icon: FiTag, label: 'Debt Tag' },
+  category: { type: 'single', label: 'Category' },
+  owner: { type: 'single', label: 'People' },
+  type: { type: 'multi', label: 'Type' },
+  debtTag: { type: 'multi', label: 'Debt Tag' },
 };
 
-const TOTAL_FIELDS = new Map([
-  ['amount', (summary) => formatAmount(summary.amount)],
-  ['finalPrice', (summary) => formatAmount(summary.finalPrice)],
-  ['totalBack', (summary) => formatAmount(summary.totalBack)],
-]);
+function getAmountToneClass(type) {
+  if (type === 'Income') {
+    return styles.amountIncome;
+  }
+  if (type === 'Transfer') {
+    return styles.amountTransfer;
+  }
+  return styles.amountExpense;
+}
+
+function renderCellContent(column, transaction) {
+  switch (column.id) {
+    case 'date':
+      return transaction.displayDate ?? transaction.date ?? '—';
+    case 'type':
+    case 'account':
+    case 'shop':
+    case 'notes':
+    case 'debtTag':
+    case 'cycleTag':
+    case 'category':
+    case 'linkedTxn':
+    case 'owner':
+    case 'id':
+      return transaction[column.id] ?? '—';
+    case 'amount': {
+      const numeric = Math.abs(Number(transaction.amount ?? 0));
+      const toneClass = getAmountToneClass(transaction.type);
+      return (
+        <span className={`${styles.amountValue} ${toneClass}`} data-testid={`transaction-amount-${transaction.id}`}>
+          {formatAmount(numeric)}
+        </span>
+      );
+    }
+    case 'percentBack':
+      return formatPercent(transaction.percentBack);
+    case 'fixedBack':
+      return formatAmount(transaction.fixedBack);
+    case 'totalBack': {
+      const amount = Number(transaction.amount ?? 0);
+      const percentBack = Number(transaction.percentBack ?? 0);
+      const fixedBack = Number(transaction.fixedBack ?? 0);
+      const totalBack = Number(transaction.totalBack ?? 0);
+      const showFormula = amount > 0 && percentBack > 0 && fixedBack > 0 && totalBack > 0;
+      const formula = `${formatAmount(amount)}×${formatPercent(percentBack)} + ${formatAmount(fixedBack)}`;
+      return (
+        <div className={styles.totalBackCell} title={showFormula ? formula : undefined}>
+          <span className={styles.totalBackValue}>{formatAmount(totalBack)}</span>
+          {showFormula ? <span className={styles.totalBackFormula}>{formula}</span> : null}
+        </div>
+      );
+    }
+    case 'finalPrice':
+      return formatAmount(transaction.finalPrice);
+    default:
+      return transaction[column.id] ?? '—';
+  }
+}
+
+function SortIcon({ direction }) {
+  if (direction === 'asc') {
+    return <FiChevronUp className={`${styles.sortIcon} ${styles.sortIconAsc}`} aria-hidden />;
+  }
+  if (direction === 'desc') {
+    return <FiChevronDown className={`${styles.sortIcon} ${styles.sortIconDesc}`} aria-hidden />;
+  }
+  return <FiChevronUp className={`${styles.sortIcon} ${styles.sortIconIdle}`} aria-hidden />;
+}
+
+function QuickFilterBadge({ label, value, onRemove }) {
+  return (
+    <span className={styles.filterBadge}>
+      {label}: {value}
+      <button type="button" className={styles.filterBadgeDismiss} onClick={onRemove} aria-label={`Remove filter ${label}`}>
+        <FiX aria-hidden />
+      </button>
+    </span>
+  );
+}
 
 export function TransactionsTable({
   transactions,
@@ -121,650 +102,374 @@ export function TransactionsTable({
   selectionSummary = { count: 0, amount: 0, finalPrice: 0, totalBack: 0 },
   onOpenAdvanced,
   columnDefinitions = [],
-  visibleColumns,
+  visibleColumns = [],
   pagination,
-  sortState,
-  onSort,
+  sortState = [],
+  onSortChange,
   quickFilters,
   quickFilterOptions,
   onQuickFilterChange,
-  sortState = [],
-  onSortChange,
 }) {
+  const effectiveDefinitions = columnDefinitions.length > 0 ? columnDefinitions : TRANSACTION_COLUMN_DEFINITIONS;
   const definitionMap = useMemo(
-    () => new Map(columnDefinitions.map((definition) => [definition.id, definition])),
-    [columnDefinitions],
+    () => new Map(effectiveDefinitions.map((definition) => [definition.id, definition])),
+    [effectiveDefinitions],
   );
+
+  const resolvedColumns = useMemo(() => {
+    const source = visibleColumns.length > 0
+      ? visibleColumns
+      : effectiveDefinitions.map((definition, index) => ({
+          ...definition,
+          order: index,
+          visible: definition.defaultVisible !== false,
+          width: definition.defaultWidth ?? definition.minWidth ?? 120,
+        }));
+
+    return source
+      .filter((column) => column.visible !== false)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((column) => {
+        const definition = definitionMap.get(column.id) ?? {};
+        return {
+          ...definition,
+          ...column,
+          label: column.label ?? definition.label ?? column.id,
+          align: column.align ?? definition.align ?? 'left',
+          width: column.width ?? definition.defaultWidth ?? definition.minWidth ?? 120,
+        };
+      });
+  }, [visibleColumns, effectiveDefinitions, definitionMap]);
+
+  const minTableWidth = useMemo(
+    () =>
+      resolvedColumns.reduce((total, column) => {
+        const definition = definitionMap.get(column.id);
+        const minWidth = column.width ?? definition?.minWidth ?? 120;
+        return total + minWidth;
+      }, 0),
+    [resolvedColumns, definitionMap],
+  );
+
   const selectionSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const allSelected =
-    transactions.length > 0 && transactions.every((txn) => selectionSet.has(txn.id));
-  const isIndeterminate = selectionSet.size > 0 && !allSelected;
   const headerCheckboxRef = useRef(null);
   const [activeActionId, setActiveActionId] = useState(null);
   const closeActionTimer = useRef(null);
-  const [openFilterId, setOpenFilterId] = useState(null);
-  const [filterSearch, setFilterSearch] = useState('');
-  const filterPopoverRef = useRef(null);
+
+  useEffect(() => {
+    if (!headerCheckboxRef.current) {
+      return;
+    }
+    const isIndeterminate = selectionSet.size > 0 && selectionSet.size < transactions.length;
+    headerCheckboxRef.current.indeterminate = isIndeterminate;
+  }, [selectionSet, transactions]);
+
+  useEffect(
+    () => () => {
+      if (closeActionTimer.current) {
+        clearTimeout(closeActionTimer.current);
+      }
+    },
+    [],
+  );
 
   const sortLookup = useMemo(() => {
     const lookup = new Map();
-    sortState?.forEach((item, index) => {
-      lookup.set(item.id, { ...item, index });
+    sortState.forEach((entry, index) => {
+      lookup.set(entry.id, { ...entry, index });
     });
     return lookup;
   }, [sortState]);
 
-  useEffect(() => {
-    if (headerCheckboxRef.current) {
-      headerCheckboxRef.current.indeterminate = isIndeterminate;
+  const handleSortClick = (columnId) => (event) => {
+    if (!onSortChange) {
+      return;
     }
-  }, [isIndeterminate]);
-
-  useEffect(() => () => {
-    if (closeActionTimer.current) {
-      clearTimeout(closeActionTimer.current);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!openFilterId) {
-      return undefined;
-    }
-
-    const handleOutsideClick = (event) => {
-      if (filterPopoverRef.current && !filterPopoverRef.current.contains(event.target)) {
-        setOpenFilterId(null);
-        setFilterSearch('');
-      }
-    };
-
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-    };
-  }, [openFilterId]);
-
-  const minTableWidth = useMemo(() => computeMinWidth(visibleColumns), [visibleColumns]);
-  const minTableWidth = useMemo(
-    () => computeMinWidth(visibleColumns, definitionMap),
-    [visibleColumns, definitionMap],
-  );
-
-  const handleSortToggle = useMemo(
-    () =>
-      (columnId) => (event) => {
-        if (!onSortChange) {
-          return;
-        }
-        const isMulti = event.shiftKey || event.metaKey || event.ctrlKey;
-        onSortChange(columnId, { multi: isMulti });
-      },
-    [onSortChange],
-  );
-
-  const totals = useMemo(
-    () =>
-      transactions.reduce(
-        (acc, txn) => {
-          const amount = Number(txn.amount) || 0;
-          const finalPrice = Number(txn.finalPrice) || 0;
-          const totalBack = Number(txn.totalBack) || 0;
-
-          acc.amount += amount;
-          acc.finalPrice += finalPrice;
-          acc.totalBack += totalBack;
-          return acc;
-        },
-        { amount: 0, finalPrice: 0, totalBack: 0 },
-      ),
-    [transactions],
-  );
-
-  const handleActionAreaEnter = (id) => {
-    if (closeActionTimer.current) {
-      clearTimeout(closeActionTimer.current);
-      closeActionTimer.current = null;
-    }
-    setActiveActionId(id);
+    const isMulti = event.shiftKey || event.metaKey || event.ctrlKey;
+    onSortChange(columnId, { multi: isMulti });
   };
 
-  const handleActionAreaLeave = () => {
+  const handleSelectAllChange = (event) => {
+    onSelectAll(event.target.checked);
+  };
+
+  const handleRowCheckboxChange = (transactionId) => (event) => {
+    onSelectRow(transactionId, event.target.checked);
+  };
+
+  const handleRequestCloseActions = () => {
     if (closeActionTimer.current) {
       clearTimeout(closeActionTimer.current);
     }
     closeActionTimer.current = setTimeout(() => {
       setActiveActionId(null);
-    }, 80);
+    }, ACTION_MENU_CLOSE_DELAY);
   };
 
-  const handleFilterToggle = (columnId) => {
-    setOpenFilterId((prev) => {
-      if (prev === columnId) {
-        setFilterSearch('');
-        return null;
-      }
-      setFilterSearch('');
-      return columnId;
-    });
+  const handleImmediateCloseActions = () => {
+    if (closeActionTimer.current) {
+      clearTimeout(closeActionTimer.current);
+    }
+    setActiveActionId(null);
   };
 
-  const handleFilterSearchChange = (event) => {
-    setFilterSearch(event.target.value);
-  };
-
-  const handleClearFilter = (columnId) => {
-    const config = QUICK_FILTER_CONFIG[columnId];
+  const handleQuickFilterSelect = (filterId, value) => {
+    const config = QUICK_FILTER_CONFIG[filterId];
     if (!config) {
       return;
     }
     if (config.type === 'multi') {
-      onQuickFilterChange(columnId, []);
-    } else {
-      onQuickFilterChange(columnId, '');
-    }
-  };
-
-  const renderFilterOptions = (columnId) => {
-    const config = QUICK_FILTER_CONFIG[columnId];
-    if (!config) {
-      return null;
-    }
-    const options = quickFilterOptions[columnId] ?? [];
-    const value = quickFilters[columnId] ?? (config.type === 'multi' ? [] : '');
-    const loweredSearch = filterSearch.trim().toLowerCase();
-    const filteredOptions = options.filter((option) =>
-      option.toLowerCase().includes(loweredSearch),
-    );
-
-    if (config.type === 'single') {
-      return (
-        <ul className={styles.filterList} role="listbox">
-          {filteredOptions.map((option) => {
-            const isSelected = value === option;
-            return (
-              <li key={option}>
-                <button
-                  type="button"
-                  className={`${styles.filterOptionButton} ${
-                    isSelected ? styles.filterOptionButtonActive : ''
-                  }`}
-                  onClick={() => {
-                    onQuickFilterChange(columnId, isSelected ? '' : option);
-                    setOpenFilterId(null);
-                    setFilterSearch('');
-                  }}
-                  role="option"
-                  aria-selected={isSelected}
-                  data-testid={`transactions-filter-${columnId}-${option}`}
-                >
-                  {option}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      );
-    }
-
-    return (
-      <ul className={styles.filterList} role="listbox" aria-multiselectable>
-        {filteredOptions.map((option) => {
-          const isSelected = value.includes(option);
-          return (
-            <li key={option}>
-              <label className={`${styles.filterCheckboxLabel} ${
-                isSelected ? styles.filterCheckboxLabelActive : ''
-              }`}>
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => {
-                    const next = isSelected
-                      ? value.filter((item) => item !== option)
-                      : [...value, option];
-                    onQuickFilterChange(columnId, next);
-                  }}
-                  className={styles.filterCheckbox}
-                  data-testid={`transactions-filter-${columnId}-toggle-${option}`}
-                />
-                <span>{option}</span>
-              </label>
-            </li>
-          );
-        })}
-      </ul>
-    );
-  };
-
-  const renderFilterBadges = (columnId) => {
-    const config = QUICK_FILTER_CONFIG[columnId];
-    if (!config) {
-      return null;
-    }
-    const value = quickFilters[columnId];
-
-    if (config.type === 'multi') {
-      if (!value || value.length === 0) {
-        return null;
+      const previous = new Set(quickFilters?.[filterId] ?? []);
+      if (previous.has(value)) {
+        previous.delete(value);
+      } else {
+        previous.add(value);
       }
-      return value.map((item) => (
-        <span key={item} className={styles.filterBadge} data-testid={`filter-badge-${columnId}-${item}`}>
-          {item}
-        </span>
-      ));
+      onQuickFilterChange(filterId, Array.from(previous));
+      return;
     }
-
-    if (!value) {
-      return null;
-    }
-    return (
-      <span className={styles.filterBadge} data-testid={`filter-badge-${columnId}`}>
-        {value}
-      </span>
-    );
+    onQuickFilterChange(filterId, value);
   };
 
-  const handleScroll = () => {
-    setOpenFilterId(null);
-    setFilterSearch('');
+  const handleClearBadge = (filterId, value) => {
+    const config = QUICK_FILTER_CONFIG[filterId];
+    if (!config) {
+      return;
+    }
+    if (config.type === 'multi') {
+      const previous = new Set(quickFilters?.[filterId] ?? []);
+      previous.delete(value);
+      onQuickFilterChange(filterId, Array.from(previous));
+      return;
+    }
+    onQuickFilterChange(filterId, '');
   };
+
+  const quickFilterBadges = useMemo(() => {
+    if (!quickFilters) {
+      return [];
+    }
+    return Object.entries(quickFilters).flatMap(([key, value]) => {
+      if (!value || (Array.isArray(value) && value.length === 0)) {
+        return [];
+      }
+      const label = QUICK_FILTER_CONFIG[key]?.label ?? key;
+      if (Array.isArray(value)) {
+        return value.map((item) => ({ key: `${key}:${item}`, filterId: key, label, value: item }));
+      }
+      return [{ key, filterId: key, label, value }];
+    });
+  }, [quickFilters]);
 
   return (
-    <section className={styles.tableCard} aria-label="Transactions history table">
-      <div
-        className={styles.tableScroll}
-        data-testid="transactions-table-container"
-        onScroll={handleScroll}
-      >
-        <table className={styles.table} style={{ minWidth: `${minTableWidth + STICKY_COLUMN_BUFFER}px` }}>
+    <div className={styles.tableCard}>
+      <div className={styles.quickFilterHeader}>
+        <div className={styles.filterBadges}>
+          {quickFilterBadges.map((badge) => (
+            <QuickFilterBadge
+              key={badge.key}
+              label={badge.label}
+              value={badge.value}
+              onRemove={() => handleClearBadge(badge.filterId, badge.value)}
+            />
+          ))}
+        </div>
+        <div className={styles.selectionSummary}>
+          <span>{selectionSummary.count} selected</span>
+          <span>Amount {formatAmountWithTrailing(selectionSummary.amount)}</span>
+          <span>Final {formatAmountWithTrailing(selectionSummary.finalPrice)}</span>
+          <span>Back {formatAmountWithTrailing(selectionSummary.totalBack)}</span>
+        </div>
+      </div>
+
+      <div className={styles.tableScroll}>
+        <table className={styles.table} style={{ minWidth: `${minTableWidth}px` }}>
           <thead>
             <tr>
-              <th
-                scope="col"
-                className={`${styles.headerCell} ${styles.stickyLeft} ${styles.stickyLeftEdge} ${styles.checkboxCell}`}
-              >
-                <input
-                  ref={headerCheckboxRef}
-                  type="checkbox"
-                  aria-label="Select all transactions"
-                  checked={allSelected}
-                  onChange={(event) => onSelectAll?.(event.target.checked)}
-                  data-testid="transaction-select-all"
-                />
+              <th className={`${styles.headerCell} ${styles.stickyLeft}`} scope="col">
+                <div className={styles.headerContent}>
+                  <input
+                    ref={headerCheckboxRef}
+                    type="checkbox"
+                    checked={transactions.length > 0 && selectionSet.size === transactions.length}
+                    onChange={handleSelectAllChange}
+                    aria-label="Select all transactions"
+                  />
+                </div>
               </th>
-              {visibleColumns.map((column) => {
-                const definition = definitionMap.get(column.id);
-                const alignClass = definition?.align === 'right' ? styles.headerAlignRight : '';
-                const isSorted = sortState?.column === column.id;
-                const ariaSort = isSorted ? (sortState.direction === 'asc' ? 'ascending' : 'descending') : 'none';
-                const IconComponent = QUICK_FILTER_CONFIG[column.id]?.icon ?? FiFilter;
-                const sortDescriptor = sortLookup.get(column.id);
-                const isSorted = Boolean(sortDescriptor);
-                const sortDirection = sortDescriptor?.direction ?? 'asc';
-                const sortOrder = sortDescriptor ? sortDescriptor.index + 1 : null;
-                const isSortable = definition?.sortable;
+              <th className={`${styles.headerCell} ${styles.stickyLeft}`} scope="col">
+                <div className={styles.headerContent}>
+                  Actions
+                </div>
+              </th>
+              {resolvedColumns.map((column) => {
+                const sortMeta = sortLookup.get(column.id);
                 return (
-                  <th
-                    key={column.id}
-                    scope="col"
-                    className={`${styles.headerCell} ${alignClass}`}
-                    aria-sort={ariaSort}
-                    style={{
-                      minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
-                      width: `${column.width}px`,
-                    }}
-                    ref={registerQuickFilterRef(column.id)}
-                  >
+                  <th key={column.id} className={styles.headerCell} style={{ width: column.width }} scope="col">
                     <button
                       type="button"
                       className={styles.headerSortButton}
-                      onClick={() => onSort(column.id)}
-                      data-testid={`transactions-sort-${column.id}`}
+                      onClick={handleSortClick(column.id)}
                     >
-                      <span className={styles.headerContent}>{definition?.label ?? column.id}</span>
-                      <FiChevronDown
-                        aria-hidden
-                        className={`${styles.sortIcon} ${
-                          isSorted
-                            ? sortState.direction === 'asc'
-                              ? styles.sortIconAsc
-                              : styles.sortIconDesc
-                            : styles.sortIconIdle
-                        }`}
-                      />
+                      <span className={styles.headerContent}>{column.label}</span>
+                      <SortIcon direction={sortMeta?.direction} />
                     </button>
-                    {QUICK_FILTER_CONFIG[column.id] ? (
+                    {quickFilterOptions?.[column.id] ? (
                       <div className={styles.headerFilterBar}>
-                        <button
-                          type="button"
-                          className={`${styles.filterTrigger} ${
-                            (QUICK_FILTER_CONFIG[column.id].type === 'multi'
-                            ? (quickFilters[column.id] ?? []).length > 0
-                            : Boolean(quickFilters[column.id]))
-                              ? styles.filterTriggerActive
-                              : ''
-                          }`}
-                          onClick={() => handleFilterToggle(column.id)}
-                          aria-haspopup="dialog"
-                          aria-expanded={openFilterId === column.id}
-                          data-testid={`transactions-quick-filter-${column.id}`}
-                        >
-                          <IconComponent aria-hidden />
-                        </button>
-                        <div className={styles.filterBadges}>{renderFilterBadges(column.id)}</div>
-                      </div>
-                    ) : null}
-                    {openFilterId === column.id ? (
-                      <div className={styles.filterPopover} ref={filterPopoverRef} role="dialog">
-                        {QUICK_FILTER_CONFIG[column.id]?.type === 'single' ? (
-                          <div className={styles.filterSearchRow}>
-                            <input
-                              type="search"
-                              value={filterSearch}
-                              onChange={handleFilterSearchChange}
-                              className={styles.filterSearchInput}
-                              placeholder={`Search ${QUICK_FILTER_CONFIG[column.id].label}`}
-                              data-testid={`transactions-quick-filter-search-${column.id}`}
-                            />
-                          </div>
-                        ) : null}
-                        <div className={styles.filterOptionsWrapper}>{renderFilterOptions(column.id)}</div>
-                        <div className={styles.filterFooter}>
-                          <button
-                            type="button"
-                            className={styles.filterClearButton}
-                            onClick={() => handleClearFilter(column.id)}
-                            data-testid={`transactions-quick-filter-clear-${column.id}`}
-                          >
-                            Clear
-                          </button>
+                        <div className={styles.quickFilterList}>
+                          {(() => {
+                            const options = quickFilterOptions[column.id] ?? [];
+                            const config = QUICK_FILTER_CONFIG[column.id];
+                            const currentValue = quickFilters?.[column.id];
+                            if (config?.type === 'multi') {
+                              return options.map((option) => {
+                                const isChecked = Array.isArray(currentValue)
+                                  ? currentValue.includes(option)
+                                  : false;
+                                return (
+                                  <label key={option} className={styles.quickFilterOption}>
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => handleQuickFilterSelect(column.id, option)}
+                                    />
+                                    {option}
+                                  </label>
+                                );
+                              });
+                            }
+                            return (
+                              <select
+                                className={styles.quickFilterSelect}
+                                value={typeof currentValue === 'string' ? currentValue : ''}
+                                onChange={(event) => handleQuickFilterSelect(column.id, event.target.value)}
+                              >
+                                <option value="">All</option>
+                                {options.map((option) => (
+                                  <option key={option} value={option}>
+                                    {option}
+                                  </option>
+                                ))}
+                              </select>
+                            );
+                          })()}
                         </div>
                       </div>
                     ) : null}
-                    {isSortable && onSortChange ? (
-                      <button
-                        type="button"
-                        className={`${styles.headerSortButton} ${
-                          isSorted ? styles.headerSortActive : ''
-                        }`}
-                        onClick={handleSortToggle(column.id)}
-                        data-testid={`transactions-sort-${column.id}`}
-                        aria-label={`Sort by ${definition?.label ?? column.id}${
-                          sortState?.length > 1 ? ' (shift-click for multi-sort)' : ''
-                        }`}
-                      >
-                        <span className={styles.headerSortLabel}>{definition?.label ?? column.id}</span>
-                        <span className={styles.headerSortIcon} aria-hidden>
-                          {isSorted ? (
-                            sortDirection === 'desc' ? <FiChevronDown /> : <FiChevronUp />
-                          ) : (
-                            <FiChevronUp />
-                          )}
-                        </span>
-                        {isSorted && sortState?.length > 1 ? (
-                          <span className={styles.headerSortOrder}>{sortOrder}</span>
-                        ) : null}
-                      </button>
-                    ) : (
-                      <span className={styles.headerContent}>{definition?.label ?? column.id}</span>
-                    )}
                   </th>
                 );
               })}
-              <th
-                scope="col"
-                className={`${styles.headerCell} ${styles.stickyRight} ${styles.stickyRightEdge} ${styles.actionsCell}`}
-                aria-label="Row actions"
-                title="Row actions"
-              >
-                <span className={styles.actionsEllipsis} aria-hidden>
-                  …
-                </span>
-              </th>
             </tr>
           </thead>
-          <tbody style={{ minWidth: `${minTableWidth + STICKY_COLUMN_BUFFER}px` }}>
-            {transactions.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={visibleColumns.length + 2}
-                  className={styles.emptyState}
-                  data-testid="transactions-empty-state"
+          <tbody>
+            {transactions.map((transaction) => {
+              const isSelected = selectionSet.has(transaction.id);
+              return (
+                <tr
+                  key={transaction.id}
+                  className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`}
                 >
-                  No transactions match the current search or filters.
-                </td>
-              </tr>
-            ) : (
-              transactions.map((txn) => {
-                const isSelected = selectionSet.has(txn.id);
-                const rowClass = `${styles.row} ${isSelected ? styles.rowSelected : ''}`;
-                return (
-                  <tr key={txn.id} className={rowClass} data-testid={`transaction-row-${txn.id}`}>
-                    <td
-                      className={`${styles.cell} ${styles.checkboxCell} ${styles.stickyLeft} ${styles.stickyLeftEdge}`}
-                      data-testid={`transaction-select-cell-${txn.id}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={(event) => onSelectRow?.(txn.id, event.target.checked)}
-                        aria-label={`Select transaction ${txn.id}`}
-                        data-testid={`transaction-select-${txn.id}`}
-                      />
-                    </td>
-                    {visibleColumns.map((column) => {
-                      const definition = definitionMap.get(column.id);
-                      const alignClass = definition?.align === 'right' ? styles.cellAlignRight : '';
-                      return (
-                        <td
-                          key={column.id}
-                          className={`${styles.cell} ${alignClass}`}
-                          style={{
-                            minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
-                            width: `${column.width}px`,
-                          }}
-                          title={
-                            typeof txn[column.id] === 'string'
-                              ? txn[column.id]
-                              : column.id === 'date'
-                              ? txn.displayDate ?? txn.date
-                              : undefined
-                          }
-                        >
-                          <div className={styles.cellText}>{renderCellContent(column, txn)}</div>
-                        </td>
-                      );
-                    })}
-                    <td
-                      className={`${styles.cell} ${styles.actionsCell} ${styles.stickyRight} ${styles.stickyRightEdge}`}
-                      data-testid={`transaction-actions-${txn.id}`}
-                      onMouseEnter={() => handleActionAreaEnter(txn.id)}
-                      onFocus={() => handleActionAreaEnter(txn.id)}
-                      onMouseLeave={handleActionAreaLeave}
-                      onBlur={handleActionAreaLeave}
-                    >
-                      <div className={styles.actionWrapper}>
-                        <button
-                          type="button"
-                          className={styles.moreActionsButton}
-                          aria-label={`Show actions for ${txn.id}`}
-                          aria-haspopup="menu"
-                          aria-expanded={activeActionId === txn.id}
-                          data-testid={`transaction-more-${txn.id}`}
-                          onMouseEnter={() => handleActionAreaEnter(txn.id)}
-                          onFocus={() => handleActionAreaEnter(txn.id)}
-                        >
-                          <FiMoreHorizontal aria-hidden />
-                        </button>
-                        {activeActionId === txn.id ? (
-                          <div className={styles.actionsPopover} role="menu">
-                            <button
-                              type="button"
-                              className={styles.actionsPopoverItem}
-                              onClick={() => onOpenAdvanced({ mode: 'edit', transaction: txn })}
-                              data-testid={`transaction-popover-edit-${txn.id}`}
-                              role="menuitem"
-                            >
-                              <FiEdit2 aria-hidden />
-                              Edit transaction
-                            </button>
-                            <button
-                              type="button"
-                              className={`${styles.actionsPopoverItem} ${styles.actionsPopoverDanger}`}
-                              onClick={() => onOpenAdvanced({ mode: 'delete', transaction: txn })}
-                              data-testid={`transaction-popover-delete-${txn.id}`}
-                              role="menuitem"
-                            >
-                              <FiTrash2 aria-hidden />
-                              Delete transaction
-                            </button>
-                            <div className={styles.actionsNestedGroup}>
-                              <span className={styles.actionsNestedLabel}>More actions</span>
-                              <div className={styles.actionsNestedList} role="menu">
-                                <button
-                                  type="button"
-                                  className={styles.actionsPopoverItem}
-                                  onClick={() => onOpenAdvanced({ mode: 'advanced', transaction: txn, action: 'cancel' })}
-                                  data-testid={`transaction-popover-cancel-${txn.id}`}
-                                  role="menuitem"
-                                >
-                                  <FiXCircle aria-hidden />
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  className={styles.actionsPopoverItem}
-                                  onClick={() => onOpenAdvanced({ mode: 'advanced', transaction: txn, action: 'partial-repay' })}
-                                  data-testid={`transaction-popover-partial-${txn.id}`}
-                                  role="menuitem"
-                                >
-                                  <FiRefreshCw aria-hidden />
-                                  Partial repay
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-            {selectionSummary.count > 0 ? (
-              <tr className={`${styles.row} ${styles.totalRow}`}>
-                <td
-                  className={`${styles.cell} ${styles.checkboxCell} ${styles.stickyLeft} ${styles.stickyLeftEdge} ${styles.totalCell}`}
-                  data-testid="transactions-total-row-label"
-                >
-                  Selected totals
-                </td>
-                {visibleColumns.map((column) => {
-                  const definition = getColumnDefinition(column.id);
-                  const alignClass = definition?.align === 'right' ? styles.cellAlignRight : '';
-                  const formatter = TOTAL_FIELDS.get(column.id);
-                  return (
-                    <td
-                      key={column.id}
-                      className={`${styles.cell} ${styles.totalCell} ${alignClass}`}
-            {transactions.length > 0 ? (
-              <tr className={`${styles.row} ${styles.totalRow}`} data-testid="transactions-total-row">
-                <td
-                  className={`${styles.cell} ${styles.checkboxCell} ${styles.stickyLeft} ${styles.stickyLeftEdge} ${styles.totalLabelCell}`}
-                  aria-hidden
-                />
-                {visibleColumns.map((column, index) => {
-                  const definition = getColumnDefinition(column.id);
-                  const alignClass = definition?.align === 'right' ? styles.cellAlignRight : '';
-                  let content = '';
-                  if (column.id === 'amount') {
-                    const toneClass =
-                      totals.amount === 0
-                        ? ''
-                        : totals.amount > 0
-                        ? styles.amountIncome
-                        : styles.amountExpense;
-                    content = (
-                      <span className={`${styles.amountValue} ${toneClass}`}>
-                        {formatAmountWithTrailing(Math.abs(totals.amount))}
-                      </span>
+                  <td className={`${styles.cell} ${styles.stickyLeft}`}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={handleRowCheckboxChange(transaction.id)}
+                      aria-label={`Select transaction ${transaction.id}`}
+                    />
+                  </td>
+                  <td className={`${styles.cell} ${styles.stickyLeft}`}>
+                    <div className={styles.actionsMenu}>
+                      <button
+                        type="button"
+                        className={`${styles.actionsTriggerButton} ${activeActionId === transaction.id ? styles.actionsTriggerButtonActive : ''}`}
+                        onClick={() => setActiveActionId((prev) => (prev === transaction.id ? null : transaction.id))}
+                        onBlur={handleRequestCloseActions}
+                        aria-haspopup="menu"
+                        aria-expanded={activeActionId === transaction.id}
+                        aria-label={`Open quick actions for ${transaction.id}`}
+                      >
+                        <FiMoreHorizontal aria-hidden />
+                      </button>
+                      {activeActionId === transaction.id ? (
+                        <div className={`${styles.actionsMenuList} ${styles.actionsMenuOpen}`} role="menu">
+                          <button
+                            type="button"
+                            className={styles.actionsMenuItem}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              onOpenAdvanced?.({ mode: 'edit', transaction });
+                              handleImmediateCloseActions();
+                            }}
+                          >
+                            <FiEdit2 aria-hidden /> Edit
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.actionsMenuItem} ${styles.actionsMenuDanger}`}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              onOpenAdvanced?.({ mode: 'delete', transaction });
+                              handleImmediateCloseActions();
+                            }}
+                          >
+                            <FiTrash2 aria-hidden /> Delete
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </td>
+                  {resolvedColumns.map((column) => {
+                    const content = renderCellContent(column, transaction);
+                    const alignClass = column.align === 'right' ? styles.cellAlignRight : '';
+                    return (
+                      <td key={column.id} className={`${styles.cell} ${alignClass}`} style={{ width: column.width }}>
+                        <span className={styles.cellText}>{content}</span>
+                      </td>
                     );
-                  } else if (column.id === 'finalPrice') {
-                    content = formatAmountWithTrailing(totals.finalPrice);
-                  } else if (column.id === 'totalBack') {
-                    content = formatAmountWithTrailing(totals.totalBack);
-                  } else if (index === 0) {
-                    content = <span className={styles.totalLabel}>Totals</span>;
-                  }
-
-                  return (
-                    <td
-                      key={`total-${column.id}`}
-                      className={`${styles.cell} ${alignClass} ${styles.totalCell}`}
-                      style={{
-                        minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
-                        width: `${column.width}px`,
-                      }}
-                    >
-                      <div className={styles.cellText}>
-                        {formatter ? formatter(selectionSummary) : '—'}
-                      </div>
-                      <div className={styles.cellText}>{content}</div>
-                    </td>
-                  );
-                })}
-                <td
-                  className={`${styles.cell} ${styles.actionsCell} ${styles.stickyRight} ${styles.stickyRightEdge} ${styles.totalCell}`}
-                  className={`${styles.cell} ${styles.actionsCell} ${styles.stickyRight} ${styles.stickyRightEdge} ${styles.totalLabelCell}`}
-                  aria-hidden
-                />
-              </tr>
-            ) : null}
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
-      <div className={styles.paginationBar} data-testid="transactions-pagination">
-        <div className={styles.pageSizeGroup}>
-          <label htmlFor="transactions-page-size">Rows per page</label>
-          <select
-            id="transactions-page-size"
-            className={styles.pageSizeSelect}
-            value={pagination.pageSize}
-            onChange={(event) => pagination.onPageSizeChange(Number(event.target.value))}
-          >
-            {pagination.pageSizeOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className={styles.paginationControls}>
-          <button
-            type="button"
-            className={styles.paginationButton}
-            onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
-            disabled={pagination.currentPage === 1}
-            aria-label="Previous page"
-          >
-            Prev
-          </button>
-          <span className={styles.paginationStatus}>
+      {pagination ? (
+        <div className={styles.paginationBar}>
+          <div className={styles.paginationMeta}>
             Page {pagination.currentPage} of {pagination.totalPages}
-          </span>
-          <button
-            type="button"
-            className={styles.paginationButton}
-            onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
-            disabled={pagination.currentPage === pagination.totalPages}
-            aria-label="Next page"
-          >
-            Next
-          </button>
+          </div>
+          <div className={styles.paginationControls}>
+            <button
+              type="button"
+              className={styles.paginationButton}
+              onClick={() => pagination.onPageChange?.(Math.max(1, pagination.currentPage - 1))}
+              disabled={pagination.currentPage <= 1}
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              className={styles.paginationButton}
+              onClick={() => pagination.onPageChange?.(Math.min(pagination.totalPages, pagination.currentPage + 1))}
+              disabled={pagination.currentPage >= pagination.totalPages}
+            >
+              Next
+            </button>
+            <select
+              className={styles.paginationSelect}
+              value={pagination.pageSize}
+              onChange={(event) => pagination.onPageSizeChange?.(Number(event.target.value))}
+            >
+              {pagination.pageSizeOptions?.map((option) => (
+                <option key={option} value={option}>
+                  {option} / page
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
-
-    </section>
+      ) : null}
+    </div>
   );
 }
