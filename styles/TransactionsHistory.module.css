@@ -528,6 +528,8 @@
   --header-layout-direction: row;
   --header-justify: center;
   --header-text-align: center;
+}
+
 .headerCell.stickyLeft {
   z-index: 62;
 }
