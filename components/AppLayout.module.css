@@ -228,6 +228,7 @@
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 100vh;
+  min-width: 0;
   background: var(--mf-canvas);
 }
 
@@ -281,6 +282,7 @@
 .mainContent {
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
   padding: 0 clamp(1.5rem, 4vw, 2.65rem) 2.85rem;
   display: flex;
   flex-direction: column;

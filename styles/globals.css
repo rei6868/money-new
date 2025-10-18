@@ -52,6 +52,13 @@ body {
   min-height: 100%;
 }
 
+html,
+body,
+#__next {
+  overflow-x: hidden;
+  /* horizontal scroll inside table wrapper/container, never at app/page level */
+}
+
 a {
   color: inherit;
   text-decoration: none;

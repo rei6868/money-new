@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { FiMoreHorizontal } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
+import { Tooltip } from '../ui/Tooltip';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -39,6 +40,9 @@ const COLUMN_WIDTHS = {
   actions: '190px',
 };
 
+const TABLE_MIN_WIDTH =
+  Object.values(COLUMN_WIDTHS).reduce((total, width) => total + Number.parseInt(width, 10), 0) + 60;
+
 export function TransactionsTable({
   transactions,
   selectedIds,
@@ -51,6 +55,7 @@ export function TransactionsTable({
   const allSelected = transactions.length > 0 && transactions.every((txn) => selectionSet.has(txn.id));
   const isIndeterminate = selectionSet.size > 0 && !allSelected;
   const headerCheckboxRef = useRef(null);
+  const tableMinWidthValue = `${TABLE_MIN_WIDTH}px`;
 
   useEffect(() => {
     if (headerCheckboxRef.current) {
@@ -60,9 +65,13 @@ export function TransactionsTable({
 
   return (
     <section className={styles.tableCard} aria-label="Transactions history table">
-      <div className={styles.tableScroll} data-testid="transactions-table-container">
-        <table className={styles.table}>
-          <thead>
+      <div
+        className={styles.tableScroll}
+        style={{ '--table-min-width': tableMinWidthValue }}
+        data-testid="transactions-table-container"
+      >
+        <table className={styles.table} style={{ minWidth: tableMinWidthValue }}>
+          <thead style={{ minWidth: tableMinWidthValue }}>
             <tr>
               <th
                 scope="col"
@@ -139,7 +148,7 @@ export function TransactionsTable({
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody style={{ minWidth: tableMinWidthValue }}>
             {transactions.length === 0 ? (
               <tr>
                 <td colSpan={17} className={styles.emptyState} data-testid="transactions-empty-state">
@@ -223,31 +232,37 @@ export function TransactionsTable({
                       data-testid={`transaction-actions-${txn.id}`}
                     >
                       <div className={styles.actionsGroup}>
-                        <button
-                          type="button"
-                          className={styles.ghostButton}
-                          onClick={() => onOpenAdvanced({ mode: 'edit', transaction: txn })}
-                          data-testid={`transaction-edit-${txn.id}`}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className={`${styles.ghostButton} ${styles.dangerButton}`}
-                          onClick={() => onOpenAdvanced({ mode: 'delete', transaction: txn })}
-                          data-testid={`transaction-delete-${txn.id}`}
-                        >
-                          Delete
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.advancedButton}
-                          onClick={() => onOpenAdvanced({ mode: 'advanced', transaction: txn })}
-                          data-testid={`transaction-advanced-${txn.id}`}
-                          aria-label={`Open advanced options for ${txn.id}`}
-                        >
-                          <FiMoreHorizontal aria-hidden />
-                        </button>
+                        <Tooltip content="Edit transaction">
+                          <button
+                            type="button"
+                            className={styles.ghostButton}
+                            onClick={() => onOpenAdvanced({ mode: 'edit', transaction: txn })}
+                            data-testid={`transaction-edit-${txn.id}`}
+                          >
+                            Edit
+                          </button>
+                        </Tooltip>
+                        <Tooltip content="Delete transaction">
+                          <button
+                            type="button"
+                            className={`${styles.ghostButton} ${styles.dangerButton}`}
+                            onClick={() => onOpenAdvanced({ mode: 'delete', transaction: txn })}
+                            data-testid={`transaction-delete-${txn.id}`}
+                          >
+                            Delete
+                          </button>
+                        </Tooltip>
+                        <Tooltip content="Advanced actions">
+                          <button
+                            type="button"
+                            className={styles.advancedButton}
+                            onClick={() => onOpenAdvanced({ mode: 'advanced', transaction: txn })}
+                            data-testid={`transaction-advanced-${txn.id}`}
+                            aria-label={`Open advanced options for ${txn.id}`}
+                          >
+                            <FiMoreHorizontal aria-hidden />
+                          </button>
+                        </Tooltip>
                       </div>
                     </td>
                   </tr>
