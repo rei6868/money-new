@@ -15,7 +15,7 @@ import styles from '../../styles/TransactionsHistory.module.css';
 import { formatAmount, formatAmountWithTrailing, formatPercent } from '../../lib/numberFormat';
 
 const CHECKBOX_COLUMN_WIDTH = 64;
-const ACTIONS_COLUMN_WIDTH = 72;
+const ACTIONS_COLUMN_WIDTH = 88;
 const STICKY_COLUMN_BUFFER = CHECKBOX_COLUMN_WIDTH + ACTIONS_COLUMN_WIDTH;
 
 const QUICK_FILTER_META = {
@@ -487,7 +487,11 @@ export function TransactionsTable({
             <tr>
               <th
                 scope="col"
-                className={`${styles.headerCell} ${styles.stickyLeft} ${styles.stickyLeftEdge} ${styles.checkboxCell}`}
+                className={`${styles.headerCell} ${styles.stickyLeft} ${styles.checkboxCell} ${styles.stickyLeftNoShadow}`}
+                style={{
+                  minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
+                  width: `${CHECKBOX_COLUMN_WIDTH}px`,
+                }}
               >
                 <input
                   ref={headerCheckboxRef}
@@ -705,9 +709,14 @@ export function TransactionsTable({
               })}
               <th
                 scope="col"
-                className={`${styles.headerCell} ${styles.stickyRight} ${styles.stickyRightEdge} ${styles.actionsCell}`}
+                className={`${styles.headerCell} ${styles.stickyLeft} ${styles.stickyLeftEdge} ${styles.actionsCell}`}
                 aria-label="Row actions"
                 title="Row actions"
+                style={{
+                  left: `${CHECKBOX_COLUMN_WIDTH}px`,
+                  minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
+                  width: `${ACTIONS_COLUMN_WIDTH}px`,
+                }}
               >
                 <span className={styles.actionsEllipsis} aria-hidden>
                   …
@@ -733,8 +742,12 @@ export function TransactionsTable({
                 return (
                   <tr key={txn.id} className={rowClass} data-testid={`transaction-row-${txn.id}`}>
                     <td
-                      className={`${styles.cell} ${styles.checkboxCell} ${styles.stickyLeft} ${styles.stickyLeftEdge}`}
+                      className={`${styles.cell} ${styles.checkboxCell} ${styles.stickyLeft} ${styles.stickyLeftNoShadow}`}
                       data-testid={`transaction-select-cell-${txn.id}`}
+                      style={{
+                        minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
+                        width: `${CHECKBOX_COLUMN_WIDTH}px`,
+                      }}
                     >
                       <input
                         type="checkbox"
@@ -768,8 +781,13 @@ export function TransactionsTable({
                       );
                     })}
                     <td
-                      className={`${styles.cell} ${styles.actionsCell} ${styles.stickyRight} ${styles.stickyRightEdge}`}
+                      className={`${styles.cell} ${styles.actionsCell} ${styles.stickyLeft} ${styles.stickyLeftEdge}`}
                       data-testid={`transaction-actions-${txn.id}`}
+                      style={{
+                        left: `${CHECKBOX_COLUMN_WIDTH}px`,
+                        minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
+                        width: `${ACTIONS_COLUMN_WIDTH}px`,
+                      }}
                     >
                       <div
                         className={styles.actionsCellTrigger}
@@ -883,8 +901,12 @@ export function TransactionsTable({
                 data-testid="transactions-total-row"
               >
                 <td
-                  className={`${styles.cell} ${styles.checkboxCell} ${styles.stickyLeft} ${styles.stickyLeftEdge} ${styles.totalLabelCell}`}
+                  className={`${styles.cell} ${styles.checkboxCell} ${styles.stickyLeft} ${styles.stickyLeftNoShadow} ${styles.totalLabelCell}`}
                   aria-hidden="true"
+                  style={{
+                    minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
+                    width: `${CHECKBOX_COLUMN_WIDTH}px`,
+                  }}
                 />
                 {visibleColumns.map((column, index) => {
                   const definition = definitionMap.get(column.id);
@@ -924,8 +946,13 @@ export function TransactionsTable({
                   );
                 })}
                 <td
-                  className={`${styles.cell} ${styles.actionsCell} ${styles.stickyRight} ${styles.stickyRightEdge} ${styles.totalLabelCell}`}
+                  className={`${styles.cell} ${styles.actionsCell} ${styles.stickyLeft} ${styles.stickyLeftEdge} ${styles.totalLabelCell}`}
                   aria-hidden="true"
+                  style={{
+                    left: `${CHECKBOX_COLUMN_WIDTH}px`,
+                    minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
+                    width: `${ACTIONS_COLUMN_WIDTH}px`,
+                  }}
                 />
               </tr>
             ) : null}
