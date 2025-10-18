@@ -360,6 +360,7 @@ export default function TransactionsHistoryPage() {
           width: normalizedWidth,
           visible: column.visible ?? defaultVisible,
           order: index,
+          format: column.format ?? definition.defaultFormat,
         };
       }),
     );

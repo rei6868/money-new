@@ -18,13 +18,15 @@ export function TransactionsToolbar({
   const canRestore = Boolean(previousQuery);
   const hasFilters = filterCount > 0;
   const searchInputRef = useRef(null);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
 
-  const showClearButton = isSearchFocused && hasQuery;
+  const showClearButton = hasQuery;
+  const showRestoreButton = canRestore && !hasQuery;
 
-  const handleFocus = () => {
-    setIsSearchFocused(true);
+  const focusSearchInput = () => {
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
   };
 
   const handleClearMouseDown = (event) => {
@@ -45,6 +47,14 @@ export function TransactionsToolbar({
     }
   };
 
+  const handleRestoreClick = () => {
+    if (!previousQuery) {
+      return;
+    }
+    onRestoreQuery(previousQuery);
+    focusSearchInput();
+  };
+
   useEffect(() => {
     if (!isConfirmingClear) {
       return undefined;
@@ -54,9 +64,7 @@ export function TransactionsToolbar({
       if (event.key === 'Escape') {
         event.preventDefault();
         setIsConfirmingClear(false);
-        requestAnimationFrame(() => {
-          searchInputRef.current?.focus();
-        });
+        focusSearchInput();
       }
     };
 
@@ -69,62 +77,59 @@ export function TransactionsToolbar({
   const handleConfirmClear = () => {
     setIsConfirmingClear(false);
     onClearQuery();
-    requestAnimationFrame(() => {
-      searchInputRef.current?.focus();
-    });
+    focusSearchInput();
   };
 
   const handleCancelClear = () => {
     setIsConfirmingClear(false);
-    requestAnimationFrame(() => {
-      searchInputRef.current?.focus();
-    });
+    focusSearchInput();
   };
 
   return (
     <section className={styles.toolbarCard} aria-label="Transactions controls">
       <div className={styles.toolbarLeft}>
-        <div className={styles.searchGroup}>
-          <FiSearch className={styles.searchIcon} aria-hidden />
+        <div className={styles.searchGroup} data-testid="transactions-search-group">
           <input
             ref={searchInputRef}
             type="search"
             placeholder="Search all transactions"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            onFocus={handleFocus}
-            onBlur={() => setIsSearchFocused(false)}
             onKeyDown={handleSearchKeyDown}
             className={styles.searchInput}
             data-testid="transactions-search-input"
             aria-label="Search transactions"
           />
-          {showClearButton ? (
-            <button
-              type="button"
-              className={styles.searchClearButton}
-              onMouseDown={handleClearMouseDown}
-              onClick={handleClearClick}
-              data-testid="transactions-search-clear"
-              aria-label="Clear search"
-            >
-              <FiX aria-hidden />
-            </button>
-          ) : null}
+          <div className={styles.searchTrailingIcons}>
+            {showRestoreButton ? (
+              <button
+                type="button"
+                className={`${styles.searchIconButton} ${styles.searchRestoreButton}`}
+                onClick={handleRestoreClick}
+                data-testid="transactions-search-restore"
+                aria-label={`Restore search ${previousQuery}`}
+                title={`Restore “${previousQuery}”`}
+              >
+                <FiRotateCcw aria-hidden />
+              </button>
+            ) : null}
+            {showClearButton ? (
+              <button
+                type="button"
+                className={`${styles.searchIconButton} ${styles.searchClearButton}`}
+                onMouseDown={handleClearMouseDown}
+                onClick={handleClearClick}
+                data-testid="transactions-search-clear"
+                aria-label="Clear search"
+              >
+                <FiX aria-hidden />
+              </button>
+            ) : null}
+            <span className={`${styles.searchIconButton} ${styles.searchStaticIcon}`} aria-hidden>
+              <FiSearch />
+            </span>
+          </div>
         </div>
-
-        {canRestore ? (
-          <button
-            type="button"
-            className={styles.restoreIconButton}
-            onClick={() => onRestoreQuery(previousQuery)}
-            data-testid="transactions-search-restore"
-            aria-label={`Restore search ${previousQuery}`}
-            title={`Restore “${previousQuery}”`}
-          >
-            <FiRotateCcw aria-hidden />
-          </button>
-        ) : null}
       </div>
 
       <div className={styles.actionsGroup}>

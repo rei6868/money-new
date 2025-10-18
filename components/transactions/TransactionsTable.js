@@ -11,6 +11,49 @@ const definitionMap = new Map(
 
 const STICKY_COLUMN_BUFFER = 252; // checkbox (72px) + actions column (180px) baseline
 
+const dateFormatters = {
+  'DD/MM/YY': new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+  }),
+  'MM/DD/YY': new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+  }),
+};
+
+function formatTransactionDate(value, format = 'DD/MM/YY') {
+  if (!value) {
+    return '—';
+  }
+
+  const dateValue = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(dateValue.getTime())) {
+    return value;
+  }
+
+  if (format === 'YYYY-MM-DD') {
+    const month = String(dateValue.getMonth() + 1).padStart(2, '0');
+    const day = String(dateValue.getDate()).padStart(2, '0');
+    return `${dateValue.getFullYear()}-${month}-${day}`;
+  }
+
+  const formatter = dateFormatters[format] ?? dateFormatters['DD/MM/YY'];
+  return formatter.format(dateValue);
+}
+
+function getAmountToneClass(type) {
+  if (type === 'Income') {
+    return styles.amountIncome;
+  }
+  if (type === 'Transfer') {
+    return styles.amountTransfer;
+  }
+  return styles.amountExpense;
+}
+
 function getColumnDefinition(columnId) {
   return definitionMap.get(columnId);
 }
@@ -37,8 +80,8 @@ function TotalBackCell({ transaction }) {
 }
 
 const columnRenderers = {
-  date: (txn) => txn.date ?? '—',
-  type: (txn, stylesRef) => (
+  date: (txn, column) => formatTransactionDate(txn.date, column.format),
+  type: (txn, _column, stylesRef) => (
     <span
       className={
         txn.type === 'Income'
@@ -52,7 +95,15 @@ const columnRenderers = {
   account: (txn) => txn.account ?? '—',
   shop: (txn) => txn.shop ?? '—',
   notes: (txn) => txn.notes ?? '—',
-  amount: (txn) => formatAmount(txn.amount),
+  amount: (txn, column, stylesRef) => {
+    const numeric = Math.abs(Number(txn.amount ?? 0));
+    const toneClass = getAmountToneClass(txn.type);
+    return (
+      <span className={`${stylesRef.amountValue} ${toneClass}`} data-testid={`transaction-amount-${txn.id}`}>
+        {formatAmount(numeric)}
+      </span>
+    );
+  },
   percentBack: (txn) => formatPercent(txn.percentBack),
   fixedBack: (txn) => formatAmount(txn.fixedBack),
   totalBack: (txn) => <TotalBackCell transaction={txn} />,
@@ -65,12 +116,12 @@ const columnRenderers = {
   id: (txn) => txn.id ?? '—',
 };
 
-function renderCellContent(columnId, transaction) {
-  const renderer = columnRenderers[columnId];
+function renderCellContent(column, transaction) {
+  const renderer = columnRenderers[column.id];
   if (!renderer) {
-    return transaction[columnId] ?? '—';
+    return transaction[column.id] ?? '—';
   }
-  return renderer(transaction, styles);
+  return renderer(transaction, column, styles);
 }
 
 function computeMinWidth(columns) {
@@ -106,6 +157,24 @@ export function TransactionsTable({
   }, [isIndeterminate]);
 
   const minTableWidth = useMemo(() => computeMinWidth(visibleColumns), [visibleColumns]);
+
+  const totals = useMemo(
+    () =>
+      transactions.reduce(
+        (acc, txn) => {
+          const amount = Number(txn.amount) || 0;
+          const finalPrice = Number(txn.finalPrice) || 0;
+          const totalBack = Number(txn.totalBack) || 0;
+
+          acc.amount += amount;
+          acc.finalPrice += finalPrice;
+          acc.totalBack += totalBack;
+          return acc;
+        },
+        { amount: 0, finalPrice: 0, totalBack: 0 },
+      ),
+    [transactions],
+  );
 
   return (
     <section className={styles.tableCard} aria-label="Transactions history table">
@@ -190,7 +259,7 @@ export function TransactionsTable({
                           }}
                           title={typeof txn[column.id] === 'string' ? txn[column.id] : undefined}
                         >
-                          <div className={styles.cellText}>{renderCellContent(column.id, txn)}</div>
+                          <div className={styles.cellText}>{renderCellContent(column, txn)}</div>
                         </td>
                       );
                     })}
@@ -235,6 +304,55 @@ export function TransactionsTable({
                 );
               })
             )}
+            {transactions.length > 0 ? (
+              <tr className={`${styles.row} ${styles.totalRow}`} data-testid="transactions-total-row">
+                <td
+                  className={`${styles.cell} ${styles.checkboxCell} ${styles.stickyLeft} ${styles.stickyLeftEdge} ${styles.totalLabelCell}`}
+                  aria-hidden
+                />
+                {visibleColumns.map((column, index) => {
+                  const definition = getColumnDefinition(column.id);
+                  const alignClass = definition?.align === 'right' ? styles.cellAlignRight : '';
+                  let content = '';
+                  if (column.id === 'amount') {
+                    const toneClass =
+                      totals.amount === 0
+                        ? ''
+                        : totals.amount > 0
+                        ? styles.amountIncome
+                        : styles.amountExpense;
+                    content = (
+                      <span className={`${styles.amountValue} ${toneClass}`}>
+                        {formatAmountWithTrailing(Math.abs(totals.amount))}
+                      </span>
+                    );
+                  } else if (column.id === 'finalPrice') {
+                    content = formatAmountWithTrailing(totals.finalPrice);
+                  } else if (column.id === 'totalBack') {
+                    content = formatAmountWithTrailing(totals.totalBack);
+                  } else if (index === 0) {
+                    content = <span className={styles.totalLabel}>Totals</span>;
+                  }
+
+                  return (
+                    <td
+                      key={`total-${column.id}`}
+                      className={`${styles.cell} ${alignClass} ${styles.totalCell}`}
+                      style={{
+                        minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
+                        width: `${column.width}px`,
+                      }}
+                    >
+                      <div className={styles.cellText}>{content}</div>
+                    </td>
+                  );
+                })}
+                <td
+                  className={`${styles.cell} ${styles.actionsCell} ${styles.stickyRight} ${styles.stickyRightEdge} ${styles.totalLabelCell}`}
+                  aria-hidden
+                />
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>

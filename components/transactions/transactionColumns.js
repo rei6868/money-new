@@ -4,6 +4,8 @@ export const TRANSACTION_COLUMN_DEFINITIONS = [
     label: 'Date',
     minWidth: 132,
     defaultWidth: 132,
+    defaultFormat: 'DD/MM/YY',
+    formatOptions: ['DD/MM/YY', 'MM/DD/YY', 'YYYY-MM-DD'],
   },
   {
     id: 'type',
@@ -16,6 +18,12 @@ export const TRANSACTION_COLUMN_DEFINITIONS = [
     label: 'Account',
     minWidth: 182,
     defaultWidth: 182,
+  },
+  {
+    id: 'owner',
+    label: 'Owner',
+    minWidth: 130,
+    defaultWidth: 140,
   },
   {
     id: 'shop',
@@ -91,12 +99,6 @@ export const TRANSACTION_COLUMN_DEFINITIONS = [
     defaultVisible: false,
   },
   {
-    id: 'owner',
-    label: 'Owner',
-    minWidth: 130,
-    defaultWidth: 140,
-  },
-  {
     id: 'id',
     label: 'ID',
     minWidth: 180,
@@ -111,5 +113,6 @@ export function getDefaultColumnState() {
     width: definition.defaultWidth,
     visible: definition.defaultVisible !== false,
     order: index,
+    format: definition.defaultFormat,
   }));
 }
