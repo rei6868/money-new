@@ -1,4 +1,31 @@
-const MOCK_SOURCE = [
+export interface MockTransactionSource {
+  id: string;
+  date: string;
+  type: 'Income' | 'Expense';
+  account: string;
+  shop: string;
+  notes: string;
+  amount: number;
+  percentBack: number;
+  fixedBack: number;
+  debtTag: string;
+  cycleTag: string;
+  category: string;
+  linkedTxn: string;
+  owner: string;
+}
+
+export interface EnrichedTransaction extends MockTransactionSource {
+  totalBack: number;
+  finalPrice: number;
+  occurredOn: string;
+  year: string;
+  month: string;
+  displayDate: string;
+  sortDate: number;
+}
+
+const MOCK_SOURCE: MockTransactionSource[] = [
   {
     id: 'txn-0001',
     date: '2025-02-12',
@@ -200,7 +227,7 @@ const shortDateFormatter = new Intl.DateTimeFormat('en-GB', {
   year: '2-digit',
 });
 
-function enrichTransaction(txn) {
+function enrichTransaction(txn: MockTransactionSource): EnrichedTransaction {
   const totalBack = Number(
     ((txn.amount * (txn.percentBack ?? 0)) / 100 + (txn.fixedBack ?? 0)).toFixed(2),
   );
@@ -221,13 +248,13 @@ function enrichTransaction(txn) {
   };
 }
 
-const ENRICHED_TRANSACTIONS = MOCK_SOURCE.map(enrichTransaction);
+const ENRICHED_TRANSACTIONS: EnrichedTransaction[] = MOCK_SOURCE.map(enrichTransaction);
 
-export function getMockTransactions() {
+export function getMockTransactions(): EnrichedTransaction[] {
   return ENRICHED_TRANSACTIONS.map((txn) => ({ ...txn }));
 }
 
-export async function fetchMockTransactions() {
+export async function fetchMockTransactions(): Promise<EnrichedTransaction[]> {
   await new Promise((resolve) => {
     setTimeout(resolve, 120);
   });

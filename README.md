@@ -88,6 +88,11 @@ Ensure `DB_URL` is configured in your `.env` before running any of the database 
 - API documentation will be available once endpoints are implemented
 - Database schema documentation will be maintained in `/docs/database`
 
+## Sprint 3 Backend Hotfix Summary
+- Hardened the modular transactions dataset pipeline with strict type-safe conversions to satisfy the new TypeScript checks.
+- Tightened filter, restore, and API request parsing to guarantee sort metadata and query parameters conform to the shared schema.
+- Reconfirmed the suite (`npm test`, `npm run lint`, `npm run build`) to keep Vercel deployments green for the sprint deliverable.
+
 ## Resources
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Neon DB Documentation](https://neon.tech/docs)
