@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiXCircle } from 'react-icons/fi';
 
 import AppLayout from '../../components/AppLayout';
-import { CustomizeColumnsModal } from '../../components/transactions/CustomizeColumnsModal';
-import { TransactionsFilterModal } from '../../components/transactions/TransactionsFilterModal';
+import { TableCustomizeModal, TableFilterModal } from '../../components/table';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
 import { TransactionsToolbar } from '../../components/transactions/TransactionsToolbar';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
@@ -715,7 +714,7 @@ export default function TransactionsHistoryPage() {
 
       </div>
 
-      <TransactionsFilterModal
+      <TableFilterModal
         isOpen={isFilterOpen}
         filters={draftFilters}
         onChange={handleFilterChange}
@@ -727,7 +726,7 @@ export default function TransactionsHistoryPage() {
         onSearchOptions={handleSearchOptions}
       />
 
-      <CustomizeColumnsModal
+      <TableCustomizeModal
         isOpen={isCustomizeOpen}
         columns={orderedColumns}
         columnDefinitions={columnDefinitions}
