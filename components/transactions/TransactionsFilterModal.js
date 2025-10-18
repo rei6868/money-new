@@ -1,7 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FiSearch, FiX } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
+
+function slugify(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'value';
+}
 
 export function TransactionsFilterModal({
   isOpen,
@@ -45,12 +52,42 @@ export function TransactionsFilterModal({
     return () => clearTimeout(handle);
   }, [categorySearch, isOpen, onSearchOptions]);
 
+  const normalizedPeopleSearch = peopleSearch.trim().toLowerCase();
+  const normalizedCategorySearch = categorySearch.trim().toLowerCase();
+
+  const visiblePeopleOptions = useMemo(() => {
+    const base = ['all', ...(options.people ?? [])];
+    if (!normalizedPeopleSearch) {
+      return base;
+    }
+    return base.filter((option) =>
+      option === 'all' ? true : option.toLowerCase().includes(normalizedPeopleSearch),
+    );
+  }, [options.people, normalizedPeopleSearch]);
+
+  const visibleCategoryOptions = useMemo(() => {
+    const base = ['all', ...(options.categories ?? [])];
+    if (!normalizedCategorySearch) {
+      return base;
+    }
+    return base.filter((option) =>
+      option === 'all' ? true : option.toLowerCase().includes(normalizedCategorySearch),
+    );
+  }, [options.categories, normalizedCategorySearch]);
+
+  const hasPeopleMatches = visiblePeopleOptions.some((option) => option !== 'all');
+  const hasCategoryMatches = visibleCategoryOptions.some((option) => option !== 'all');
+
   const handleChange = (field) => (event) => {
     onChange(field, event.target.value);
   };
 
   const handleToggle = (field, value) => (event) => {
     onToggleOption?.(field, value, event.target.checked);
+  };
+
+  const handleSelectOption = (field, value) => () => {
+    onChange(field, value);
   };
 
   const selectedTypes = new Set(filters.types ?? []);
@@ -78,67 +115,103 @@ export function TransactionsFilterModal({
 
         <div className={styles.modalBody}>
           <div className={styles.modalField}>
-            <label htmlFor="filter-person" className={styles.modalLabel}>
+            <label htmlFor="filter-person-search" className={styles.modalLabel}>
               Person
             </label>
-            <div className={styles.modalSearchGroup}>
-              <FiSearch aria-hidden className={styles.modalSearchIcon} />
-              <input
-                id="filter-person-search"
-                type="search"
-                placeholder="Search people"
-                className={styles.modalSearchInput}
-                value={peopleSearch}
-                onChange={(event) => setPeopleSearch(event.target.value)}
-                data-testid="transactions-filter-person-search"
-              />
+            <div className={styles.modalPicker}>
+              <div className={`${styles.modalPickerSearch} ${styles.modalSearchGroup}`}>
+                <FiSearch aria-hidden className={styles.modalSearchIcon} />
+                <input
+                  id="filter-person-search"
+                  type="search"
+                  placeholder="Search people"
+                  className={styles.modalSearchInput}
+                  value={peopleSearch}
+                  onChange={(event) => setPeopleSearch(event.target.value)}
+                  data-testid="transactions-filter-person-search"
+                />
+              </div>
+              <div
+                className={styles.modalOptionList}
+                role="listbox"
+                aria-label="Filter by person"
+                data-testid="transactions-filter-person"
+              >
+                {visiblePeopleOptions.map((person) => {
+                  const value = person;
+                  const label = person === 'all' ? 'All' : person;
+                  const isSelected = filters.person === value;
+                  return (
+                    <button
+                      type="button"
+                      key={value || 'all'}
+                      className={`${styles.modalOptionButton} ${
+                        isSelected ? styles.modalOptionButtonActive : ''
+                      }`}
+                      onClick={handleSelectOption('person', value)}
+                      role="option"
+                      aria-selected={isSelected}
+                      data-testid={`transactions-filter-person-option-${slugify(value)}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+                {!hasPeopleMatches ? (
+                  <span className={styles.emptyOption}>No people match</span>
+                ) : null}
+              </div>
             </div>
-            <select
-              id="filter-person"
-              className={styles.modalControl}
-              value={filters.person}
-              onChange={handleChange('person')}
-              data-testid="transactions-filter-person"
-            >
-              <option value="all">All</option>
-              {options.people.map((person) => (
-                <option key={person} value={person}>
-                  {person}
-                </option>
-              ))}
-            </select>
           </div>
 
           <div className={styles.modalField}>
-            <label htmlFor="filter-category" className={styles.modalLabel}>
+            <label htmlFor="filter-category-search" className={styles.modalLabel}>
               Category
             </label>
-            <div className={styles.modalSearchGroup}>
-              <FiSearch aria-hidden className={styles.modalSearchIcon} />
-              <input
-                id="filter-category-search"
-                type="search"
-                placeholder="Search categories"
-                className={styles.modalSearchInput}
-                value={categorySearch}
-                onChange={(event) => setCategorySearch(event.target.value)}
-                data-testid="transactions-filter-category-search"
-              />
+            <div className={styles.modalPicker}>
+              <div className={`${styles.modalPickerSearch} ${styles.modalSearchGroup}`}>
+                <FiSearch aria-hidden className={styles.modalSearchIcon} />
+                <input
+                  id="filter-category-search"
+                  type="search"
+                  placeholder="Search categories"
+                  className={styles.modalSearchInput}
+                  value={categorySearch}
+                  onChange={(event) => setCategorySearch(event.target.value)}
+                  data-testid="transactions-filter-category-search"
+                />
+              </div>
+              <div
+                className={styles.modalOptionList}
+                role="listbox"
+                aria-label="Filter by category"
+                data-testid="transactions-filter-category"
+              >
+                {visibleCategoryOptions.map((category) => {
+                  const value = category;
+                  const label = category === 'all' ? 'All' : category;
+                  const isSelected = filters.category === value;
+                  return (
+                    <button
+                      type="button"
+                      key={value || 'all'}
+                      className={`${styles.modalOptionButton} ${
+                        isSelected ? styles.modalOptionButtonActive : ''
+                      }`}
+                      onClick={handleSelectOption('category', value)}
+                      role="option"
+                      aria-selected={isSelected}
+                      data-testid={`transactions-filter-category-option-${slugify(value)}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+                {!hasCategoryMatches ? (
+                  <span className={styles.emptyOption}>No categories match</span>
+                ) : null}
+              </div>
             </div>
-            <select
-              id="filter-category"
-              className={styles.modalControl}
-              value={filters.category}
-              onChange={handleChange('category')}
-              data-testid="transactions-filter-category"
-            >
-              <option value="all">All</option>
-              {options.categories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
           </div>
 
           <div className={styles.modalField}>
@@ -258,4 +331,3 @@ export function TransactionsFilterModal({
     </div>
   );
 }
-

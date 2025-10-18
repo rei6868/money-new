@@ -20,6 +20,7 @@ export function TransactionsToolbar({
   onRestoreQuery,
   onFilterClick,
   filterCount,
+  onClearFilters,
   onAddTransaction,
   onCustomizeColumns,
   selectedCount = 0,
@@ -33,13 +34,17 @@ export function TransactionsToolbar({
   const hasFilters = filterCount > 0;
   const searchInputRef = useRef(null);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const showClearButton = hasQuery;
-  const showRestoreButton = canRestore && !hasQuery;
+  const showRestoreButton = canRestore && !hasQuery && isSearchFocused && !isConfirmingClear;
 
   const focusSearchInput = () => {
     requestAnimationFrame(() => {
-      searchInputRef.current?.focus();
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+        setIsSearchFocused(true);
+      }
     });
   };
 
@@ -121,6 +126,8 @@ export function TransactionsToolbar({
             value={searchValue}
             onChange={(event) => onSearchChange?.(event.target.value)}
             onKeyDown={handleSearchKeyDown}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
             className={styles.searchInput}
             data-testid="transactions-search-input"
             aria-label="Search transactions"
@@ -168,6 +175,7 @@ export function TransactionsToolbar({
         {selectedCount > 0 ? (
           <div className={styles.selectionQuickActions} data-testid="transactions-selection-inline">
             <span className={styles.selectionQuickSummary}>
+              {selectedCount} selected · Amount {formatAmountWithTrailing(selectionSummary.amount)} · Final {formatAmountWithTrailing(selectionSummary.finalPrice)} · Total Back {formatAmountWithTrailing(selectionSummary.totalBack)}
               {selectedCount} selected · Amount {formatAmountWithTrailing(selectionSummary.amount)}
             </span>
             <button
@@ -202,6 +210,18 @@ export function TransactionsToolbar({
           Filters
           {hasFilters ? <span className={styles.countBadge}>{filterCount}</span> : null}
         </button>
+
+        {hasFilters ? (
+          <button
+            type="button"
+            className={`${styles.secondaryButton} ${styles.clearFilterButton}`}
+            onClick={() => onClearFilters?.()}
+            data-testid="transactions-clear-filters"
+            aria-label="Clear applied filters"
+          >
+            Clear filters
+          </button>
+        ) : null}
 
         <button
           type="button"

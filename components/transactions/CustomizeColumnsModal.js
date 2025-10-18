@@ -14,6 +14,7 @@ export function CustomizeColumnsModal({
   const [draftColumns, setDraftColumns] = useState(columns);
   const [columnQuery, setColumnQuery] = useState('');
   const dragItemIdRef = useRef(null);
+  const [dragState, setDragState] = useState({ draggingId: null, overId: null, placement: 'after' });
   const itemRefs = useRef(new Map());
   const [dragState, setDragState] = useState({ draggingId: null, overId: null });
 
@@ -91,6 +92,19 @@ export function CustomizeColumnsModal({
     );
   };
 
+  const moveColumn = (columnsList, sourceId, targetId, placement = 'before') => {
+    if (!sourceId || sourceId === targetId) {
+      return columnsList;
+    }
+
+    const next = [...columnsList];
+    const fromIndex = next.findIndex((column) => column.id === sourceId);
+
+    if (fromIndex === -1) {
+      return columnsList;
+    }
+  };
+
   const moveColumn = (columnsList, sourceId, targetId) => {
     if (!sourceId || sourceId === targetId) {
       return columnsList;
@@ -163,28 +177,33 @@ export function CustomizeColumnsModal({
     });
   };
 
-  const updateColumnsWithAnimation = (updater) => {
-    setDraftColumns((prev) => {
-      const next = updater(prev);
-      if (next === prev) {
-        return prev;
+    const [moved] = next.splice(fromIndex, 1);
+
+    if (!targetId) {
+      next.push(moved);
+    } else {
+      const toIndex = next.findIndex((column) => column.id === targetId);
+      if (toIndex === -1) {
+        next.push(moved);
+      } else {
+        const insertIndex = placement === 'after' ? toIndex + 1 : toIndex;
+        const boundedIndex = Math.min(Math.max(insertIndex, 0), next.length);
+        next.splice(boundedIndex, 0, moved);
       }
+    }
 
-      const previousPositions = measurePositions(prev);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          animateToPositions(previousPositions, next);
-        });
-      });
+    const isSameOrder =
+      next.length === columnsList.length &&
+      next.every((column, index) => column.id === columnsList[index].id);
 
-      return next;
-    });
+    return isSameOrder ? columnsList : next;
   };
 
   const handleDragStart = (columnId) => (event) => {
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', String(columnId));
     dragItemIdRef.current = columnId;
+    setDragState({ draggingId: columnId, overId: columnId, placement: 'before' });
     setDragState({ draggingId: columnId, overId: columnId });
   };
 
@@ -199,12 +218,28 @@ export function CustomizeColumnsModal({
     if (!sourceId) {
       return;
     }
+    if (!columnId) {
+      setDragState({ draggingId: sourceId, overId: null, placement: 'after' });
+      return;
+    }
+    if (sourceId === columnId) {
+      setDragState({ draggingId: sourceId, overId: columnId, placement: 'after' });
+      return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const isBefore = event.clientY - rect.top < rect.height / 2;
+    setDragState({
+      draggingId: sourceId,
+      overId: columnId,
+      placement: isBefore ? 'before' : 'after',
+    });
     updateColumnsWithAnimation((prev) => moveColumn(prev, sourceId, columnId));
     setDragState({ draggingId: sourceId, overId: columnId || sourceId });
   };
 
   const handleDragEnd = () => {
     dragItemIdRef.current = null;
+    setDragState({ draggingId: null, overId: null, placement: 'after' });
     setDragState({ draggingId: null, overId: null });
   };
 
@@ -214,6 +249,13 @@ export function CustomizeColumnsModal({
     if (!sourceId) {
       return;
     }
+    if (sourceId === targetId) {
+      handleDragEnd();
+      return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const placement = event.clientY - rect.top < rect.height / 2 ? 'before' : 'after';
+    setDraftColumns((prev) => moveColumn(prev, sourceId, targetId, placement));
     updateColumnsWithAnimation((prev) => moveColumn(prev, sourceId, targetId));
     handleDragEnd();
   };
@@ -224,6 +266,7 @@ export function CustomizeColumnsModal({
     if (!sourceId) {
       return;
     }
+    setDraftColumns((prev) => moveColumn(prev, sourceId, null, 'after'));
     updateColumnsWithAnimation((prev) => moveColumn(prev, sourceId, null));
     handleDragEnd();
   };
@@ -304,6 +347,9 @@ export function CustomizeColumnsModal({
         <div className={styles.columnsListWrap}>
           <ul
             className={styles.columnsList}
+            data-drop-tail={
+              dragState.draggingId && dragState.overId === null ? 'true' : undefined
+            }
             onDragOver={handleDragOver}
             onDrop={handleDropToEnd}
             onDragEnter={handleDragEnter(null)}
@@ -320,6 +366,23 @@ export function CustomizeColumnsModal({
                 definition.defaultWidth ?? sliderMin,
                 column.width ?? sliderMin,
               );
+              const presetOptions = Array.isArray(definition.formatOptions)
+                ? definition.formatOptions
+                : [];
+              const hasCustomFormatOption =
+                Boolean(column.format) && !presetOptions.includes(column.format);
+
+              const isDragging = dragState.draggingId === column.id;
+              const isOver =
+                dragState.overId === column.id && dragState.draggingId !== column.id;
+              const rowClass = [
+                styles.columnRow,
+                isDragging ? styles.columnRowDragging : '',
+                isOver ? styles.columnRowPreview : '',
+              ]
+                .filter(Boolean)
+                .join(' ');
+              const previewPosition = isOver ? dragState.placement : undefined;
 
               const isDragging = dragState.draggingId === column.id;
               const isOver =
@@ -336,6 +399,11 @@ export function CustomizeColumnsModal({
                 <li
                   key={column.id}
                   className={rowClass}
+                  data-preview-position={previewPosition}
+                  onDragEnter={handleDragEnter(column.id)}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop(column.id)}
+                  data-testid={`transactions-customize-row-${column.id}`}
                   draggable
                   onDragStart={handleDragStart(column.id)}
                   onDragEnter={handleDragEnter(column.id)}
@@ -351,9 +419,17 @@ export function CustomizeColumnsModal({
                     }
                   }}
                 >
-                  <span className={styles.columnDragHandle} aria-hidden>
-                    <FiMove />
-                  </span>
+                  <button
+                    type="button"
+                    className={styles.columnDragHandle}
+                    draggable
+                    onDragStart={handleDragStart(column.id)}
+                    onDragEnd={handleDragEnd}
+                    aria-label={`Reorder ${definition.label}`}
+                    data-testid={`transactions-customize-drag-${column.id}`}
+                  >
+                    <FiMove aria-hidden />
+                  </button>
                   <div className={styles.columnMainControls}>
                     <label className={styles.columnLabel} htmlFor={`column-visible-${column.id}`}>
                       <input
@@ -367,26 +443,48 @@ export function CustomizeColumnsModal({
                       <span>{definition.label}</span>
                     </label>
 
-                    {definition.formatOptions ? (
-                      <label
-                        htmlFor={`column-format-${column.id}`}
-                        className={styles.columnFormatGroup}
-                      >
-                        <span className={styles.columnFormatLabel}>Format</span>
-                        <select
-                          id={`column-format-${column.id}`}
-                          value={column.format ?? definition.defaultFormat ?? ''}
-                          onChange={handleFormatChange(column.id)}
-                          className={styles.columnFormatSelect}
-                          data-testid={`transactions-customize-format-${column.id}`}
+                    {presetOptions.length > 0 ? (
+                      <div className={styles.columnFormatGroup}>
+                        <label
+                          htmlFor={`column-format-${column.id}`}
+                          className={styles.columnFormatControl}
                         >
-                          {definition.formatOptions.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                          <span className={styles.columnFormatLabel}>Format</span>
+                          <select
+                            id={`column-format-${column.id}`}
+                            value={column.format ?? definition.defaultFormat ?? ''}
+                            onChange={handleFormatChange(column.id)}
+                            className={styles.columnFormatSelect}
+                            data-testid={`transactions-customize-format-${column.id}`}
+                          >
+                            {presetOptions.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                            {hasCustomFormatOption ? (
+                              <option value={column.format}>{`Custom (${column.format})`}</option>
+                            ) : null}
+                          </select>
+                        </label>
+                        {definition.dataType === 'date' ? (
+                          <label
+                            htmlFor={`column-format-custom-${column.id}`}
+                            className={styles.columnFormatControl}
+                          >
+                            <span className={styles.columnFormatLabel}>Custom</span>
+                            <input
+                              id={`column-format-custom-${column.id}`}
+                              type="text"
+                              value={column.format ?? definition.defaultFormat ?? ''}
+                              onChange={handleFormatChange(column.id)}
+                              placeholder="DD/MM/YY"
+                              className={styles.columnFormatInput}
+                              data-testid={`transactions-customize-format-${column.id}-custom`}
+                            />
+                          </label>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
                   <div className={styles.columnWidthGroup}>
