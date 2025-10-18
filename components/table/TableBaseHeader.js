@@ -1,6 +1,7 @@
 import { FiX } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
+import { DropdownWithSearchContent } from '../common/DropdownWithSearch';
 import { orderFilterValues, slugify } from './tableUtils';
 import { TableQuickFilterPopover } from './TableQuickFilter';
 
@@ -66,41 +67,20 @@ function renderQuickFilterContent({
           <span className={styles.headerBadgeEmpty}>No quick filters selected</span>
         )}
       </div>
-      <div className={styles.headerQuickFilterSearch}>
-        <input
-          type="search"
-          placeholder={`Search ${definition?.label ?? column.id}`}
-          value={searchValue ?? ''}
-          onChange={(event) => onSearch(event.target.value)}
-        />
-      </div>
-      <div className={styles.headerQuickFilterOptions}>
-        {availableOptions.length === 0 ? (
-          <p className={styles.headerQuickFilterEmpty}>No options available</p>
-        ) : (
-          <ul role="listbox">
-            {availableOptions.map((option) => {
-              const key = slugify(option);
-              const isActive = orderedValues.includes(option);
-              return (
-                <li key={`${column.id}-option-${key}`}>
-                  <button
-                    type="button"
-                    className={`${styles.headerQuickFilterOption} ${
-                      isActive ? styles.headerQuickFilterOptionActive : ''
-                    }`}
-                    onClick={() => onSelect(column.id, option)}
-                    role="option"
-                    aria-selected={isActive}
-                  >
-                    {option}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+      <DropdownWithSearchContent
+        variant="popover"
+        options={availableOptions}
+        includeAllOption={!meta?.multi}
+        searchValue={searchValue ?? ''}
+        searchPlaceholder={`Search ${definition?.label ?? column.id}`}
+        onSearchChange={onSearch}
+        onSelectOption={(option) => onSelect(column.id, option)}
+        selectedValue={!meta?.multi ? orderedValues[0] ?? undefined : undefined}
+        selectedValues={meta?.multi ? orderedValues : undefined}
+        multi={Boolean(meta?.multi)}
+        emptyMessage="No options available"
+        testIdPrefix={`transactions-quick-filter-${column.id}`}
+      />
     </div>
   );
 }
@@ -168,11 +148,6 @@ export function TableBaseHeader({
             : 'Sort: None';
           const availableOptions = meta ? quickFilterOptions[meta.optionsKey] ?? [] : [];
           const searchTerm = quickFilterSearch[column.id] ?? '';
-          const filteredOptions = meta && searchTerm.trim()
-            ? availableOptions.filter((option) =>
-                String(option ?? '').toLowerCase().includes(searchTerm.trim().toLowerCase()),
-              )
-            : availableOptions;
 
           return (
             <th
@@ -275,7 +250,7 @@ export function TableBaseHeader({
                       overflowCount,
                       searchValue: searchTerm,
                       onSearch: (value) => onQuickFilterSearch(column.id, value),
-                      availableOptions: filteredOptions,
+                      availableOptions,
                       onSelect: onQuickFilterSelect,
                       meta,
                       onClose: () => onQuickFilterToggle(column.id),

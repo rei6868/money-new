@@ -90,6 +90,7 @@ const NAV_ITEMS = [
 ];
 
 const THEME_STORAGE_KEY = 'moneyflow-preferred-theme';
+const SIDEBAR_STORAGE_KEY = 'moneyflow-sidebar-collapsed';
 
 function getInitialTheme() {
   if (typeof window === 'undefined') {
@@ -108,6 +109,17 @@ function getInitialTheme() {
   return 'light';
 }
 
+function getInitialSidebarState() {
+  if (typeof window === 'undefined') {
+    return true;
+  }
+  const storedValue = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+  if (storedValue === 'false') {
+    return false;
+  }
+  return true;
+}
+
 function isPathActive(pathname, href) {
   if (href === '/') {
     return pathname === '/';
@@ -121,7 +133,7 @@ function isPathActive(pathname, href) {
 export default function AppLayout({ title, subtitle, children }) {
   const router = useRouter();
   const { logout } = useAuth();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => getInitialSidebarState());
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [theme, setTheme] = useState(() => getInitialTheme());
 
@@ -144,6 +156,13 @@ export default function AppLayout({ title, subtitle, children }) {
       window.localStorage.setItem(THEME_STORAGE_KEY, theme);
     }
   }, [theme]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, isCollapsed ? 'true' : 'false');
+  }, [isCollapsed]);
 
   useEffect(() => {
     setExpandedGroups((prev) => {

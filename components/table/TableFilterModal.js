@@ -1,80 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiSearch, FiX } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
-import { slugify } from './tableUtils';
-
-function ModalSingleSelect({
-  id,
-  label,
-  searchPlaceholder,
-  searchValue,
-  onSearchChange,
-  options = [],
-  selectedValue,
-  onSelectOption,
-  emptyMessage,
-  testIdPrefix,
-}) {
-  const normalizedOptions = options.includes('all') ? options : ['all', ...options];
-  const normalizedSearch = searchValue.trim().toLowerCase();
-  const filteredOptions = normalizedSearch
-    ? normalizedOptions.filter((option) =>
-        option === 'all' ? true : option.toLowerCase().includes(normalizedSearch),
-      )
-    : normalizedOptions;
-  const hasMatches = filteredOptions.some((option) => option !== 'all');
-
-  return (
-    <div className={styles.modalField}>
-      <label htmlFor={`${id}-search`} className={styles.modalLabel}>
-        {label}
-      </label>
-      <div className={styles.modalPicker}>
-        <div className={`${styles.modalPickerSearch} ${styles.modalSearchGroup}`}>
-          <FiSearch aria-hidden className={styles.modalSearchIcon} />
-          <input
-            id={`${id}-search`}
-            type="search"
-            placeholder={searchPlaceholder}
-            className={styles.modalSearchInput}
-            value={searchValue}
-            onChange={(event) => onSearchChange(event.target.value)}
-            data-testid={`${testIdPrefix}-search`}
-          />
-        </div>
-        <div
-          className={styles.modalOptionList}
-          role="listbox"
-          aria-label={label}
-          data-testid={testIdPrefix}
-        >
-          {filteredOptions.map((option) => {
-            const value = option;
-            const optionLabel = option === 'all' ? 'All' : option;
-            const isSelected = selectedValue === value;
-            return (
-              <button
-                type="button"
-                key={value || 'all'}
-                className={`${styles.modalOptionButton} ${
-                  isSelected ? styles.modalOptionButtonActive : ''
-                }`}
-                onClick={onSelectOption(value)}
-                role="option"
-                aria-selected={isSelected}
-                data-testid={`${testIdPrefix}-option-${slugify(value)}`}
-              >
-                {optionLabel}
-              </button>
-            );
-          })}
-          {!hasMatches ? <span className={styles.emptyOption}>{emptyMessage}</span> : null}
-        </div>
-      </div>
-    </div>
-  );
-}
+import { DropdownSimple } from '../common/DropdownSimple';
+import { DropdownWithSearch } from '../common/DropdownWithSearch';
 
 export function TableFilterModal({
   isOpen,
@@ -90,6 +19,7 @@ export function TableFilterModal({
   const [peopleSearch, setPeopleSearch] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
   const [debtTagSearch, setDebtTagSearch] = useState('');
+  const [openDropdown, setOpenDropdown] = useState(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -98,27 +28,28 @@ export function TableFilterModal({
     setPeopleSearch('');
     setCategorySearch('');
     setDebtTagSearch('');
+    setOpenDropdown(null);
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || !onSearchOptions) {
+    if (!isOpen || !onSearchOptions || openDropdown !== 'person') {
       return undefined;
     }
     const handle = setTimeout(() => {
       onSearchOptions('people', peopleSearch);
     }, 250);
     return () => clearTimeout(handle);
-  }, [peopleSearch, isOpen, onSearchOptions]);
+  }, [peopleSearch, isOpen, onSearchOptions, openDropdown]);
 
   useEffect(() => {
-    if (!isOpen || !onSearchOptions) {
+    if (!isOpen || !onSearchOptions || openDropdown !== 'category') {
       return undefined;
     }
     const handle = setTimeout(() => {
       onSearchOptions('categories', categorySearch);
     }, 250);
     return () => clearTimeout(handle);
-  }, [categorySearch, isOpen, onSearchOptions]);
+  }, [categorySearch, isOpen, onSearchOptions, openDropdown]);
 
   const normalizedPeopleSearch = peopleSearch.trim().toLowerCase();
   const normalizedCategorySearch = categorySearch.trim().toLowerCase();
@@ -132,17 +63,40 @@ export function TableFilterModal({
     return base.filter((tag) => tag.toLowerCase().includes(normalizedDebtTagSearch));
   }, [options.debtTags, normalizedDebtTagSearch]);
 
-  const handleChange = (field) => (event) => {
-    onChange(field, event.target.value);
-  };
+  const handleDropdownToggle = useCallback((id) => {
+    setOpenDropdown((current) => (current === id ? null : id));
+  }, []);
+
+  const handleChange = useCallback(
+    (field, value) => {
+      onChange(field, value);
+    },
+    [onChange],
+  );
 
   const handleToggle = (field, value) => (event) => {
     onToggleOption?.(field, value, event.target.checked);
   };
 
-  const handleSelectOption = (field, value) => () => {
-    onChange(field, value);
-  };
+  const handleSelectOption = useCallback(
+    (field, value) => {
+      handleChange(field, value);
+      setOpenDropdown(null);
+    },
+    [handleChange],
+  );
+
+  const handleOverlayDismiss = useCallback(
+    (event) => {
+      event.stopPropagation();
+      onClose?.();
+    },
+    [onClose],
+  );
+
+  const handleContentClick = useCallback((event) => {
+    event.stopPropagation();
+  }, []);
 
   const selectedTypes = new Set(filters.types ?? []);
   const selectedDebtTags = new Set(filters.debtTags ?? []);
@@ -152,8 +106,14 @@ export function TableFilterModal({
   }
 
   return (
-    <div className={styles.modalOverlay} data-testid="transactions-filter-modal" role="dialog" aria-modal="true">
-      <div className={styles.modalContent}>
+    <div
+      className={styles.modalOverlay}
+      data-testid="transactions-filter-modal"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={handleOverlayDismiss}
+    >
+      <div className={styles.modalContent} onMouseDown={handleContentClick}>
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>Filter Transactions</h2>
           <button
@@ -168,28 +128,32 @@ export function TableFilterModal({
         </div>
 
         <div className={styles.modalBody}>
-          <ModalSingleSelect
+          <DropdownWithSearch
             id="filter-person"
             label="Person"
-            searchPlaceholder="Search people"
-            searchValue={peopleSearch}
-            onSearchChange={setPeopleSearch}
+            isOpen={openDropdown === 'person'}
+            onToggle={handleDropdownToggle}
             options={options.people ?? []}
-            selectedValue={filters.person}
+            searchValue={peopleSearch}
+            searchPlaceholder="Search people"
+            onSearchChange={setPeopleSearch}
             onSelectOption={(value) => handleSelectOption('person', value)}
+            selectedValue={filters.person}
             emptyMessage="No people match"
             testIdPrefix="transactions-filter-person"
           />
 
-          <ModalSingleSelect
+          <DropdownWithSearch
             id="filter-category"
             label="Category"
-            searchPlaceholder="Search categories"
-            searchValue={categorySearch}
-            onSearchChange={setCategorySearch}
+            isOpen={openDropdown === 'category'}
+            onToggle={handleDropdownToggle}
             options={options.categories ?? []}
-            selectedValue={filters.category}
+            searchValue={categorySearch}
+            searchPlaceholder="Search categories"
+            onSearchChange={setCategorySearch}
             onSelectOption={(value) => handleSelectOption('category', value)}
+            selectedValue={filters.category}
             emptyMessage="No categories match"
             testIdPrefix="transactions-filter-category"
           />
@@ -261,45 +225,27 @@ export function TableFilterModal({
             </div>
           </div>
 
-          <div className={styles.modalField}>
-            <label htmlFor="filter-year" className={styles.modalLabel}>
-              Year
-            </label>
-            <select
-              id="filter-year"
-              className={styles.modalControl}
-              value={filters.year}
-              onChange={handleChange('year')}
-              data-testid="transactions-filter-year"
-            >
-              <option value="all">All</option>
-              {options.years.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
+          <DropdownSimple
+            id="filter-year"
+            label="Year"
+            isOpen={openDropdown === 'year'}
+            onToggle={handleDropdownToggle}
+            options={options.years ?? []}
+            value={filters.year}
+            onSelect={(value) => handleSelectOption('year', value)}
+            testIdPrefix="transactions-filter-year"
+          />
 
-          <div className={styles.modalField}>
-            <label htmlFor="filter-month" className={styles.modalLabel}>
-              Month
-            </label>
-            <select
-              id="filter-month"
-              className={styles.modalControl}
-              value={filters.month}
-              onChange={handleChange('month')}
-              data-testid="transactions-filter-month"
-            >
-              <option value="all">All</option>
-              {options.months.map((month) => (
-                <option key={month} value={month}>
-                  {month}
-                </option>
-              ))}
-            </select>
-          </div>
+          <DropdownSimple
+            id="filter-month"
+            label="Month"
+            isOpen={openDropdown === 'month'}
+            onToggle={handleDropdownToggle}
+            options={options.months ?? []}
+            value={filters.month}
+            onSelect={(value) => handleSelectOption('month', value)}
+            testIdPrefix="transactions-filter-month"
+          />
         </div>
 
         <div className={styles.modalFooter}>
