@@ -22,18 +22,17 @@ export function TransactionsToolbar({
   filterCount,
   onAddTransaction,
   onCustomizeColumns,
-  selectionSummary,
+  selectedCount = 0,
+  selectionSummary = { amount: 0, finalPrice: 0, totalBack: 0 },
   onDeselectAll,
   onToggleShowSelected,
   isShowingSelectedOnly,
 }) {
-  const hasQuery = Boolean(searchValue);
+  const hasQuery = Boolean(searchValue?.trim());
   const canRestore = Boolean(previousQuery);
   const hasFilters = filterCount > 0;
   const searchInputRef = useRef(null);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
-  const [draftQuery, setDraftQuery] = useState(query);
-  const hasQuery = Boolean(draftQuery);
 
   const showClearButton = hasQuery;
   const showRestoreButton = canRestore && !hasQuery;
@@ -58,9 +57,7 @@ export function TransactionsToolbar({
   const handleSearchKeyDown = (event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
-      onQueryChange(draftQuery.trim());
-      onSubmitSearch();
-      return;
+      onSubmitSearch?.();
     }
     if (event.key === 'Escape' && hasQuery) {
       event.preventDefault();
@@ -68,16 +65,11 @@ export function TransactionsToolbar({
     }
   };
 
-  const handleSubmitSearch = () => {
-    onQueryChange(draftQuery.trim());
-    requestAnimationFrame(() => {
-      searchInputRef.current?.focus();
-    });
   const handleRestoreClick = () => {
     if (!previousQuery) {
       return;
     }
-    onRestoreQuery(previousQuery);
+    onRestoreQuery?.(previousQuery);
     focusSearchInput();
   };
 
@@ -102,12 +94,8 @@ export function TransactionsToolbar({
 
   const handleConfirmClear = () => {
     setIsConfirmingClear(false);
-    onClearQuery();
-    setDraftQuery('');
-    onClearSearch();
-    requestAnimationFrame(() => {
-      searchInputRef.current?.focus();
-    });
+    onClearSearch?.();
+    focusSearchInput();
   };
 
   const handleCancelClear = () => {
@@ -115,9 +103,12 @@ export function TransactionsToolbar({
     focusSearchInput();
   };
 
-  useEffect(() => {
-    setDraftQuery(query);
-  }, [query]);
+  const handleToggleSelected = () => {
+    if (selectedCount === 0) {
+      return;
+    }
+    onToggleShowSelected?.();
+  };
 
   return (
     <section className={styles.toolbarCard} aria-label="Transactions controls">
@@ -127,36 +118,13 @@ export function TransactionsToolbar({
             ref={searchInputRef}
             type="search"
             placeholder="Search all transactions"
-            value={draftQuery}
-            onChange={(event) => setDraftQuery(event.target.value)}
             value={searchValue}
-            onChange={(event) => onSearchChange(event.target.value)}
-            onFocus={handleFocus}
-            onBlur={() => setIsSearchFocused(false)}
+            onChange={(event) => onSearchChange?.(event.target.value)}
             onKeyDown={handleSearchKeyDown}
             className={styles.searchInput}
             data-testid="transactions-search-input"
             aria-label="Search transactions"
           />
-          <button
-            type="button"
-            className={styles.searchSubmitButton}
-            onClick={handleSubmitSearch}
-            data-testid="transactions-search-submit"
-            aria-label="Apply search"
-          >
-            <FiSearch aria-hidden />
-          </button>
-          {showClearButton ? (
-            <button
-              type="button"
-              className={styles.secondaryButton}
-              onClick={onDeselectAll}
-              data-testid="transactions-quick-deselect"
-            >
-              De-select
-            </button>
-          ) : null}
           <div className={styles.searchTrailingIcons}>
             {showRestoreButton ? (
               <button
@@ -187,6 +155,7 @@ export function TransactionsToolbar({
             </span>
           </div>
         </div>
+
         <button
           type="button"
           className={styles.searchSubmitButton}
@@ -196,34 +165,24 @@ export function TransactionsToolbar({
           Search
         </button>
 
-        {canRestore ? (
-          <button
-            type="button"
-            className={styles.restoreIconButton}
-            onClick={() => onRestoreQuery(previousQuery)}
-            data-testid="transactions-search-restore"
-            aria-label={`Restore search ${previousQuery}`}
-            title={`Restore “${previousQuery}”`}
-          >
-            <FiRotateCcw aria-hidden />
-          </button>
-        ) : null}
-
-        {selectionSummary.count > 0 ? (
-          <div className={styles.toolbarSelectionControls}>
+        {selectedCount > 0 ? (
+          <div className={styles.selectionQuickActions} data-testid="transactions-selection-inline">
+            <span className={styles.selectionQuickSummary}>
+              {selectedCount} selected · Amount {formatAmountWithTrailing(selectionSummary.amount)}
+            </span>
             <button
               type="button"
               className={styles.secondaryButton}
               onClick={onDeselectAll}
-              data-testid="transactions-selection-clear"
+              data-testid="transactions-quick-deselect"
             >
               De-select
             </button>
             <button
               type="button"
-              className={styles.primaryPillButton}
-              onClick={onToggleShowSelected}
-              data-testid="transactions-selection-toggle"
+              className={styles.secondaryButton}
+              onClick={handleToggleSelected}
+              data-testid="transactions-quick-toggle"
             >
               {isShowingSelectedOnly ? 'Show all rows' : 'Show selected rows'}
             </button>
