@@ -222,7 +222,7 @@
   width: 100%;
   max-width: 100%;
   overflow: hidden;
-  /* horizontal scroll inside table container with table-fixed layout, main content overflow: hidden so no layout shift or horizontal overflow on html, body, app-root, main-content */
+  /* horizontal scroll inside table wrapper/container, never at app/page level; see main layout overflow guards */
 }
 
 .tableScroll {
@@ -233,7 +233,9 @@
   max-height: clamp(420px, 60vh, 720px);
   width: 100%;
   max-width: 100%;
-  /* table wrapper overflow-x: auto to guarantee horizontal scroll inside table container and enforce contained table scroll */
+  scrollbar-gutter: stable both-edges;
+  overscroll-behavior: contain;
+  /* horizontal scroll inside table wrapper/container, never at app/page level */
 }
 
 .table {
@@ -250,7 +252,7 @@
   position: sticky;
   top: 0;
   background: var(--mf-sidebar-bg);
-  z-index: 7;
+  z-index: 12;
   text-align: left;
   font-size: 0.78rem;
   letter-spacing: 0.08em;
@@ -319,15 +321,25 @@
 .stickyLeft {
   position: sticky;
   left: 0;
-  z-index: 10;
+  z-index: 14;
   background: var(--mf-sidebar-bg);
+  box-shadow: 8px 0 18px rgba(15, 23, 42, 0.08);
 }
 
 .stickyRight {
   position: sticky;
   right: 0;
-  z-index: 10;
+  z-index: 14;
   background: var(--mf-sidebar-bg);
+  box-shadow: -8px 0 18px rgba(15, 23, 42, 0.08);
+}
+
+.stickyLeftEdge {
+  box-shadow: 10px 0 18px -16px rgba(15, 23, 42, 0.35);
+}
+
+.stickyRightEdge {
+  box-shadow: -10px 0 18px -16px rgba(15, 23, 42, 0.35);
 }
 
 .stickyLeftEdge {

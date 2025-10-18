@@ -151,7 +151,7 @@ export function TransactionsTable({
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody style={{ minWidth: tableMinWidthValue }}>
             {transactions.length === 0 ? (
               <tr>
                 <td colSpan={visibleColumns.length + 2} className={styles.emptyState} data-testid="transactions-empty-state">
