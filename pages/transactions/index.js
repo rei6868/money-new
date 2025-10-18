@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { FiXCircle } from 'react-icons/fi';
 
 import AppLayout from '../../components/AppLayout';
+import { CustomizeColumnsModal } from '../../components/transactions/CustomizeColumnsModal';
 import { TransactionsFilterModal } from '../../components/transactions/TransactionsFilterModal';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
 import { TransactionsToolbar } from '../../components/transactions/TransactionsToolbar';
+import { TRANSACTION_COLUMN_DEFINITIONS, getDefaultColumnState } from '../../components/transactions/transactionColumns';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
+import { formatAmountWithTrailing } from '../../lib/numberFormat';
 import { fetchMockTransactions } from '../../lib/mockTransactions';
 import styles from '../../styles/TransactionsHistory.module.css';
 
@@ -17,15 +20,7 @@ const INITIAL_FILTERS = {
 };
 
 const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long' });
-const currencyFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 2,
-});
-
-function formatCurrency(value) {
-  return currencyFormatter.format(value ?? 0);
-}
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
 
 export default function TransactionsHistoryPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
@@ -38,6 +33,11 @@ export default function TransactionsHistoryPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [advancedPanel, setAdvancedPanel] = useState(null);
+  const [columnState, setColumnState] = useState(() => getDefaultColumnState());
+  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1] ?? PAGE_SIZE_OPTIONS[0]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -77,6 +77,43 @@ export default function TransactionsHistoryPage() {
       isCancelled = true;
     };
   }, [isAuthenticated]);
+
+  const definitionLookup = useMemo(
+    () =>
+      new Map(
+        TRANSACTION_COLUMN_DEFINITIONS.map((definition) => [definition.id, definition]),
+      ),
+    [],
+  );
+
+  const orderedColumns = useMemo(
+    () =>
+      columnState
+        .slice()
+        .sort((a, b) => a.order - b.order)
+        .map((state) => {
+          const definition = definitionLookup.get(state.id) ?? {};
+          const minWidth = definition.minWidth ?? 120;
+          const defaultVisible = definition.defaultVisible !== false;
+          const normalizedWidth = Math.max(
+            state.width ?? definition.defaultWidth ?? minWidth,
+            minWidth,
+          );
+
+          return {
+            ...definition,
+            ...state,
+            width: normalizedWidth,
+            visible: state.visible ?? defaultVisible,
+          };
+        }),
+    [columnState, definitionLookup],
+  );
+
+  const visibleColumns = useMemo(
+    () => orderedColumns.filter((column) => column.visible),
+    [orderedColumns],
+  );
 
   const filterOptions = useMemo(() => {
     const people = new Set();
@@ -156,15 +193,50 @@ export default function TransactionsHistoryPage() {
     });
   }, [filteredTransactions]);
 
+  useEffect(() => {
+    if (selectedIds.length === 0 && showSelectedOnly) {
+      setShowSelectedOnly(false);
+    }
+  }, [selectedIds, showSelectedOnly]);
+
+  const selectedLookup = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  const effectiveTransactions = useMemo(() => {
+    if (!showSelectedOnly) {
+      return filteredTransactions;
+    }
+
+    return filteredTransactions.filter((txn) => selectedLookup.has(txn.id));
+  }, [filteredTransactions, showSelectedOnly, selectedLookup]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [pageSize, filteredTransactions, showSelectedOnly]);
+
+  const totalPages = Math.max(1, Math.ceil(effectiveTransactions.length / pageSize));
+
+  useEffect(() => {
+    setCurrentPage((prev) => {
+      if (prev > totalPages) {
+        return totalPages;
+      }
+      return prev;
+    });
+  }, [totalPages]);
+
+  const paginatedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return effectiveTransactions.slice(start, start + pageSize);
+  }, [effectiveTransactions, currentPage, pageSize]);
+
   const selectionSummary = useMemo(() => {
     if (selectedIds.length === 0) {
       return { count: 0, amount: 0, finalPrice: 0, totalBack: 0 };
     }
 
-    const selectedSet = new Set(selectedIds);
     return filteredTransactions.reduce(
       (acc, txn) => {
-        if (!selectedSet.has(txn.id)) {
+        if (!selectedLookup.has(txn.id)) {
           return acc;
         }
 
@@ -176,7 +248,7 @@ export default function TransactionsHistoryPage() {
       },
       { count: 0, amount: 0, finalPrice: 0, totalBack: 0 },
     );
-  }, [filteredTransactions, selectedIds]);
+  }, [filteredTransactions, selectedIds, selectedLookup]);
 
   const filterCount = useMemo(
     () => Object.values(appliedFilters).filter((value) => value !== 'all').length,
@@ -202,6 +274,23 @@ export default function TransactionsHistoryPage() {
     }
 
     setSelectedIds(filteredTransactions.map((txn) => txn.id));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedIds([]);
+  };
+
+  const handleToggleShowSelected = () => {
+    if (showSelectedOnly) {
+      setShowSelectedOnly(false);
+      return;
+    }
+
+    if (selectedIds.length === 0) {
+      return;
+    }
+
+    setShowSelectedOnly(true);
   };
 
   const handleClearQuery = () => {
@@ -255,6 +344,33 @@ export default function TransactionsHistoryPage() {
     setAdvancedPanel(null);
   };
 
+  const handleApplyColumns = (columns) => {
+    setColumnState(
+      columns.map((column, index) => {
+        const definition = definitionLookup.get(column.id) ?? {};
+        const minWidth = definition.minWidth ?? 120;
+        const defaultVisible = definition.defaultVisible !== false;
+        const normalizedWidth = Math.max(
+          Number(column.width) || definition.defaultWidth || minWidth,
+          minWidth,
+        );
+
+        return {
+          id: column.id,
+          width: normalizedWidth,
+          visible: column.visible ?? defaultVisible,
+          order: index,
+        };
+      }),
+    );
+    setIsCustomizeOpen(false);
+  };
+
+  const handleResetColumns = () => {
+    setColumnState(getDefaultColumnState());
+    setIsCustomizeOpen(false);
+  };
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
@@ -274,6 +390,7 @@ export default function TransactionsHistoryPage() {
           onFilterClick={handleOpenFilters}
           filterCount={filterCount}
           onAddTransaction={handleAddTransaction}
+          onCustomizeColumns={() => setIsCustomizeOpen(true)}
         />
 
         {isFetching ? (
@@ -282,12 +399,29 @@ export default function TransactionsHistoryPage() {
           </div>
         ) : (
           <TransactionsTable
-            transactions={filteredTransactions}
+            transactions={paginatedTransactions}
             selectedIds={selectedIds}
             onSelectRow={handleSelectRow}
             onSelectAll={handleSelectAll}
             selectionSummary={selectionSummary}
             onOpenAdvanced={handleAdvanced}
+            visibleColumns={visibleColumns}
+            onDeselectAll={handleDeselectAll}
+            onToggleShowSelected={handleToggleShowSelected}
+            isShowingSelectedOnly={showSelectedOnly}
+            pagination={{
+              pageSize,
+              pageSizeOptions: PAGE_SIZE_OPTIONS,
+              currentPage,
+              totalPages,
+              onPageSizeChange: (value) =>
+                setPageSize(PAGE_SIZE_OPTIONS.includes(value) ? value : PAGE_SIZE_OPTIONS[0]),
+              onPageChange: (page) =>
+                setCurrentPage((prev) => {
+                  const next = Math.min(Math.max(page, 1), totalPages);
+                  return next;
+                }),
+            }}
           />
         )}
 
@@ -301,6 +435,14 @@ export default function TransactionsHistoryPage() {
         onReset={handleFilterReset}
         onApply={handleFilterApply}
         options={filterOptions}
+      />
+
+      <CustomizeColumnsModal
+        isOpen={isCustomizeOpen}
+        columns={orderedColumns}
+        onClose={() => setIsCustomizeOpen(false)}
+        onApply={handleApplyColumns}
+        onReset={handleResetColumns}
       />
 
       {advancedPanel ? (
@@ -375,19 +517,19 @@ export default function TransactionsHistoryPage() {
                   <div className={styles.metricTile}>
                     <span className={styles.metricLabel}>Amount</span>
                     <span className={styles.metricValue}>
-                      {formatCurrency(advancedPanel.transaction?.amount)}
+                      {formatAmountWithTrailing(advancedPanel.transaction?.amount)}
                     </span>
                   </div>
                   <div className={styles.metricTile}>
                     <span className={styles.metricLabel}>Total Back</span>
                     <span className={styles.metricValue}>
-                      {formatCurrency(advancedPanel.transaction?.totalBack)}
+                      {formatAmountWithTrailing(advancedPanel.transaction?.totalBack)}
                     </span>
                   </div>
                   <div className={styles.metricTile}>
                     <span className={styles.metricLabel}>Final Price</span>
                     <span className={styles.metricValue}>
-                      {formatCurrency(advancedPanel.transaction?.finalPrice)}
+                      {formatAmountWithTrailing(advancedPanel.transaction?.finalPrice)}
                     </span>
                   </div>
                 </div>
