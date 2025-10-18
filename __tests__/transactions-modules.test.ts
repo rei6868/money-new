@@ -1,7 +1,28 @@
 import { getTransactionsTable } from '../lib/api/transactions/transactions.table';
 import { createRestorePayload } from '../lib/api/transactions/transactions.restore';
 import { executeTransactionAction } from '../lib/api/transactions/transactions.action';
+import { loadTransactionDataset, recalculateRewardFields } from '../lib/api/transactions/transactions.dataset';
 import { type TransactionsTableRequest } from '../lib/api/transactions/transactions.types';
+
+describe('transaction dataset helpers', () => {
+  it('converts enriched transactions into table-safe records', () => {
+    const dataset = loadTransactionDataset();
+    expect(dataset.length).toBeGreaterThan(0);
+    dataset.forEach((record) => {
+      expect(typeof record.id).toBe('string');
+      expect(typeof record.amount).toBe('number');
+      expect(['credit', 'debit']).toContain(record.amountDirection);
+      expect(record.date).not.toBeUndefined();
+    });
+  });
+
+  it('recalculates reward fields deterministically', () => {
+    const [record] = loadTransactionDataset();
+    const updated = recalculateRewardFields({ ...record, amount: 100, percentBack: 5, fixedBack: 2 });
+    expect(updated.totalBack).toBe(7);
+    expect(updated.finalPrice).toBe(93);
+  });
+});
 
 describe('transactions table module', () => {
   const baseRequest: TransactionsTableRequest = {

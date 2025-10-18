@@ -1,4 +1,7 @@
-import { getMockTransactions } from '../../mockTransactions';
+import {
+  getMockTransactions,
+  type EnrichedTransaction,
+} from '../../mockTransactions';
 import { type TransactionRecord } from './transactions.types';
 
 function toNumber(value: unknown, fallback = 0): number {
@@ -6,40 +9,42 @@ function toNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(numeric) ? numeric : fallback;
 }
 
-function toTransactionRecord(txn: Record<string, unknown>): TransactionRecord {
-  const rawDate = typeof txn.date === 'string' ? txn.date : '';
+function toTransactionRecord(txn: EnrichedTransaction): TransactionRecord {
+  const rawDate = txn.date ?? '';
   const sortDate = Number.isFinite(txn.sortDate)
-    ? Number(txn.sortDate)
+    ? txn.sortDate
     : new Date(`${rawDate}T00:00:00Z`).getTime();
-  const type = typeof txn.type === 'string' ? txn.type : 'Expense';
+  const occurredOn = txn.occurredOn ?? rawDate;
+  const displayDate = txn.displayDate ?? rawDate;
+  const type = txn.type ?? 'Expense';
   return {
-    id: String(txn.id ?? ''),
+    id: txn.id ?? '',
     date: rawDate,
-    occurredOn: typeof txn.occurredOn === 'string' ? txn.occurredOn : rawDate,
-    displayDate: typeof txn.displayDate === 'string' ? txn.displayDate : rawDate,
+    occurredOn,
+    displayDate,
     sortDate: Number.isFinite(sortDate) ? sortDate : Number.NEGATIVE_INFINITY,
-    year: typeof txn.year === 'string' ? txn.year : '',
-    month: typeof txn.month === 'string' ? txn.month : '',
-    account: typeof txn.account === 'string' ? txn.account : '',
-    shop: typeof txn.shop === 'string' ? txn.shop : '',
-    notes: typeof txn.notes === 'string' ? txn.notes : '',
+    year: txn.year ?? '',
+    month: txn.month ?? '',
+    account: txn.account ?? '',
+    shop: txn.shop ?? '',
+    notes: txn.notes ?? '',
     amount: toNumber(txn.amount),
     percentBack: toNumber(txn.percentBack),
     fixedBack: toNumber(txn.fixedBack),
     totalBack: toNumber(txn.totalBack),
     finalPrice: toNumber(txn.finalPrice),
-    debtTag: typeof txn.debtTag === 'string' ? txn.debtTag : '',
-    cycleTag: typeof txn.cycleTag === 'string' ? txn.cycleTag : '',
-    category: typeof txn.category === 'string' ? txn.category : '',
-    linkedTxn: typeof txn.linkedTxn === 'string' ? txn.linkedTxn : '',
-    owner: typeof txn.owner === 'string' ? txn.owner : '',
+    debtTag: txn.debtTag ?? '',
+    cycleTag: txn.cycleTag ?? '',
+    category: txn.category ?? '',
+    linkedTxn: txn.linkedTxn ?? '',
+    owner: txn.owner ?? '',
     type,
     amountDirection: type === 'Income' ? 'credit' : 'debit',
   };
 }
 
 export function loadTransactionDataset(): TransactionRecord[] {
-  return getMockTransactions().map((txn) => toTransactionRecord(txn as Record<string, unknown>));
+  return getMockTransactions().map((txn) => toTransactionRecord(txn));
 }
 
 export function recalculateRewardFields(record: TransactionRecord): TransactionRecord {

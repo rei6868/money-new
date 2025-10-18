@@ -35,11 +35,20 @@ function parseSort(sortParam: string | string[] | undefined): SortDescriptor[] {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       return parsed
-        .map((item) => ({
-          id: typeof item?.id === 'string' ? item.id : '',
-          direction: item?.direction === 'desc' ? 'desc' : 'asc',
-        }))
-        .filter((item) => item.id.length > 0);
+        .map((item): SortDescriptor | null => {
+          if (!item || typeof item.id !== 'string') {
+            return null;
+          }
+          const trimmedId = item.id.trim();
+          if (!trimmedId) {
+            return null;
+          }
+          return {
+            id: trimmedId,
+            direction: item.direction === 'desc' ? 'desc' : 'asc',
+          };
+        })
+        .filter((item): item is SortDescriptor => item !== null);
     }
   } catch (error) {
     // fall back to comma parsing below
@@ -48,14 +57,18 @@ function parseSort(sortParam: string | string[] | undefined): SortDescriptor[] {
     .split(',')
     .map((piece) => piece.trim())
     .filter((piece) => piece.length > 0)
-    .map((piece) => {
+    .map((piece): SortDescriptor | null => {
       const [id, direction] = piece.split(':');
+      const trimmedId = (id ?? '').trim();
+      if (!trimmedId) {
+        return null;
+      }
       return {
-        id: (id ?? '').trim(),
+        id: trimmedId,
         direction: (direction ?? '').trim() === 'desc' ? 'desc' : 'asc',
       };
     })
-    .filter((item) => item.id.length > 0);
+    .filter((item): item is SortDescriptor => item !== null);
 }
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {

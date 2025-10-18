@@ -3,6 +3,8 @@ import { Buffer } from 'node:buffer';
 import { mergeFilters, normalizeFilters } from './transactions.filter';
 import { getTransactionMeta } from './transactions.meta';
 import {
+  type SortDescriptor,
+  type SortDirection,
   type TransactionFilters,
   type TransactionRestorePayload,
   type TransactionTableState,
@@ -52,16 +54,21 @@ function sanitizeState(state: Partial<TransactionTableState> | undefined): Trans
   const defaults = getDefaultTableState();
   const normalizedFilters = state?.filters ? normalizeFilters(state.filters) : defaults.filters;
   const pagination = sanitizePagination(state?.pagination?.page, state?.pagination?.pageSize);
+  const sanitizedSort: SortDescriptor[] =
+    Array.isArray(state?.sort) && state.sort.length > 0
+      ? state.sort
+          .map((item): SortDescriptor | null => {
+            if (!item || typeof item.id !== 'string' || item.id.length === 0) {
+              return null;
+            }
+            const direction: SortDirection = item.direction === 'desc' ? 'desc' : 'asc';
+            return { id: item.id, direction };
+          })
+          .filter((item): item is SortDescriptor => item !== null)
+      : defaults.sort;
   return {
     searchTerm: typeof state?.searchTerm === 'string' ? state.searchTerm : defaults.searchTerm,
-    sort: Array.isArray(state?.sort) && state.sort.length > 0
-      ? state.sort
-          .map((item) => ({
-            id: typeof item?.id === 'string' ? item.id : '',
-            direction: item?.direction === 'desc' ? 'desc' : 'asc',
-          }))
-          .filter((item) => item.id.length > 0)
-      : defaults.sort,
+    sort: sanitizedSort.length > 0 ? sanitizedSort : defaults.sort,
     filters: normalizedFilters,
     pagination,
     quickFilterId: typeof state?.quickFilterId === 'string' ? state.quickFilterId : null,

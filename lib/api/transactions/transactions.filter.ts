@@ -107,19 +107,29 @@ export function normalizeFilters(partial?: Partial<TransactionFilters>): Transac
 export function parseFiltersFromQuery(
   query: Record<string, string | string[] | undefined>,
 ): TransactionFilters {
+  const owners = ensureArray(query.owner ?? query.owners);
+  const categories = ensureArray(query.category ?? query.categories);
+  const types = ensureArray(query.type ?? query.types);
+  const debtTags = ensureArray(query.debtTag ?? query.debtTags);
+  const accounts = ensureArray(query.account ?? query.accounts);
+  const months = ensureArray(query.month ?? query.months);
+  const years = ensureArray(query.year ?? query.years);
+  const searchTags = ensureArray(query.tag ?? query.tags);
+  const dateRange = normalizeDateRange({
+    from: Array.isArray(query.from) ? query.from[0] : query.from,
+    to: Array.isArray(query.to) ? query.to[0] : query.to,
+  });
+
   return normalizeFilters({
-    owners: query.owner ?? query.owners,
-    categories: query.category ?? query.categories,
-    types: query.type ?? query.types,
-    debtTags: query.debtTag ?? query.debtTags,
-    accounts: query.account ?? query.accounts,
-    months: query.month ?? query.months,
-    years: query.year ?? query.years,
-    searchTags: query.tag ?? query.tags,
-    dateRange: {
-      from: typeof query.from === 'string' ? query.from : Array.isArray(query.from) ? query.from[0] : undefined,
-      to: typeof query.to === 'string' ? query.to : Array.isArray(query.to) ? query.to[0] : undefined,
-    },
+    owners,
+    categories,
+    types,
+    debtTags,
+    accounts,
+    months,
+    years,
+    searchTags,
+    dateRange,
   });
 }
 

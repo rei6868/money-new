@@ -31,7 +31,7 @@ function normalizeSort(sort: SortDescriptor[], meta: TransactionMeta): SortDescr
     meta.availableColumns.filter((column) => column.sortable).map((column) => column.id),
   );
   const normalized = sort
-    .map((item) => ({
+    .map((item): SortDescriptor => ({
       id: item.id,
       direction: item.direction === 'desc' ? 'desc' : 'asc',
     }))
@@ -62,6 +62,13 @@ function compareValues(a: unknown, b: unknown, dataType: string): number {
   }
 }
 
+function getRecordValue(record: TransactionRecord, accessor: string): unknown {
+  if (accessor in record) {
+    return record[accessor as keyof TransactionRecord];
+  }
+  return undefined;
+}
+
 function sortRows(rows: TransactionRecord[], sort: SortDescriptor[], meta: TransactionMeta): TransactionRecord[] {
   const descriptors = sort.map((descriptor) => {
     const column = getColumnDefinition(descriptor.id);
@@ -77,8 +84,8 @@ function sortRows(rows: TransactionRecord[], sort: SortDescriptor[], meta: Trans
   return [...rows].sort((a, b) => {
     for (const descriptor of descriptors) {
       const result = compareValues(
-        (a as Record<string, unknown>)[descriptor.accessor],
-        (b as Record<string, unknown>)[descriptor.accessor],
+        getRecordValue(a, descriptor.accessor),
+        getRecordValue(b, descriptor.accessor),
         descriptor.dataType,
       );
       if (result !== 0) {
