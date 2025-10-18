@@ -1,0 +1,136 @@
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+
+export const CHECKBOX_COLUMN_WIDTH = 64;
+export const ACTIONS_COLUMN_WIDTH = 88;
+export const STICKY_COLUMN_BUFFER = CHECKBOX_COLUMN_WIDTH + ACTIONS_COLUMN_WIDTH;
+export const QUICK_FILTER_MIN_WIDTH = 240;
+export const ACTION_MENU_MIN_WIDTH = 224;
+
+export function computeMinWidth(columns, definitionMap) {
+  if (!Array.isArray(columns) || columns.length === 0) {
+    return 0;
+  }
+
+  return columns.reduce((total, column) => {
+    const definition = definitionMap.get(column.id);
+    const minWidth = column.width || definition?.minWidth || 120;
+    return total + minWidth;
+  }, 0);
+}
+
+export function slugify(value) {
+  return (
+    String(value ?? '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'value'
+  );
+}
+
+export function orderFilterValues(columnId, values = [], quickFilterOptions = {}) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return [];
+  }
+
+  if (columnId === 'debtTag') {
+    const available = quickFilterOptions.debtTags ?? [];
+    if (Array.isArray(available) && available.length > 0) {
+      const ranking = new Map(available.map((option, index) => [option, index]));
+      return [...values].sort((a, b) => {
+        const rankA = ranking.has(a) ? ranking.get(a) : Number.POSITIVE_INFINITY;
+        const rankB = ranking.has(b) ? ranking.get(b) : Number.POSITIVE_INFINITY;
+        return rankA - rankB;
+      });
+    }
+  }
+
+  return [...values];
+}
+
+export function useIsMounted() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
+  return isMounted;
+}
+
+export function usePortalPosition({
+  anchor,
+  isOpen,
+  minWidth = 0,
+  horizontalOffset = 0,
+  verticalOffset = 0,
+  preferredWidth,
+}) {
+  const [position, setPosition] = useState({ top: 0, left: 0, width: minWidth });
+
+  const updatePosition = useCallback(() => {
+    if (!anchor) {
+      return;
+    }
+
+    const rect = anchor.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const resolvedWidth = Math.max(preferredWidth ?? rect.width, minWidth);
+    let left = rect.left + scrollX + horizontalOffset;
+    if (left + resolvedWidth > viewportWidth + scrollX - 16) {
+      left = Math.max(scrollX + 16, viewportWidth + scrollX - resolvedWidth - 16);
+    }
+    const top = rect.bottom + scrollY + verticalOffset;
+    setPosition({ top, left, width: resolvedWidth });
+  }, [anchor, horizontalOffset, minWidth, preferredWidth, verticalOffset]);
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    updatePosition();
+  }, [isOpen, updatePosition]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handleResize = () => updatePosition();
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', handleResize, true);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleResize, true);
+    };
+  }, [isOpen, updatePosition]);
+
+  return position;
+}
+
+export function useGlobalEscape(handler, isEnabled) {
+  useEffect(() => {
+    if (!isEnabled) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        handler?.(event);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handler, isEnabled]);
+}
+
+export function useDefinitionMap(definitions = []) {
+  return useMemo(
+    () => new Map(definitions.map((definition) => [definition.id, definition])),
+    [definitions],
+  );
+}

@@ -1,15 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  FiPlus,
-  FiRotateCcw,
-  FiSearch,
-  FiSettings,
-  FiSliders,
-  FiX,
-} from 'react-icons/fi';
+import { FiPlus, FiSettings, FiSliders } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
+import { TableConfirmModal, TableRestoreInput } from '../table';
 
 export function TransactionsToolbar({
   searchValue,
@@ -29,48 +23,14 @@ export function TransactionsToolbar({
   isShowingSelectedOnly,
 }) {
   const hasQuery = Boolean(searchValue?.trim());
-  const canRestore = Boolean(previousQuery);
   const hasFilters = filterCount > 0;
   const searchInputRef = useRef(null);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
-
-  const showClearButton = hasQuery;
-  const showRestoreButton = canRestore && !hasQuery;
 
   const focusSearchInput = () => {
     requestAnimationFrame(() => {
       searchInputRef.current?.focus();
     });
-  };
-
-  const handleClearMouseDown = (event) => {
-    event.preventDefault();
-  };
-
-  const handleClearClick = () => {
-    if (!hasQuery) {
-      return;
-    }
-    setIsConfirmingClear(true);
-  };
-
-  const handleSearchKeyDown = (event) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      onSubmitSearch?.();
-    }
-    if (event.key === 'Escape' && hasQuery) {
-      event.preventDefault();
-      setIsConfirmingClear(true);
-    }
-  };
-
-  const handleRestoreClick = () => {
-    if (!previousQuery) {
-      return;
-    }
-    onRestoreQuery?.(previousQuery);
-    focusSearchInput();
   };
 
   useEffect(() => {
@@ -113,48 +73,34 @@ export function TransactionsToolbar({
   return (
     <section className={styles.toolbarCard} aria-label="Transactions controls">
       <div className={styles.toolbarLeft}>
-        <div className={styles.searchGroup} data-testid="transactions-search-group">
-          <input
-            ref={searchInputRef}
-            type="search"
-            placeholder="Search all transactions"
-            value={searchValue}
-            onChange={(event) => onSearchChange?.(event.target.value)}
-            onKeyDown={handleSearchKeyDown}
-            className={styles.searchInput}
-            data-testid="transactions-search-input"
-            aria-label="Search transactions"
-          />
-          <div className={styles.searchTrailingIcons}>
-            {showRestoreButton ? (
-              <button
-                type="button"
-                className={`${styles.searchIconButton} ${styles.searchRestoreButton}`}
-                onClick={handleRestoreClick}
-                data-testid="transactions-search-restore"
-                aria-label={`Restore search ${previousQuery}`}
-                title={`Restore “${previousQuery}”`}
-              >
-                <FiRotateCcw aria-hidden />
-              </button>
-            ) : null}
-            {showClearButton ? (
-              <button
-                type="button"
-                className={`${styles.searchIconButton} ${styles.searchClearButton}`}
-                onMouseDown={handleClearMouseDown}
-                onClick={handleClearClick}
-                data-testid="transactions-search-clear"
-                aria-label="Clear search"
-              >
-                <FiX aria-hidden />
-              </button>
-            ) : null}
-            <span className={`${styles.searchIconButton} ${styles.searchStaticIcon}`} aria-hidden>
-              <FiSearch />
-            </span>
-          </div>
-        </div>
+        <TableRestoreInput
+          ref={searchInputRef}
+          value={searchValue}
+          onChange={onSearchChange}
+          onSubmit={onSubmitSearch}
+          onClear={onClearSearch}
+          onRequestClearConfirm={() => (hasQuery ? setIsConfirmingClear(true) : null)}
+          previousValue={previousQuery}
+          onRestore={(value) => {
+            onRestoreQuery?.(value);
+            focusSearchInput();
+          }}
+          placeholder="Search all transactions"
+          containerClassName={styles.searchGroup}
+          containerProps={{ 'data-testid': 'transactions-search-group' }}
+          inputClassName={styles.searchInput}
+          iconButtonClassName={styles.searchIconButton}
+          restoreButtonClassName={styles.searchRestoreButton}
+          clearButtonClassName={styles.searchClearButton}
+          staticIconClassName={`${styles.searchIconButton} ${styles.searchStaticIcon}`}
+          inputTestId="transactions-search-input"
+          restoreButtonTestId="transactions-search-restore"
+          clearButtonTestId="transactions-search-clear"
+          clearButtonAriaLabel="Clear search"
+          restoreButtonAriaLabel={previousQuery ? `Restore search ${previousQuery}` : 'Restore search'}
+          clearButtonTitle="Clear search"
+          restoreButtonTitle={previousQuery ? `Restore “${previousQuery}”` : undefined}
+        />
 
         <button
           type="button"
@@ -225,31 +171,22 @@ export function TransactionsToolbar({
         </button>
       </div>
 
-      {isConfirmingClear ? (
-        <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
-          <div className={styles.confirmDialog}>
-            <p className={styles.confirmMessage}>Clear the current search text?</p>
-            <div className={styles.confirmActions}>
-              <button
-                type="button"
-                className={styles.secondaryButton}
-                onClick={handleCancelClear}
-                data-testid="transactions-search-cancel-clear"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.primaryButton}
-                onClick={handleConfirmClear}
-                data-testid="transactions-search-confirm-clear"
-              >
-                Clear search
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <TableConfirmModal
+        isOpen={isConfirmingClear}
+        title="Clear search"
+        message="Clear the current search text?"
+        cancelLabel="Cancel"
+        confirmLabel="Clear search"
+        onCancel={handleCancelClear}
+        onConfirm={handleConfirmClear}
+        className={styles.confirmOverlay}
+        contentClassName={styles.confirmDialog}
+        actionsClassName={styles.confirmActions}
+        cancelButtonClassName={styles.secondaryButton}
+        confirmButtonClassName={styles.primaryButton}
+        cancelButtonProps={{ 'data-testid': 'transactions-search-cancel-clear' }}
+        confirmButtonProps={{ 'data-testid': 'transactions-search-confirm-clear' }}
+      />
     </section>
   );
 }
