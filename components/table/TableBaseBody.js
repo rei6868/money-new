@@ -138,7 +138,10 @@ export function TableBaseBody({
       {transactions.map((txn) => {
         const isSelected = selectionSet.has(txn.id);
         return (
-          <tr key={txn.id} className={isSelected ? styles.rowSelected : undefined}>
+          <tr
+            key={txn.id}
+            className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`.trim()}
+          >
             <td
               className={`${styles.bodyCell} ${styles.stickyLeft} ${styles.checkboxCell}`}
               style={{
@@ -155,7 +158,12 @@ export function TableBaseBody({
             </td>
             {visibleColumns.map((column) => {
               const definition = definitionMap.get(column.id);
-              const alignClass = definition?.align === 'right' ? styles.cellAlignRight : '';
+              const alignClass =
+                definition?.align === 'right'
+                  ? styles.cellAlignRight
+                  : definition?.align === 'center'
+                  ? styles.cellAlignCenter
+                  : '';
               const minWidth = Math.max(definition?.minWidth ?? 120, column.width);
               return (
                 <td
@@ -299,7 +307,12 @@ export function TableBaseBody({
           />
           {visibleColumns.map((column, index) => {
             const definition = definitionMap.get(column.id);
-            const alignClass = definition?.align === 'right' ? styles.cellAlignRight : '';
+            const alignClass =
+              definition?.align === 'right'
+                ? styles.cellAlignRight
+                : definition?.align === 'center'
+                ? styles.cellAlignCenter
+                : '';
             let content = null;
             if (column.id === 'amount') {
               const toneClass =

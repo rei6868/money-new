@@ -364,7 +364,9 @@ export function TableBase({
                   width: `${STICKY_COLUMN_BUFFER - CHECKBOX_COLUMN_WIDTH}px`,
                 }}
               >
-                Actions
+                <span className={styles.actionsHeaderLabel} title="Actions">
+                  Actions
+                </span>
               </th>
             </tr>
           </thead>

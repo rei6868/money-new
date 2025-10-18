@@ -444,11 +444,16 @@
 }
 
 .headerLabelTitle {
+  display: inline-block;
+  max-width: 100%;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: currentColor;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .headerAlignCenter .headerLabelContent {
@@ -864,7 +869,7 @@
 }
 
 .cell {
-  padding: 0.85rem 1rem;
+  padding: 1.05rem 1rem;
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
   font-size: 0.9rem;
   color: var(--mf-text-secondary);
@@ -872,6 +877,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.bodyCell {
+  composes: cell;
 }
 
 .cellAlignRight {
@@ -954,9 +963,28 @@
 }
 
 .actionsCell {
-  width: 88px;
-  min-width: 88px;
+  width: 80px;
+  min-width: 80px;
   text-align: center;
+}
+
+.actionsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0.5rem 0.9rem;
+}
+
+.actionsHeaderLabel {
+  display: inline-block;
+  max-width: 100%;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pill {
