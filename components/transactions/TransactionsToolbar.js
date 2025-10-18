@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { FiPlus, FiRotateCcw, FiSearch, FiSettings, FiSliders, FiX } from 'react-icons/fi';
+import {
+  FiPlus,
+  FiRotateCcw,
+  FiSearch,
+  FiSettings,
+  FiSliders,
+  FiX,
+} from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 
@@ -13,13 +20,18 @@ export function TransactionsToolbar({
   filterCount,
   onAddTransaction,
   onCustomizeColumns,
+  selectionSummary,
+  onDeselectAll,
+  onToggleShowSelected,
+  isShowingSelectedOnly,
 }) {
-  const hasQuery = Boolean(query);
   const canRestore = Boolean(previousQuery);
   const hasFilters = filterCount > 0;
   const searchInputRef = useRef(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+  const [draftQuery, setDraftQuery] = useState(query);
+  const hasQuery = Boolean(draftQuery);
 
   const showClearButton = isSearchFocused && hasQuery;
 
@@ -39,10 +51,22 @@ export function TransactionsToolbar({
   };
 
   const handleSearchKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      onQueryChange(draftQuery.trim());
+      return;
+    }
     if (event.key === 'Escape' && hasQuery) {
       event.preventDefault();
       setIsConfirmingClear(true);
     }
+  };
+
+  const handleSubmitSearch = () => {
+    onQueryChange(draftQuery.trim());
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
   };
 
   useEffect(() => {
@@ -69,6 +93,7 @@ export function TransactionsToolbar({
   const handleConfirmClear = () => {
     setIsConfirmingClear(false);
     onClearQuery();
+    setDraftQuery('');
     requestAnimationFrame(() => {
       searchInputRef.current?.focus();
     });
@@ -81,6 +106,10 @@ export function TransactionsToolbar({
     });
   };
 
+  useEffect(() => {
+    setDraftQuery(query);
+  }, [query]);
+
   return (
     <section className={styles.toolbarCard} aria-label="Transactions controls">
       <div className={styles.toolbarLeft}>
@@ -90,8 +119,8 @@ export function TransactionsToolbar({
             ref={searchInputRef}
             type="search"
             placeholder="Search all transactions"
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
+            value={draftQuery}
+            onChange={(event) => setDraftQuery(event.target.value)}
             onFocus={handleFocus}
             onBlur={() => setIsSearchFocused(false)}
             onKeyDown={handleSearchKeyDown}
@@ -99,6 +128,15 @@ export function TransactionsToolbar({
             data-testid="transactions-search-input"
             aria-label="Search transactions"
           />
+          <button
+            type="button"
+            className={styles.searchSubmitButton}
+            onClick={handleSubmitSearch}
+            data-testid="transactions-search-submit"
+            aria-label="Apply search"
+          >
+            <FiSearch aria-hidden />
+          </button>
           {showClearButton ? (
             <button
               type="button"
@@ -124,6 +162,27 @@ export function TransactionsToolbar({
           >
             <FiRotateCcw aria-hidden />
           </button>
+        ) : null}
+
+        {selectionSummary.count > 0 ? (
+          <div className={styles.toolbarSelectionControls}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={onDeselectAll}
+              data-testid="transactions-selection-clear"
+            >
+              De-select
+            </button>
+            <button
+              type="button"
+              className={styles.primaryPillButton}
+              onClick={onToggleShowSelected}
+              data-testid="transactions-selection-toggle"
+            >
+              {isShowingSelectedOnly ? 'Show all rows' : 'Show selected rows'}
+            </button>
+          </div>
         ) : null}
       </div>
 

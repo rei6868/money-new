@@ -21,6 +21,26 @@ const INITIAL_FILTERS = {
 
 const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long' });
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
+const NUMERIC_SORT_COLUMNS = new Set(['amount', 'percentBack', 'fixedBack', 'totalBack', 'finalPrice']);
+const DATE_SORT_COLUMNS = new Set(['date']);
+
+function getSortableValue(transaction, columnId) {
+  if (NUMERIC_SORT_COLUMNS.has(columnId)) {
+    const value = Number(transaction[columnId]);
+    return Number.isNaN(value) ? 0 : value;
+  }
+
+  if (DATE_SORT_COLUMNS.has(columnId)) {
+    const dateValue = new Date(`${transaction[columnId]}T00:00:00`).getTime();
+    return Number.isNaN(dateValue) ? 0 : dateValue;
+  }
+
+  const rawValue = transaction[columnId];
+  if (rawValue === undefined || rawValue === null) {
+    return '';
+  }
+  return String(rawValue).toLowerCase();
+}
 
 export default function TransactionsHistoryPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
@@ -38,6 +58,13 @@ export default function TransactionsHistoryPage() {
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1] ?? PAGE_SIZE_OPTIONS[0]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortState, setSortState] = useState({ column: null, direction: 'asc' });
+  const [quickFilters, setQuickFilters] = useState({
+    category: '',
+    owner: '',
+    type: [],
+    debtTag: [],
+  });
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -120,6 +147,8 @@ export default function TransactionsHistoryPage() {
     const categories = new Set();
     const years = new Set();
     const months = new Set();
+    const types = new Set();
+    const debtTags = new Set();
 
     transactions.forEach((txn) => {
       if (txn.owner) {
@@ -134,6 +163,12 @@ export default function TransactionsHistoryPage() {
       if (txn.month) {
         months.add(txn.month);
       }
+      if (txn.type) {
+        types.add(txn.type);
+      }
+      if (txn.debtTag) {
+        debtTags.add(txn.debtTag);
+      }
     });
 
     return {
@@ -143,6 +178,8 @@ export default function TransactionsHistoryPage() {
       months: Array.from(months).sort(
         (a, b) => new Date(`${a} 1, 2000`) - new Date(`${b} 1, 2000`),
       ),
+      types: Array.from(types).sort(),
+      debtTags: Array.from(debtTags).sort(),
     };
   }, [transactions]);
 
@@ -161,6 +198,18 @@ export default function TransactionsHistoryPage() {
         return false;
       }
       if (appliedFilters.month !== 'all' && txn.month !== appliedFilters.month) {
+        return false;
+      }
+      if (quickFilters.category && txn.category !== quickFilters.category) {
+        return false;
+      }
+      if (quickFilters.owner && txn.owner !== quickFilters.owner) {
+        return false;
+      }
+      if (quickFilters.type.length > 0 && !quickFilters.type.includes(txn.type)) {
+        return false;
+      }
+      if (quickFilters.debtTag.length > 0 && !quickFilters.debtTag.includes(txn.debtTag)) {
         return false;
       }
 
@@ -183,7 +232,27 @@ export default function TransactionsHistoryPage() {
 
       return searchable.includes(loweredQuery);
     });
-  }, [transactions, appliedFilters, query]);
+  }, [transactions, appliedFilters, query, quickFilters]);
+
+  const sortedTransactions = useMemo(() => {
+    if (!sortState.column) {
+      return filteredTransactions;
+    }
+
+    const direction = sortState.direction === 'asc' ? 1 : -1;
+    const columnId = sortState.column;
+
+    return filteredTransactions.slice().sort((a, b) => {
+      const aValue = getSortableValue(a, columnId);
+      const bValue = getSortableValue(b, columnId);
+
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return (aValue - bValue) * direction;
+      }
+
+      return String(aValue).localeCompare(String(bValue)) * direction;
+    });
+  }, [filteredTransactions, sortState]);
 
   useEffect(() => {
     const filteredIds = new Set(filteredTransactions.map((txn) => txn.id));
@@ -203,11 +272,11 @@ export default function TransactionsHistoryPage() {
 
   const effectiveTransactions = useMemo(() => {
     if (!showSelectedOnly) {
-      return filteredTransactions;
+      return sortedTransactions;
     }
 
-    return filteredTransactions.filter((txn) => selectedLookup.has(txn.id));
-  }, [filteredTransactions, showSelectedOnly, selectedLookup]);
+    return sortedTransactions.filter((txn) => selectedLookup.has(txn.id));
+  }, [sortedTransactions, showSelectedOnly, selectedLookup]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -250,10 +319,16 @@ export default function TransactionsHistoryPage() {
     );
   }, [filteredTransactions, selectedIds, selectedLookup]);
 
-  const filterCount = useMemo(
-    () => Object.values(appliedFilters).filter((value) => value !== 'all').length,
-    [appliedFilters],
-  );
+  const filterCount = useMemo(() => {
+    const baseCount = Object.values(appliedFilters).filter((value) => value !== 'all').length;
+    const quickCount = [
+      quickFilters.category ? 1 : 0,
+      quickFilters.owner ? 1 : 0,
+      quickFilters.type.length,
+      quickFilters.debtTag.length,
+    ].reduce((sum, value) => sum + value, 0);
+    return baseCount + quickCount;
+  }, [appliedFilters, quickFilters]);
 
   const handleSelectRow = (id, checked) => {
     setSelectedIds((prev) => {
@@ -304,6 +379,30 @@ export default function TransactionsHistoryPage() {
   const handleRestoreQuery = (value) => {
     setQuery(value);
     setPreviousQuery('');
+  };
+
+  const handleApplyQuery = (value) => {
+    setQuery(value);
+    setPreviousQuery('');
+  };
+
+  const handleSort = (columnId) => {
+    setSortState((prev) => {
+      if (prev.column !== columnId) {
+        return { column: columnId, direction: 'asc' };
+      }
+      if (prev.direction === 'asc') {
+        return { column: columnId, direction: 'desc' };
+      }
+      return { column: null, direction: 'asc' };
+    });
+  };
+
+  const handleQuickFilterChange = (columnId, value) => {
+    setQuickFilters((prev) => ({
+      ...prev,
+      [columnId]: value,
+    }));
   };
 
   const handleOpenFilters = () => {
@@ -383,7 +482,7 @@ export default function TransactionsHistoryPage() {
       <div className={styles.screen}>
         <TransactionsToolbar
           query={query}
-          onQueryChange={setQuery}
+          onQueryChange={handleApplyQuery}
           onClearQuery={handleClearQuery}
           previousQuery={previousQuery}
           onRestoreQuery={handleRestoreQuery}
@@ -391,6 +490,10 @@ export default function TransactionsHistoryPage() {
           filterCount={filterCount}
           onAddTransaction={handleAddTransaction}
           onCustomizeColumns={() => setIsCustomizeOpen(true)}
+          selectionSummary={selectionSummary}
+          onDeselectAll={handleDeselectAll}
+          onToggleShowSelected={handleToggleShowSelected}
+          isShowingSelectedOnly={showSelectedOnly}
         />
 
         {isFetching ? (
@@ -406,9 +509,6 @@ export default function TransactionsHistoryPage() {
             selectionSummary={selectionSummary}
             onOpenAdvanced={handleAdvanced}
             visibleColumns={visibleColumns}
-            onDeselectAll={handleDeselectAll}
-            onToggleShowSelected={handleToggleShowSelected}
-            isShowingSelectedOnly={showSelectedOnly}
             pagination={{
               pageSize,
               pageSizeOptions: PAGE_SIZE_OPTIONS,
@@ -422,6 +522,16 @@ export default function TransactionsHistoryPage() {
                   return next;
                 }),
             }}
+            sortState={sortState}
+            onSort={handleSort}
+            quickFilters={quickFilters}
+            quickFilterOptions={{
+              category: filterOptions.categories,
+              owner: filterOptions.people,
+              type: filterOptions.types,
+              debtTag: filterOptions.debtTags,
+            }}
+            onQuickFilterChange={handleQuickFilterChange}
           />
         )}
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FiMove, FiRotateCcw, FiX } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
@@ -6,10 +6,13 @@ import { TRANSACTION_COLUMN_DEFINITIONS } from './transactionColumns';
 
 export function CustomizeColumnsModal({ isOpen, columns, onClose, onApply, onReset }) {
   const [draftColumns, setDraftColumns] = useState(columns);
+  const [draggingId, setDraggingId] = useState(null);
+  const itemRefs = useRef(new Map());
 
   useEffect(() => {
     if (isOpen) {
       setDraftColumns(columns);
+      setDraggingId(null);
     }
   }, [isOpen, columns]);
 
@@ -45,29 +48,120 @@ export function CustomizeColumnsModal({ isOpen, columns, onClose, onApply, onRes
     );
   };
 
-  const handleDragStart = (index) => (event) => {
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', String(index));
+  const measurePositions = (columnsList) => {
+    const positions = new Map();
+    columnsList.forEach((column) => {
+      const node = itemRefs.current.get(column.id);
+      if (node) {
+        positions.set(column.id, node.getBoundingClientRect());
+      }
+    });
+    return positions;
   };
 
-  const handleDragOver = (index) => (event) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
+  const animateToPositions = (previousPositions, columnsList) => {
+    columnsList.forEach((column) => {
+      const element = itemRefs.current.get(column.id);
+      const previous = previousPositions.get(column.id);
+      if (!element || !previous) {
+        return;
+      }
+
+      const nextRect = element.getBoundingClientRect();
+      const deltaX = previous.left - nextRect.left;
+      const deltaY = previous.top - nextRect.top;
+      if (deltaX === 0 && deltaY === 0) {
+        return;
+      }
+
+      element.animate(
+        [
+          { transform: `translate(${deltaX}px, ${deltaY}px)` },
+          { transform: 'translate(0, 0)' },
+        ],
+        {
+          duration: 180,
+          easing: 'ease-out',
+        },
+      );
+    });
   };
 
-  const handleDrop = (index) => (event) => {
-    event.preventDefault();
-    const fromIndex = Number(event.dataTransfer.getData('text/plain'));
-    if (Number.isNaN(fromIndex) || fromIndex === index) {
-      return;
-    }
-
+  const updateColumnsWithAnimation = (updater) => {
     setDraftColumns((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(index, 0, moved);
+      const next = updater(prev);
+      if (next === prev) {
+        return prev;
+      }
+
+      const previousPositions = measurePositions(prev);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          animateToPositions(previousPositions, next);
+        });
+      });
+
       return next;
     });
+  };
+
+  const reorderById = (columnsList, fromId, toId) => {
+    if (!fromId || !toId || fromId === toId) {
+      return columnsList;
+    }
+    const fromIndex = columnsList.findIndex((column) => column.id === fromId);
+    const toIndex = columnsList.findIndex((column) => column.id === toId);
+    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+      return columnsList;
+    }
+    const next = [...columnsList];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    return next;
+  };
+
+  const handleDragStart = (columnId) => (event) => {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', columnId);
+    setDraggingId(columnId);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingId(null);
+  };
+
+  const handleDragOver = (columnId) => (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    const fromId = event.dataTransfer.getData('text/plain') || draggingId;
+    updateColumnsWithAnimation((prev) => reorderById(prev, fromId, columnId));
+  };
+
+  const handleDrop = (columnId) => (event) => {
+    event.preventDefault();
+    const fromId = event.dataTransfer.getData('text/plain');
+    updateColumnsWithAnimation((prev) => reorderById(prev, fromId, columnId));
+    setDraggingId(null);
+  };
+
+  const handleListDrop = (event) => {
+    event.preventDefault();
+    const fromId = event.dataTransfer.getData('text/plain');
+    if (!fromId) {
+      setDraggingId(null);
+      return;
+    }
+    updateColumnsWithAnimation((prev) => {
+      const fromIndex = prev.findIndex((column) => column.id === fromId);
+      if (fromIndex === -1 || fromIndex === prev.length - 1) {
+        return prev;
+      }
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.push(moved);
+      return next;
+    });
+    setDraggingId(null);
   };
 
   const handleApply = () => {
@@ -103,8 +197,12 @@ export function CustomizeColumnsModal({ isOpen, columns, onClose, onApply, onRes
             Drag to reorder, adjust width, and choose which transaction fields are visible.
           </p>
 
-          <ul className={styles.columnsList}>
-            {draftColumns.map((column, index) => {
+          <ul
+            className={styles.columnsList}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={handleListDrop}
+          >
+            {draftColumns.map((column) => {
               const definition = definitionMap.get(column.id);
               if (!definition) {
                 return null;
@@ -113,11 +211,22 @@ export function CustomizeColumnsModal({ isOpen, columns, onClose, onApply, onRes
               return (
                 <li
                   key={column.id}
-                  className={styles.columnRow}
+                  className={`${styles.columnRow} ${
+                    draggingId === column.id ? styles.columnRowDragging : ''
+                  }`}
                   draggable
-                  onDragStart={handleDragStart(index)}
-                  onDragOver={handleDragOver(index)}
-                  onDrop={handleDrop(index)}
+                  onDragStart={handleDragStart(column.id)}
+                  onDragOver={handleDragOver(column.id)}
+                  onDrop={handleDrop(column.id)}
+                  onDragEnd={handleDragEnd}
+                  data-column-id={column.id}
+                  ref={(node) => {
+                    if (node) {
+                      itemRefs.current.set(column.id, node);
+                    } else {
+                      itemRefs.current.delete(column.id);
+                    }
+                  }}
                 >
                   <span className={styles.columnDragHandle} aria-hidden>
                     <FiMove />
