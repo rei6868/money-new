@@ -4,7 +4,6 @@ import { FiEdit2, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi';
 import styles from '../../styles/TransactionsHistory.module.css';
 import { formatAmount, formatAmountWithTrailing, formatPercent } from '../../lib/numberFormat';
 import { TRANSACTION_COLUMN_DEFINITIONS } from './transactionColumns';
-import { Tooltip } from '../ui/Tooltip';
 
 const definitionMap = new Map(
   TRANSACTION_COLUMN_DEFINITIONS.map((definition) => [definition.id, definition]),
@@ -106,21 +105,13 @@ export function TransactionsTable({
     }
   }, [isIndeterminate]);
 
-  const minTableWidth = useMemo(() => {
-    const computed = computeMinWidth(visibleColumns) + STICKY_COLUMN_BUFFER;
-    return Math.max(computed, 1280);
-  }, [visibleColumns]);
-  const tableMinWidthValue = `${minTableWidth}px`;
+  const minTableWidth = useMemo(() => computeMinWidth(visibleColumns), [visibleColumns]);
 
   return (
     <section className={styles.tableCard} aria-label="Transactions history table">
-      <div
-        className={styles.tableScroll}
-        style={{ '--table-min-width': tableMinWidthValue }}
-        data-testid="transactions-table-container"
-      >
-        <table className={styles.table} style={{ minWidth: tableMinWidthValue }}>
-          <thead style={{ minWidth: tableMinWidthValue }}>
+      <div className={styles.tableScroll} data-testid="transactions-table-container">
+        <table className={styles.table} style={{ minWidth: `${minTableWidth + STICKY_COLUMN_BUFFER}px` }}>
+          <thead>
             <tr>
               <th
                 scope="col"
@@ -208,39 +199,36 @@ export function TransactionsTable({
                       data-testid={`transaction-actions-${txn.id}`}
                     >
                       <div className={styles.tableActionsGroup}>
-                        <Tooltip content="Edit transaction">
-                          <button
-                            type="button"
-                            className={styles.tableActionIconButton}
-                            onClick={() => onOpenAdvanced({ mode: 'edit', transaction: txn })}
-                            data-testid={`transaction-edit-${txn.id}`}
-                            aria-label={`Edit ${txn.id}`}
-                          >
-                            <FiEdit2 aria-hidden />
-                          </button>
-                        </Tooltip>
-                        <Tooltip content="Delete transaction">
-                          <button
-                            type="button"
-                            className={`${styles.tableActionIconButton} ${styles.tableDangerIconButton}`}
-                            onClick={() => onOpenAdvanced({ mode: 'delete', transaction: txn })}
-                            data-testid={`transaction-delete-${txn.id}`}
-                            aria-label={`Delete ${txn.id}`}
-                          >
-                            <FiTrash2 aria-hidden />
-                          </button>
-                        </Tooltip>
-                        <Tooltip content="Advanced actions">
-                          <button
-                            type="button"
-                            className={styles.advancedButton}
-                            onClick={() => onOpenAdvanced({ mode: 'advanced', transaction: txn })}
-                            data-testid={`transaction-advanced-${txn.id}`}
-                            aria-label={`Open advanced options for ${txn.id}`}
-                          >
-                            <FiMoreHorizontal aria-hidden />
-                          </button>
-                        </Tooltip>
+                        <button
+                          type="button"
+                          className={`${styles.tableActionIconButton} ${styles.tooltipTrigger}`}
+                          onClick={() => onOpenAdvanced({ mode: 'edit', transaction: txn })}
+                          data-testid={`transaction-edit-${txn.id}`}
+                          aria-label={`Edit ${txn.id}`}
+                          data-tooltip="Edit"
+                        >
+                          <FiEdit2 aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          className={`${styles.tableActionIconButton} ${styles.tableDangerIconButton} ${styles.tooltipTrigger}`}
+                          onClick={() => onOpenAdvanced({ mode: 'delete', transaction: txn })}
+                          data-testid={`transaction-delete-${txn.id}`}
+                          aria-label={`Delete ${txn.id}`}
+                          data-tooltip="Delete"
+                        >
+                          <FiTrash2 aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          className={`${styles.advancedButton} ${styles.tooltipTrigger}`}
+                          onClick={() => onOpenAdvanced({ mode: 'advanced', transaction: txn })}
+                          data-testid={`transaction-advanced-${txn.id}`}
+                          aria-label={`Open advanced options for ${txn.id}`}
+                          data-tooltip="More actions"
+                        >
+                          <FiMoreHorizontal aria-hidden />
+                        </button>
                       </div>
                     </td>
                   </tr>
