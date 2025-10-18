@@ -217,6 +217,24 @@ export default function AppLayout({ title, subtitle, children }) {
     setIsMobileNavOpen(false);
   }, [router.pathname]);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const { body } = document;
+    const previousOverflow = body.style.overflow;
+    if (isMobileNavOpen) {
+      body.style.overflow = 'hidden';
+    } else {
+      body.style.overflow = '';
+    }
+
+    return () => {
+      body.style.overflow = previousOverflow;
+    };
+  }, [isMobileNavOpen]);
+
   const renderNavLink = (item) => {
     const Icon = item.icon;
     const isActive = activeKeys.has(item.key);
@@ -374,7 +392,20 @@ export default function AppLayout({ title, subtitle, children }) {
         </div>
       </aside>
 
-      {isMobileNavOpen && <div className={styles.mobileOverlay} onClick={handleMobileNavToggle} />}
+      {isMobileNavOpen ? (
+        <div
+          className={styles.mobileOverlay}
+          role="presentation"
+          onClick={handleMobileNavToggle}
+          onPointerDown={(event) => {
+            if (event.pointerType === 'touch') {
+              event.preventDefault();
+              handleMobileNavToggle();
+            }
+          }}
+          data-testid="mobile-sidebar-overlay"
+        />
+      ) : null}
 
       <div className={styles.mainColumn}>
         <header className={styles.topBar}>
@@ -386,6 +417,12 @@ export default function AppLayout({ title, subtitle, children }) {
             aria-expanded={isMobileNavOpen}
             aria-controls="moneyflow-sidebar"
             aria-label="Toggle navigation"
+            onPointerDown={(event) => {
+              if (event.pointerType === 'touch') {
+                event.preventDefault();
+                handleMobileNavToggle();
+              }
+            }}
           >
             {isMobileNavOpen ? <FiX /> : <FiMenu />}
           </button>

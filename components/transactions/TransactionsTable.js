@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   FiChevronRight,
   FiCreditCard,
@@ -17,6 +18,8 @@ import { formatAmount, formatAmountWithTrailing, formatPercent } from '../../lib
 const CHECKBOX_COLUMN_WIDTH = 64;
 const ACTIONS_COLUMN_WIDTH = 88;
 const STICKY_COLUMN_BUFFER = CHECKBOX_COLUMN_WIDTH + ACTIONS_COLUMN_WIDTH;
+const QUICK_FILTER_MIN_WIDTH = 240;
+const ACTION_MENU_MIN_WIDTH = 224;
 
 const QUICK_FILTER_META = {
   type: {
@@ -56,6 +59,7 @@ const QUICK_FILTER_META = {
     label: 'Debt Tag',
     multi: true,
     optionsKey: 'debtTags',
+    searchable: true,
     icon: <FiTag aria-hidden />,
   },
 };
@@ -191,6 +195,214 @@ function slugify(value) {
     .replace(/^-+|-+$/g, '') || 'value';
 }
 
+function orderFilterValues(columnId, values = [], quickFilterOptions = {}) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return [];
+  }
+
+  if (columnId === 'debtTag') {
+    const available = quickFilterOptions.debtTags ?? [];
+    if (Array.isArray(available) && available.length > 0) {
+      const ranking = new Map(available.map((option, index) => [option, index]));
+      return [...values].sort((a, b) => {
+        const rankA = ranking.has(a) ? ranking.get(a) : Number.POSITIVE_INFINITY;
+        const rankB = ranking.has(b) ? ranking.get(b) : Number.POSITIVE_INFINITY;
+        return rankA - rankB;
+      });
+    }
+  }
+
+  return [...values];
+}
+
+function useIsMounted() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
+  return isMounted;
+}
+
+function QuickFilterPopover({
+  columnId,
+  isOpen,
+  anchor,
+  registerContent,
+  onClose,
+  children,
+}) {
+  const isMounted = useIsMounted();
+  const [position, setPosition] = useState({ top: 0, left: 0, width: QUICK_FILTER_MIN_WIDTH });
+
+  const updatePosition = useCallback(() => {
+    if (!anchor) {
+      return;
+    }
+    const rect = anchor.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const preferredWidth = Math.max(rect.width, QUICK_FILTER_MIN_WIDTH);
+    let left = rect.left + scrollX;
+    if (left + preferredWidth > viewportWidth + scrollX - 16) {
+      left = Math.max(scrollX + 16, viewportWidth + scrollX - preferredWidth - 16);
+    }
+    const top = rect.bottom + scrollY + 8;
+    setPosition({ top, left, width: preferredWidth });
+  }, [anchor]);
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    updatePosition();
+  }, [isOpen, updatePosition]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handleResize = () => updatePosition();
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', handleResize, true);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleResize, true);
+    };
+  }, [isOpen, updatePosition]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isMounted || !isOpen) {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      ref={registerContent}
+      className={`${styles.headerQuickFilterPopover} ${styles.headerQuickFilterOpen}`}
+      role="dialog"
+      aria-label={`${columnId} quick filter`}
+      style={{
+        top: position.top,
+        left: position.left,
+        minWidth: `${position.width}px`,
+      }}
+      data-testid={`transactions-quick-filter-${columnId}-popover`}
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
+function ActionMenuPortal({
+  transactionId,
+  isOpen,
+  anchor,
+  registerContent,
+  onClose,
+  children,
+  containerProps = {},
+}) {
+  const isMounted = useIsMounted();
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  const updatePosition = useCallback(() => {
+    if (!anchor) {
+      return;
+    }
+
+    const rect = anchor.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    let left = rect.left + scrollX;
+    if (left + ACTION_MENU_MIN_WIDTH > viewportWidth + scrollX - 16) {
+      left = Math.max(scrollX + 16, viewportWidth + scrollX - ACTION_MENU_MIN_WIDTH - 16);
+    }
+    const top = rect.bottom + scrollY + 6;
+    setPosition({ top, left });
+  }, [anchor]);
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    updatePosition();
+  }, [isOpen, updatePosition]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handleResize = () => updatePosition();
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', handleResize, true);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleResize, true);
+    };
+  }, [isOpen, updatePosition]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isMounted || !isOpen) {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      ref={registerContent}
+      className={`${styles.actionsMenu} ${styles.actionsMenuOpen}`}
+      role="menu"
+      style={{
+        top: position.top,
+        left: position.left,
+        minWidth: `${ACTION_MENU_MIN_WIDTH}px`,
+      }}
+      data-testid={`transaction-actions-menu-${transactionId}`}
+      {...containerProps}
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
 function SortGlyph({ direction }) {
   return (
     <span
@@ -232,6 +444,8 @@ export function TransactionsTable({
   const [openActionId, setOpenActionId] = useState(null);
   const [openActionSubmenu, setOpenActionSubmenu] = useState(null);
   const quickFilterRefs = useRef(new Map());
+  const actionTriggerRefs = useRef(new Map());
+  const actionMenuRefs = useRef(new Map());
   const previousQuickFilterRef = useRef(null);
   const actionMenuCloseTimer = useRef(null);
   const headerCheckboxRef = useRef(null);
@@ -266,24 +480,20 @@ export function TransactionsTable({
     }
 
     const handlePointerDown = (event) => {
-      const container = quickFilterRefs.current.get(openQuickFilter);
-      if (!container || container.contains(event.target)) {
+      const entry = quickFilterRefs.current.get(openQuickFilter);
+      const anchorNode = entry?.anchor ?? null;
+      const contentNode = entry?.content ?? null;
+
+      if (anchorNode?.contains(event.target) || contentNode?.contains(event.target)) {
         return;
       }
+
       setOpenQuickFilter(null);
     };
 
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        setOpenQuickFilter(null);
-      }
-    };
-
     document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [openQuickFilter]);
 
@@ -309,6 +519,29 @@ export function TransactionsTable({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!openActionId) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event) => {
+      const triggerNode = actionTriggerRefs.current.get(openActionId);
+      const menuNode = actionMenuRefs.current.get(openActionId);
+
+      if (triggerNode?.contains(event.target) || menuNode?.contains(event.target)) {
+        return;
+      }
+
+      setOpenActionId(null);
+      setOpenActionSubmenu(null);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [openActionId]);
 
   const minTableWidth = useMemo(
     () => computeMinWidth(visibleColumns, definitionMap),
@@ -423,11 +656,47 @@ export function TransactionsTable({
     setOpenQuickFilter(null);
   };
 
-  const registerQuickFilterRef = (columnId) => (node) => {
+  const registerQuickFilterAnchor = (columnId) => (node) => {
     if (node) {
-      quickFilterRefs.current.set(columnId, node);
+      const current = quickFilterRefs.current.get(columnId) ?? {};
+      quickFilterRefs.current.set(columnId, { ...current, anchor: node });
     } else {
-      quickFilterRefs.current.delete(columnId);
+      const current = quickFilterRefs.current.get(columnId);
+      if (current?.content) {
+        quickFilterRefs.current.set(columnId, { content: current.content });
+      } else {
+        quickFilterRefs.current.delete(columnId);
+      }
+    }
+  };
+
+  const registerQuickFilterContent = (columnId) => (node) => {
+    if (node) {
+      const current = quickFilterRefs.current.get(columnId) ?? {};
+      quickFilterRefs.current.set(columnId, { ...current, content: node });
+    } else {
+      const current = quickFilterRefs.current.get(columnId);
+      if (current?.anchor) {
+        quickFilterRefs.current.set(columnId, { anchor: current.anchor });
+      } else {
+        quickFilterRefs.current.delete(columnId);
+      }
+    }
+  };
+
+  const registerActionTrigger = (transactionId) => (node) => {
+    if (node) {
+      actionTriggerRefs.current.set(transactionId, node);
+    } else {
+      actionTriggerRefs.current.delete(transactionId);
+    }
+  };
+
+  const registerActionMenu = (transactionId) => (node) => {
+    if (node) {
+      actionMenuRefs.current.set(transactionId, node);
+    } else {
+      actionMenuRefs.current.delete(transactionId);
     }
   };
 
@@ -521,20 +790,26 @@ export function TransactionsTable({
                     ? [rawFilterValue]
                     : []
                   : [];
-                const headerLabel =
-                  normalizedFilterValues[0] ?? definition?.label ?? column.id;
-                const extraCount = normalizedFilterValues.length > 1 ? normalizedFilterValues.length - 1 : 0;
+                const orderedValues = meta?.multi
+                  ? orderFilterValues(column.id, normalizedFilterValues, quickFilterOptions)
+                  : normalizedFilterValues;
+                const displayBadges = meta
+                  ? meta.multi
+                    ? orderedValues.slice(0, 3)
+                    : orderedValues.slice(0, 1)
+                  : [];
+                const overflowCount = meta?.multi
+                  ? Math.max(orderedValues.length - displayBadges.length, 0)
+                  : 0;
                 const isFilterActive = meta
                   ? meta.multi
-                    ? normalizedFilterValues.length > 0
+                    ? orderedValues.length > 0
                     : Boolean(rawFilterValue && rawFilterValue !== 'all')
                   : false;
-                const filterTooltip =
-                  normalizedFilterValues.length > 1
-                    ? normalizedFilterValues.join(', ')
-                    : normalizedFilterValues.length === 1
-                    ? normalizedFilterValues[0]
-                    : definition?.label ?? column.id;
+                const headerTitle = definition?.label ?? column.id;
+                const filterTooltip = orderedValues.length
+                  ? orderedValues.join(', ')
+                  : headerTitle;
                 const sortTooltip = isSorted
                   ? sortDirection === 'desc'
                     ? 'Sort: Descending'
@@ -551,6 +826,8 @@ export function TransactionsTable({
                         String(option ?? '').toLowerCase().includes(searchTerm),
                       )
                     : availableOptions;
+                const quickFilterEntry = quickFilterRefs.current.get(column.id);
+                const quickFilterAnchor = quickFilterEntry?.anchor;
 
                 return (
                   <th
@@ -561,7 +838,7 @@ export function TransactionsTable({
                       minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
                       width: `${column.width}px`,
                     }}
-                    ref={registerQuickFilterRef(column.id)}
+                    ref={registerQuickFilterAnchor(column.id)}
                   >
                     <div className={styles.headerInner}>
                       {meta ? (
@@ -569,10 +846,10 @@ export function TransactionsTable({
                           type="button"
                           className={`${styles.headerLabelButton} ${
                             isFilterActive ? styles.headerFilterActive : ''
-                          } ${extraCount > 0 ? styles.tooltipTrigger : ''}`.trim()}
+                          } ${overflowCount > 0 ? styles.tooltipTrigger : ''}`.trim()}
                           onClick={() => handleQuickFilterToggle(column.id)}
                           data-testid={`transactions-quick-filter-${column.id}`}
-                          data-tooltip={extraCount > 0 ? filterTooltip : undefined}
+                          data-tooltip={overflowCount > 0 ? filterTooltip : undefined}
                           aria-haspopup="listbox"
                           aria-expanded={openQuickFilter === column.id}
                           aria-label={`${meta.label}${
@@ -580,18 +857,32 @@ export function TransactionsTable({
                           }`}
                         >
                           {meta.icon ? <span className={styles.headerLabelIcon}>{meta.icon}</span> : null}
-                          <span className={styles.headerLabelText}>{headerLabel}</span>
-                          {extraCount > 0 ? (
-                            <span
-                              className={styles.headerValueOverflow}
-                              data-testid={`transactions-quick-filter-${column.id}-more`}
-                            >
-                              +{extraCount}
-                            </span>
-                          ) : null}
+                          <span className={styles.headerLabelContent}>
+                            <span className={styles.headerLabelTitle}>{headerTitle}</span>
+                            {displayBadges.length > 0 ? (
+                              <span className={styles.headerBadgeList}>
+                                {displayBadges.map((value) => (
+                                  <span
+                                    key={`${column.id}-${slugify(value)}`}
+                                    className={styles.headerBadge}
+                                  >
+                                    {value}
+                                  </span>
+                                ))}
+                                {overflowCount > 0 ? (
+                                  <span
+                                    className={`${styles.headerBadge} ${styles.headerBadgeOverflow}`}
+                                    data-testid={`transactions-quick-filter-${column.id}-more`}
+                                  >
+                                    +{overflowCount}
+                                  </span>
+                                ) : null}
+                              </span>
+                            ) : null}
+                          </span>
                         </button>
                       ) : (
-                        <span className={styles.headerStaticLabel}>{headerLabel}</span>
+                        <span className={styles.headerStaticLabel}>{headerTitle}</span>
                       )}
                       <div className={styles.headerControls}>
                         {isFilterActive && clearQuickFilter ? (
@@ -626,13 +917,13 @@ export function TransactionsTable({
                         ) : null}
                       </div>
                       {meta ? (
-                        <div
-                          className={`${styles.headerQuickFilterPopover} ${
-                            openQuickFilter === column.id ? styles.headerQuickFilterOpen : ''
-                          }`}
-                          role="dialog"
-                          aria-hidden={openQuickFilter === column.id ? 'false' : 'true'}
-                          data-testid={`transactions-quick-filter-${column.id}-popover`}
+                        <QuickFilterPopover
+                          key={`${column.id}-popover`}
+                          columnId={column.id}
+                          isOpen={openQuickFilter === column.id}
+                          anchor={quickFilterAnchor}
+                          registerContent={registerQuickFilterContent(column.id)}
+                          onClose={() => setOpenQuickFilter(null)}
                         >
                           <div className={styles.quickFilterHeader}>
                             <span>{meta.label}</span>
@@ -701,7 +992,7 @@ export function TransactionsTable({
                               })
                             )}
                           </ul>
-                        </div>
+                        </QuickFilterPopover>
                       ) : null}
                     </div>
                   </th>
@@ -791,6 +1082,7 @@ export function TransactionsTable({
                     >
                       <div
                         className={styles.actionsCellTrigger}
+                        ref={registerActionTrigger(txn.id)}
                         onMouseEnter={() => handleActionTriggerEnter(txn.id)}
                         onMouseLeave={handleActionTriggerLeave}
                         onFocus={() => handleActionFocus(txn.id)}
@@ -809,87 +1101,96 @@ export function TransactionsTable({
                         >
                           <FiMoreHorizontal aria-hidden />
                         </button>
-                        <div
-                          className={`${styles.actionsMenu} ${
-                            openActionId === txn.id ? styles.actionsMenuOpen : ''
-                          }`}
-                          role="menu"
-                          data-testid={`transaction-actions-menu-${txn.id}`}
+                      </div>
+                      <ActionMenuPortal
+                        transactionId={txn.id}
+                        isOpen={openActionId === txn.id}
+                        anchor={actionTriggerRefs.current.get(txn.id)}
+                        registerContent={registerActionMenu(txn.id)}
+                        onClose={() => {
+                          setOpenActionId(null);
+                          setOpenActionSubmenu(null);
+                        }}
+                        containerProps={{
+                          onMouseEnter: () => handleActionTriggerEnter(txn.id),
+                          onMouseLeave: handleActionTriggerLeave,
+                          onFocus: () => handleActionFocus(txn.id),
+                          onBlur: handleActionBlur,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          className={styles.actionsMenuItem}
+                          onMouseEnter={handleSubmenuEnter(null)}
+                          onClick={handleAction({
+                            mode: 'edit',
+                            transaction: txn,
+                          })}
+                          data-testid={`transaction-action-edit-${txn.id}`}
                         >
-                          <button
-                            type="button"
-                            className={styles.actionsMenuItem}
-                            onMouseEnter={handleSubmenuEnter(null)}
-                            onClick={handleAction({
-                              mode: 'edit',
-                              transaction: txn,
-                            })}
-                            data-testid={`transaction-action-edit-${txn.id}`}
-                          >
-                            <FiEdit2 aria-hidden />
-                            <span>Quick edit</span>
-                          </button>
-                          <button
-                            type="button"
-                            className={`${styles.actionsMenuItem} ${styles.actionsMenuDanger}`}
-                            onMouseEnter={handleSubmenuEnter(null)}
-                            onClick={handleAction({
-                              mode: 'delete',
-                              transaction: txn,
-                            })}
-                            data-testid={`transaction-action-delete-${txn.id}`}
-                          >
-                            <FiTrash2 aria-hidden />
-                            <span>Delete</span>
-                          </button>
+                          <FiEdit2 aria-hidden />
+                          <span>Quick edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`${styles.actionsMenuItem} ${styles.actionsMenuDanger}`}
+                          onMouseEnter={handleSubmenuEnter(null)}
+                          onClick={handleAction({
+                            mode: 'delete',
+                            transaction: txn,
+                          })}
+                          data-testid={`transaction-action-delete-${txn.id}`}
+                        >
+                          <FiTrash2 aria-hidden />
+                          <span>Delete</span>
+                        </button>
+                        <div
+                          className={`${styles.actionsMenuItem} ${styles.actionsMenuNested}`}
+                          onMouseEnter={handleSubmenuEnter('more')}
+                          data-testid={`transaction-action-more-${txn.id}`}
+                        >
+                          <div className={styles.actionsMenuNestedLabel}>
+                            <FiMoreHorizontal aria-hidden />
+                            <span>More actions</span>
+                          </div>
+                          <FiChevronRight className={styles.actionsMenuNestedCaret} aria-hidden />
                           <div
-                            className={`${styles.actionsMenuItem} ${styles.actionsMenuNested}`}
-                            onMouseEnter={handleSubmenuEnter('more')}
-                            data-testid={`transaction-action-more-${txn.id}`}
+                            className={`${styles.actionsSubmenu} ${
+                              openActionId === txn.id && openActionSubmenu === 'more'
+                                ? styles.actionsSubmenuOpen
+                                : ''
+                            }`}
+                            role="menu"
                           >
-                            <div className={styles.actionsMenuNestedLabel}>
-                              <FiMoreHorizontal aria-hidden />
-                              <span>More actions</span>
-                            </div>
-                            <FiChevronRight className={styles.actionsMenuNestedCaret} aria-hidden />
-                            <div
-                              className={`${styles.actionsSubmenu} ${
-                                openActionId === txn.id && openActionSubmenu === 'more'
-                                  ? styles.actionsSubmenuOpen
-                                  : ''
-                              }`}
-                              role="menu"
+                            <button
+                              type="button"
+                              className={styles.actionsMenuItem}
+                              onClick={handleAction({
+                                mode: 'advanced',
+                                transaction: txn,
+                                intent: 'advanced-panel',
+                              })}
+                              data-testid={`transaction-action-advanced-${txn.id}`}
                             >
-                              <button
-                                type="button"
-                                className={styles.actionsMenuItem}
-                                onClick={handleAction({
-                                  mode: 'advanced',
-                                  transaction: txn,
-                                  intent: 'advanced-panel',
-                                })}
-                                data-testid={`transaction-action-advanced-${txn.id}`}
-                              >
-                                <FiFilter aria-hidden />
-                                <span>Open advanced panel</span>
-                              </button>
-                              <button
-                                type="button"
-                                className={styles.actionsMenuItem}
-                                onClick={handleAction({
-                                  mode: 'advanced',
-                                  transaction: txn,
-                                  intent: 'duplicate-draft',
-                                })}
-                                data-testid={`transaction-action-duplicate-${txn.id}`}
-                              >
-                                <FiEdit2 aria-hidden />
-                                <span>Duplicate as draft</span>
-                              </button>
-                            </div>
+                              <FiFilter aria-hidden />
+                              <span>Open advanced panel</span>
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.actionsMenuItem}
+                              onClick={handleAction({
+                                mode: 'advanced',
+                                transaction: txn,
+                                intent: 'duplicate-draft',
+                              })}
+                              data-testid={`transaction-action-duplicate-${txn.id}`}
+                            >
+                              <FiEdit2 aria-hidden />
+                              <span>Duplicate as draft</span>
+                            </button>
                           </div>
                         </div>
-                      </div>
+                      </ActionMenuPortal>
                     </td>
                   </tr>
                 );

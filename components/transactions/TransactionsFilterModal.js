@@ -10,6 +10,78 @@ function slugify(value) {
     .replace(/^-+|-+$/g, '') || 'value';
 }
 
+function ModalSingleSelect({
+  id,
+  label,
+  searchPlaceholder,
+  searchValue,
+  onSearchChange,
+  options = [],
+  selectedValue,
+  onSelectOption,
+  emptyMessage,
+  testIdPrefix,
+}) {
+  const normalizedOptions = options.includes('all') ? options : ['all', ...options];
+  const normalizedSearch = searchValue.trim().toLowerCase();
+  const filteredOptions = normalizedSearch
+    ? normalizedOptions.filter((option) =>
+        option === 'all' ? true : option.toLowerCase().includes(normalizedSearch),
+      )
+    : normalizedOptions;
+  const hasMatches = filteredOptions.some((option) => option !== 'all');
+
+  return (
+    <div className={styles.modalField}>
+      <label htmlFor={`${id}-search`} className={styles.modalLabel}>
+        {label}
+      </label>
+      <div className={styles.modalPicker}>
+        <div className={`${styles.modalPickerSearch} ${styles.modalSearchGroup}`}>
+          <FiSearch aria-hidden className={styles.modalSearchIcon} />
+          <input
+            id={`${id}-search`}
+            type="search"
+            placeholder={searchPlaceholder}
+            className={styles.modalSearchInput}
+            value={searchValue}
+            onChange={(event) => onSearchChange(event.target.value)}
+            data-testid={`${testIdPrefix}-search`}
+          />
+        </div>
+        <div
+          className={styles.modalOptionList}
+          role="listbox"
+          aria-label={label}
+          data-testid={testIdPrefix}
+        >
+          {filteredOptions.map((option) => {
+            const value = option;
+            const optionLabel = option === 'all' ? 'All' : option;
+            const isSelected = selectedValue === value;
+            return (
+              <button
+                type="button"
+                key={value || 'all'}
+                className={`${styles.modalOptionButton} ${
+                  isSelected ? styles.modalOptionButtonActive : ''
+                }`}
+                onClick={onSelectOption(value)}
+                role="option"
+                aria-selected={isSelected}
+                data-testid={`${testIdPrefix}-option-${slugify(value)}`}
+              >
+                {optionLabel}
+              </button>
+            );
+          })}
+          {!hasMatches ? <span className={styles.emptyOption}>{emptyMessage}</span> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TransactionsFilterModal({
   isOpen,
   filters,
@@ -23,6 +95,7 @@ export function TransactionsFilterModal({
 }) {
   const [peopleSearch, setPeopleSearch] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
+  const [debtTagSearch, setDebtTagSearch] = useState('');
 
   useEffect(() => {
     if (!isOpen) {
@@ -30,6 +103,7 @@ export function TransactionsFilterModal({
     }
     setPeopleSearch('');
     setCategorySearch('');
+    setDebtTagSearch('');
   }, [isOpen]);
 
   useEffect(() => {
@@ -54,29 +128,15 @@ export function TransactionsFilterModal({
 
   const normalizedPeopleSearch = peopleSearch.trim().toLowerCase();
   const normalizedCategorySearch = categorySearch.trim().toLowerCase();
+  const normalizedDebtTagSearch = debtTagSearch.trim().toLowerCase();
 
-  const visiblePeopleOptions = useMemo(() => {
-    const base = ['all', ...(options.people ?? [])];
-    if (!normalizedPeopleSearch) {
+  const visibleDebtTags = useMemo(() => {
+    const base = options.debtTags ?? [];
+    if (!normalizedDebtTagSearch) {
       return base;
     }
-    return base.filter((option) =>
-      option === 'all' ? true : option.toLowerCase().includes(normalizedPeopleSearch),
-    );
-  }, [options.people, normalizedPeopleSearch]);
-
-  const visibleCategoryOptions = useMemo(() => {
-    const base = ['all', ...(options.categories ?? [])];
-    if (!normalizedCategorySearch) {
-      return base;
-    }
-    return base.filter((option) =>
-      option === 'all' ? true : option.toLowerCase().includes(normalizedCategorySearch),
-    );
-  }, [options.categories, normalizedCategorySearch]);
-
-  const hasPeopleMatches = visiblePeopleOptions.some((option) => option !== 'all');
-  const hasCategoryMatches = visibleCategoryOptions.some((option) => option !== 'all');
+    return base.filter((tag) => tag.toLowerCase().includes(normalizedDebtTagSearch));
+  }, [options.debtTags, normalizedDebtTagSearch]);
 
   const handleChange = (field) => (event) => {
     onChange(field, event.target.value);
@@ -114,105 +174,31 @@ export function TransactionsFilterModal({
         </div>
 
         <div className={styles.modalBody}>
-          <div className={styles.modalField}>
-            <label htmlFor="filter-person-search" className={styles.modalLabel}>
-              Person
-            </label>
-            <div className={styles.modalPicker}>
-              <div className={`${styles.modalPickerSearch} ${styles.modalSearchGroup}`}>
-                <FiSearch aria-hidden className={styles.modalSearchIcon} />
-                <input
-                  id="filter-person-search"
-                  type="search"
-                  placeholder="Search people"
-                  className={styles.modalSearchInput}
-                  value={peopleSearch}
-                  onChange={(event) => setPeopleSearch(event.target.value)}
-                  data-testid="transactions-filter-person-search"
-                />
-              </div>
-              <div
-                className={styles.modalOptionList}
-                role="listbox"
-                aria-label="Filter by person"
-                data-testid="transactions-filter-person"
-              >
-                {visiblePeopleOptions.map((person) => {
-                  const value = person;
-                  const label = person === 'all' ? 'All' : person;
-                  const isSelected = filters.person === value;
-                  return (
-                    <button
-                      type="button"
-                      key={value || 'all'}
-                      className={`${styles.modalOptionButton} ${
-                        isSelected ? styles.modalOptionButtonActive : ''
-                      }`}
-                      onClick={handleSelectOption('person', value)}
-                      role="option"
-                      aria-selected={isSelected}
-                      data-testid={`transactions-filter-person-option-${slugify(value)}`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-                {!hasPeopleMatches ? (
-                  <span className={styles.emptyOption}>No people match</span>
-                ) : null}
-              </div>
-            </div>
-          </div>
+          <ModalSingleSelect
+            id="filter-person"
+            label="Person"
+            searchPlaceholder="Search people"
+            searchValue={peopleSearch}
+            onSearchChange={setPeopleSearch}
+            options={options.people ?? []}
+            selectedValue={filters.person}
+            onSelectOption={(value) => handleSelectOption('person', value)}
+            emptyMessage="No people match"
+            testIdPrefix="transactions-filter-person"
+          />
 
-          <div className={styles.modalField}>
-            <label htmlFor="filter-category-search" className={styles.modalLabel}>
-              Category
-            </label>
-            <div className={styles.modalPicker}>
-              <div className={`${styles.modalPickerSearch} ${styles.modalSearchGroup}`}>
-                <FiSearch aria-hidden className={styles.modalSearchIcon} />
-                <input
-                  id="filter-category-search"
-                  type="search"
-                  placeholder="Search categories"
-                  className={styles.modalSearchInput}
-                  value={categorySearch}
-                  onChange={(event) => setCategorySearch(event.target.value)}
-                  data-testid="transactions-filter-category-search"
-                />
-              </div>
-              <div
-                className={styles.modalOptionList}
-                role="listbox"
-                aria-label="Filter by category"
-                data-testid="transactions-filter-category"
-              >
-                {visibleCategoryOptions.map((category) => {
-                  const value = category;
-                  const label = category === 'all' ? 'All' : category;
-                  const isSelected = filters.category === value;
-                  return (
-                    <button
-                      type="button"
-                      key={value || 'all'}
-                      className={`${styles.modalOptionButton} ${
-                        isSelected ? styles.modalOptionButtonActive : ''
-                      }`}
-                      onClick={handleSelectOption('category', value)}
-                      role="option"
-                      aria-selected={isSelected}
-                      data-testid={`transactions-filter-category-option-${slugify(value)}`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-                {!hasCategoryMatches ? (
-                  <span className={styles.emptyOption}>No categories match</span>
-                ) : null}
-              </div>
-            </div>
-          </div>
+          <ModalSingleSelect
+            id="filter-category"
+            label="Category"
+            searchPlaceholder="Search categories"
+            searchValue={categorySearch}
+            onSearchChange={setCategorySearch}
+            options={options.categories ?? []}
+            selectedValue={filters.category}
+            onSelectOption={(value) => handleSelectOption('category', value)}
+            emptyMessage="No categories match"
+            testIdPrefix="transactions-filter-category"
+          />
 
           <div className={styles.modalField}>
             <span className={styles.modalLabel}>Type</span>
@@ -243,28 +229,41 @@ export function TransactionsFilterModal({
 
           <div className={styles.modalField}>
             <span className={styles.modalLabel}>Debt Tag</span>
-            <div className={styles.tagList}>
-              {options.debtTags?.length ? (
-                options.debtTags.map((tag) => {
-                  const isSelected = selectedDebtTags.has(tag);
-                  return (
-                    <label
-                      key={tag}
-                      className={`${styles.tagOption} ${isSelected ? styles.tagOptionActive : ''}`}
-                      data-testid={`transactions-filter-debt-${tag}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={handleToggle('debtTags', tag)}
-                      />
-                      <span>{tag}</span>
-                    </label>
-                  );
-                })
-              ) : (
-                <span className={styles.emptyOption}>No debt tags available</span>
-              )}
+            <div className={styles.modalPicker}>
+              <div className={`${styles.modalPickerSearch} ${styles.modalSearchGroup}`}>
+                <FiSearch aria-hidden className={styles.modalSearchIcon} />
+                <input
+                  type="search"
+                  placeholder="Search debt tags"
+                  className={styles.modalSearchInput}
+                  value={debtTagSearch}
+                  onChange={(event) => setDebtTagSearch(event.target.value)}
+                  data-testid="transactions-filter-debt-search"
+                />
+              </div>
+              <div className={styles.tagList} data-testid="transactions-filter-debt">
+                {visibleDebtTags.length ? (
+                  visibleDebtTags.map((tag) => {
+                    const isSelected = selectedDebtTags.has(tag);
+                    return (
+                      <label
+                        key={tag}
+                        className={`${styles.tagOption} ${isSelected ? styles.tagOptionActive : ''}`}
+                        data-testid={`transactions-filter-debt-${tag}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={handleToggle('debtTags', tag)}
+                        />
+                        <span>{tag}</span>
+                      </label>
+                    );
+                  })
+                ) : (
+                  <span className={styles.emptyOption}>No debt tags match</span>
+                )}
+              </div>
             </div>
           </div>
 
