@@ -1,62 +1,10 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { FiEdit2, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiEdit2, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { formatAmount, formatAmountWithTrailing, formatPercent } from '../../lib/numberFormat';
-import { TRANSACTION_COLUMN_DEFINITIONS } from './transactionColumns';
-
-const definitionMap = new Map(
-  TRANSACTION_COLUMN_DEFINITIONS.map((definition) => [definition.id, definition]),
-);
 
 const STICKY_COLUMN_BUFFER = 252; // checkbox (72px) + actions column (180px) baseline
-
-const dateFormatters = {
-  'DD/MM/YY': new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-  }),
-  'MM/DD/YY': new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-  }),
-};
-
-function formatTransactionDate(value, format = 'DD/MM/YY') {
-  if (!value) {
-    return '—';
-  }
-
-  const dateValue = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(dateValue.getTime())) {
-    return value;
-  }
-
-  if (format === 'YYYY-MM-DD') {
-    const month = String(dateValue.getMonth() + 1).padStart(2, '0');
-    const day = String(dateValue.getDate()).padStart(2, '0');
-    return `${dateValue.getFullYear()}-${month}-${day}`;
-  }
-
-  const formatter = dateFormatters[format] ?? dateFormatters['DD/MM/YY'];
-  return formatter.format(dateValue);
-}
-
-function getAmountToneClass(type) {
-  if (type === 'Income') {
-    return styles.amountIncome;
-  }
-  if (type === 'Transfer') {
-    return styles.amountTransfer;
-  }
-  return styles.amountExpense;
-}
-
-function getColumnDefinition(columnId) {
-  return definitionMap.get(columnId);
-}
 
 function TotalBackCell({ transaction }) {
   const totalBack = formatAmount(transaction.totalBack);
@@ -80,8 +28,8 @@ function TotalBackCell({ transaction }) {
 }
 
 const columnRenderers = {
-  date: (txn, column) => formatTransactionDate(txn.date, column.format),
-  type: (txn, _column, stylesRef) => (
+  date: (txn) => txn.displayDate ?? txn.date ?? '—',
+  type: (txn, stylesRef) => (
     <span
       className={
         txn.type === 'Income'
@@ -124,9 +72,9 @@ function renderCellContent(column, transaction) {
   return renderer(transaction, column, styles);
 }
 
-function computeMinWidth(columns) {
+function computeMinWidth(columns, definitionMap) {
   return columns.reduce((total, column) => {
-    const definition = getColumnDefinition(column.id);
+    const definition = definitionMap.get(column.id);
     const minWidth = column.width || definition?.minWidth || 120;
     return total + minWidth;
   }, 0);
@@ -139,16 +87,31 @@ export function TransactionsTable({
   onSelectAll,
   selectionSummary,
   onOpenAdvanced,
+  columnDefinitions = [],
   visibleColumns,
   onDeselectAll,
   onToggleShowSelected,
   isShowingSelectedOnly,
   pagination,
+  sortState = [],
+  onSortChange,
 }) {
+  const definitionMap = useMemo(
+    () => new Map(columnDefinitions.map((definition) => [definition.id, definition])),
+    [columnDefinitions],
+  );
   const selectionSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allSelected = transactions.length > 0 && transactions.every((txn) => selectionSet.has(txn.id));
   const isIndeterminate = selectionSet.size > 0 && !allSelected;
   const headerCheckboxRef = useRef(null);
+
+  const sortLookup = useMemo(() => {
+    const lookup = new Map();
+    sortState?.forEach((item, index) => {
+      lookup.set(item.id, { ...item, index });
+    });
+    return lookup;
+  }, [sortState]);
 
   useEffect(() => {
     if (headerCheckboxRef.current) {
@@ -156,7 +119,22 @@ export function TransactionsTable({
     }
   }, [isIndeterminate]);
 
-  const minTableWidth = useMemo(() => computeMinWidth(visibleColumns), [visibleColumns]);
+  const minTableWidth = useMemo(
+    () => computeMinWidth(visibleColumns, definitionMap),
+    [visibleColumns, definitionMap],
+  );
+
+  const handleSortToggle = useMemo(
+    () =>
+      (columnId) => (event) => {
+        if (!onSortChange) {
+          return;
+        }
+        const isMulti = event.shiftKey || event.metaKey || event.ctrlKey;
+        onSortChange(columnId, { multi: isMulti });
+      },
+    [onSortChange],
+  );
 
   const totals = useMemo(
     () =>
@@ -196,8 +174,13 @@ export function TransactionsTable({
                 />
               </th>
               {visibleColumns.map((column) => {
-                const definition = getColumnDefinition(column.id);
+                const definition = definitionMap.get(column.id);
                 const alignClass = definition?.align === 'right' ? styles.headerAlignRight : '';
+                const sortDescriptor = sortLookup.get(column.id);
+                const isSorted = Boolean(sortDescriptor);
+                const sortDirection = sortDescriptor?.direction ?? 'asc';
+                const sortOrder = sortDescriptor ? sortDescriptor.index + 1 : null;
+                const isSortable = definition?.sortable;
                 return (
                   <th
                     key={column.id}
@@ -208,7 +191,33 @@ export function TransactionsTable({
                       width: `${column.width}px`,
                     }}
                   >
-                    <span className={styles.headerContent}>{definition?.label ?? column.id}</span>
+                    {isSortable && onSortChange ? (
+                      <button
+                        type="button"
+                        className={`${styles.headerSortButton} ${
+                          isSorted ? styles.headerSortActive : ''
+                        }`}
+                        onClick={handleSortToggle(column.id)}
+                        data-testid={`transactions-sort-${column.id}`}
+                        aria-label={`Sort by ${definition?.label ?? column.id}${
+                          sortState?.length > 1 ? ' (shift-click for multi-sort)' : ''
+                        }`}
+                      >
+                        <span className={styles.headerSortLabel}>{definition?.label ?? column.id}</span>
+                        <span className={styles.headerSortIcon} aria-hidden>
+                          {isSorted ? (
+                            sortDirection === 'desc' ? <FiChevronDown /> : <FiChevronUp />
+                          ) : (
+                            <FiChevronUp />
+                          )}
+                        </span>
+                        {isSorted && sortState?.length > 1 ? (
+                          <span className={styles.headerSortOrder}>{sortOrder}</span>
+                        ) : null}
+                      </button>
+                    ) : (
+                      <span className={styles.headerContent}>{definition?.label ?? column.id}</span>
+                    )}
                   </th>
                 );
               })}
@@ -247,7 +256,7 @@ export function TransactionsTable({
                       />
                     </td>
                     {visibleColumns.map((column) => {
-                      const definition = getColumnDefinition(column.id);
+                      const definition = definitionMap.get(column.id);
                       const alignClass = definition?.align === 'right' ? styles.cellAlignRight : '';
                       return (
                         <td
@@ -257,7 +266,13 @@ export function TransactionsTable({
                             minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
                             width: `${column.width}px`,
                           }}
-                          title={typeof txn[column.id] === 'string' ? txn[column.id] : undefined}
+                          title={
+                            typeof txn[column.id] === 'string'
+                              ? txn[column.id]
+                              : column.id === 'date'
+                              ? txn.displayDate ?? txn.date
+                              : undefined
+                          }
                         >
                           <div className={styles.cellText}>{renderCellContent(column, txn)}</div>
                         </td>

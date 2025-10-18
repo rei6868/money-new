@@ -2,9 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { FiMove, FiRotateCcw, FiSearch, FiX } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
-import { TRANSACTION_COLUMN_DEFINITIONS } from './transactionColumns';
 
-export function CustomizeColumnsModal({ isOpen, columns, onClose, onApply, onReset }) {
+export function CustomizeColumnsModal({
+  isOpen,
+  columns,
+  onClose,
+  onApply,
+  onReset,
+  columnDefinitions = [],
+}) {
   const [draftColumns, setDraftColumns] = useState(columns);
   const [columnQuery, setColumnQuery] = useState('');
   const dragItemIdRef = useRef(null);
@@ -17,11 +23,8 @@ export function CustomizeColumnsModal({ isOpen, columns, onClose, onApply, onRes
   }, [isOpen, columns]);
 
   const definitionMap = useMemo(
-    () =>
-      new Map(
-        TRANSACTION_COLUMN_DEFINITIONS.map((definition) => [definition.id, definition]),
-      ),
-    [],
+    () => new Map(columnDefinitions.map((definition) => [definition.id, definition])),
+    [columnDefinitions],
   );
 
   useEffect(() => {

@@ -4,9 +4,10 @@ import { FiPlus, FiRotateCcw, FiSearch, FiSettings, FiSliders, FiX } from 'react
 import styles from '../../styles/TransactionsHistory.module.css';
 
 export function TransactionsToolbar({
-  query,
-  onQueryChange,
-  onClearQuery,
+  searchValue,
+  onSearchChange,
+  onSubmitSearch,
+  onClearSearch,
   previousQuery,
   onRestoreQuery,
   onFilterClick,
@@ -14,7 +15,7 @@ export function TransactionsToolbar({
   onAddTransaction,
   onCustomizeColumns,
 }) {
-  const hasQuery = Boolean(query);
+  const hasQuery = Boolean(searchValue);
   const canRestore = Boolean(previousQuery);
   const hasFilters = filterCount > 0;
   const searchInputRef = useRef(null);
@@ -41,6 +42,11 @@ export function TransactionsToolbar({
   };
 
   const handleSearchKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      onSubmitSearch();
+      return;
+    }
     if (event.key === 'Escape' && hasQuery) {
       event.preventDefault();
       setIsConfirmingClear(true);
@@ -76,8 +82,10 @@ export function TransactionsToolbar({
 
   const handleConfirmClear = () => {
     setIsConfirmingClear(false);
-    onClearQuery();
-    focusSearchInput();
+    onClearSearch();
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
   };
 
   const handleCancelClear = () => {
@@ -93,8 +101,10 @@ export function TransactionsToolbar({
             ref={searchInputRef}
             type="search"
             placeholder="Search all transactions"
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
+            value={searchValue}
+            onChange={(event) => onSearchChange(event.target.value)}
+            onFocus={handleFocus}
+            onBlur={() => setIsSearchFocused(false)}
             onKeyDown={handleSearchKeyDown}
             className={styles.searchInput}
             data-testid="transactions-search-input"
@@ -130,6 +140,27 @@ export function TransactionsToolbar({
             </span>
           </div>
         </div>
+        <button
+          type="button"
+          className={styles.searchSubmitButton}
+          onClick={onSubmitSearch}
+          data-testid="transactions-search-submit"
+        >
+          Search
+        </button>
+
+        {canRestore ? (
+          <button
+            type="button"
+            className={styles.restoreIconButton}
+            onClick={() => onRestoreQuery(previousQuery)}
+            data-testid="transactions-search-restore"
+            aria-label={`Restore search ${previousQuery}`}
+            title={`Restore “${previousQuery}”`}
+          >
+            <FiRotateCcw aria-hidden />
+          </button>
+        ) : null}
       </div>
 
       <div className={styles.actionsGroup}>
