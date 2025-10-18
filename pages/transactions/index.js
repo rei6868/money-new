@@ -19,6 +19,26 @@ const createInitialFilters = () => ({
   debtTags: [],
 });
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
+const NUMERIC_SORT_COLUMNS = new Set(['amount', 'percentBack', 'fixedBack', 'totalBack', 'finalPrice']);
+const DATE_SORT_COLUMNS = new Set(['date']);
+
+function getSortableValue(transaction, columnId) {
+  if (NUMERIC_SORT_COLUMNS.has(columnId)) {
+    const value = Number(transaction[columnId]);
+    return Number.isNaN(value) ? 0 : value;
+  }
+
+  if (DATE_SORT_COLUMNS.has(columnId)) {
+    const dateValue = new Date(`${transaction[columnId]}T00:00:00`).getTime();
+    return Number.isNaN(dateValue) ? 0 : dateValue;
+  }
+
+  const rawValue = transaction[columnId];
+  if (rawValue === undefined || rawValue === null) {
+    return '';
+  }
+  return String(rawValue).toLowerCase();
+}
 
 export default function TransactionsHistoryPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
@@ -40,6 +60,12 @@ export default function TransactionsHistoryPage() {
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1] ?? PAGE_SIZE_OPTIONS[0]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortState, setSortState] = useState({ column: null, direction: 'asc' });
+  const [quickFilters, setQuickFilters] = useState({
+    category: '',
+    owner: '',
+    type: [],
+    debtTag: [],
   const [filterOptions, setFilterOptions] = useState({
     people: [],
     categories: [],
@@ -128,6 +154,44 @@ export default function TransactionsHistoryPage() {
     const controller = new AbortController();
     setIsFetching(true);
 
+  const filterOptions = useMemo(() => {
+    const people = new Set();
+    const categories = new Set();
+    const years = new Set();
+    const months = new Set();
+    const types = new Set();
+    const debtTags = new Set();
+
+    transactions.forEach((txn) => {
+      if (txn.owner) {
+        people.add(txn.owner);
+      }
+      if (txn.category) {
+        categories.add(txn.category);
+      }
+      if (txn.year) {
+        years.add(txn.year);
+      }
+      if (txn.month) {
+        months.add(txn.month);
+      }
+      if (txn.type) {
+        types.add(txn.type);
+      }
+      if (txn.debtTag) {
+        debtTags.add(txn.debtTag);
+      }
+    });
+
+    return {
+      people: Array.from(people).sort(),
+      categories: Array.from(categories).sort(),
+      years: Array.from(years).sort(),
+      months: Array.from(months).sort(
+        (a, b) => new Date(`${a} 1, 2000`) - new Date(`${b} 1, 2000`),
+      ),
+      types: Array.from(types).sort(),
+      debtTags: Array.from(debtTags).sort(),
     let parsedFilters;
     try {
       parsedFilters = JSON.parse(serializedFilters);
@@ -227,6 +291,31 @@ export default function TransactionsHistoryPage() {
       return [];
     }
 
+    return transactions.filter((txn) => {
+      if (appliedFilters.person !== 'all' && txn.owner !== appliedFilters.person) {
+        return false;
+      }
+      if (appliedFilters.category !== 'all' && txn.category !== appliedFilters.category) {
+        return false;
+      }
+      if (appliedFilters.year !== 'all' && txn.year !== appliedFilters.year) {
+        return false;
+      }
+      if (appliedFilters.month !== 'all' && txn.month !== appliedFilters.month) {
+        return false;
+      }
+      if (quickFilters.category && txn.category !== quickFilters.category) {
+        return false;
+      }
+      if (quickFilters.owner && txn.owner !== quickFilters.owner) {
+        return false;
+      }
+      if (quickFilters.type.length > 0 && !quickFilters.type.includes(txn.type)) {
+        return false;
+      }
+      if (quickFilters.debtTag.length > 0 && !quickFilters.debtTag.includes(txn.debtTag)) {
+        return false;
+      }
     return columnState
       .slice()
       .sort((a, b) => a.order - b.order)
@@ -248,6 +337,42 @@ export default function TransactionsHistoryPage() {
       });
   }, [columnState, definitionLookup]);
 
+      const searchable = [
+        txn.id,
+        txn.notes,
+        txn.shop,
+        txn.account,
+        txn.category,
+        txn.owner,
+        txn.debtTag,
+        txn.cycleTag,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return searchable.includes(loweredQuery);
+    });
+  }, [transactions, appliedFilters, query, quickFilters]);
+
+  const sortedTransactions = useMemo(() => {
+    if (!sortState.column) {
+      return filteredTransactions;
+    }
+
+    const direction = sortState.direction === 'asc' ? 1 : -1;
+    const columnId = sortState.column;
+
+    return filteredTransactions.slice().sort((a, b) => {
+      const aValue = getSortableValue(a, columnId);
+      const bValue = getSortableValue(b, columnId);
+
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return (aValue - bValue) * direction;
+      }
+
+      return String(aValue).localeCompare(String(bValue)) * direction;
+    });
+  }, [filteredTransactions, sortState]);
   const visibleColumns = useMemo(
     () => orderedColumns.filter((column) => column.visible),
     [orderedColumns],
@@ -273,11 +398,11 @@ export default function TransactionsHistoryPage() {
 
   const effectiveTransactions = useMemo(() => {
     if (!showSelectedOnly) {
-      return filteredTransactions;
+      return sortedTransactions;
     }
 
-    return filteredTransactions.filter((txn) => selectedLookup.has(txn.id));
-  }, [filteredTransactions, showSelectedOnly, selectedLookup]);
+    return sortedTransactions.filter((txn) => selectedLookup.has(txn.id));
+  }, [sortedTransactions, showSelectedOnly, selectedLookup]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -342,6 +467,15 @@ export default function TransactionsHistoryPage() {
   }, [selectedIds]);
 
   const filterCount = useMemo(() => {
+    const baseCount = Object.values(appliedFilters).filter((value) => value !== 'all').length;
+    const quickCount = [
+      quickFilters.category ? 1 : 0,
+      quickFilters.owner ? 1 : 0,
+      quickFilters.type.length,
+      quickFilters.debtTag.length,
+    ].reduce((sum, value) => sum + value, 0);
+    return baseCount + quickCount;
+  }, [appliedFilters, quickFilters]);
     let count = 0;
     if (appliedFilters.person !== 'all') {
       count += 1;
@@ -435,6 +569,33 @@ export default function TransactionsHistoryPage() {
     setCurrentPage(1);
   };
 
+  const handleApplyQuery = (value) => {
+    setQuery(value);
+    setPreviousQuery('');
+    setDraftQuery(value);
+    setAppliedQuery(value);
+    setCurrentPage(1);
+  };
+
+  const handleSort = (columnId) => {
+    setSortState((prev) => {
+      if (prev.column !== columnId) {
+        return { column: columnId, direction: 'asc' };
+      }
+      if (prev.direction === 'asc') {
+        return { column: columnId, direction: 'desc' };
+      }
+      return { column: null, direction: 'asc' };
+    });
+  };
+
+  const handleQuickFilterChange = (columnId, value) => {
+    setQuickFilters((prev) => ({
+      ...prev,
+      [columnId]: value,
+    }));
+  };
+
   const handleOpenFilters = () => {
     setDraftFilters(appliedFilters);
     setIsFilterOpen(true);
@@ -462,18 +623,6 @@ export default function TransactionsHistoryPage() {
     });
   };
 
-  const updateFiltersSync = useCallback((updater) => {
-    setDraftFilters((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      return next;
-    });
-    setAppliedFilters((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      return next;
-    });
-    setCurrentPage(1);
-  }, []);
-
   const handleFilterReset = () => {
     setDraftFilters(createInitialFilters());
     setAppliedFilters(createInitialFilters());
@@ -490,34 +639,6 @@ export default function TransactionsHistoryPage() {
     setIsFilterOpen(false);
     setCurrentPage(1);
   };
-
-  const handleQuickFilterChange = useCallback(
-    (field, value) => {
-      updateFiltersSync((prev) => ({
-        ...prev,
-        [field]: value,
-      }));
-    },
-    [updateFiltersSync],
-  );
-
-  const handleQuickFilterToggle = useCallback(
-    (field, value, checked) => {
-      updateFiltersSync((prev) => {
-        const current = new Set(prev[field] ?? []);
-        if (checked) {
-          current.add(value);
-        } else {
-          current.delete(value);
-        }
-        return {
-          ...prev,
-          [field]: Array.from(current),
-        };
-      });
-    },
-    [updateFiltersSync],
-  );
 
   const handleSearchOptions = useCallback((field, term) => {
     const optionKey = field === 'people' ? 'people' : field === 'categories' ? 'categories' : null;
@@ -636,6 +757,9 @@ export default function TransactionsHistoryPage() {
     >
       <div className={styles.screen}>
         <TransactionsToolbar
+          query={query}
+          onQueryChange={handleApplyQuery}
+          onClearQuery={handleClearQuery}
           searchValue={draftQuery}
           onSearchChange={setDraftQuery}
           onSubmitSearch={handleSubmitQuery}
@@ -646,7 +770,6 @@ export default function TransactionsHistoryPage() {
           filterCount={filterCount}
           onAddTransaction={handleAddTransaction}
           onCustomizeColumns={() => setIsCustomizeOpen(true)}
-          selectedCount={selectedIds.length}
           selectionSummary={selectionSummary}
           onDeselectAll={handleDeselectAll}
           onToggleShowSelected={handleToggleShowSelected}
@@ -681,12 +804,16 @@ export default function TransactionsHistoryPage() {
                 }),
             }}
             sortState={sortState}
-            onSortChange={handleSortStateChange}
-            quickFilters={appliedFilters}
-            quickFilterOptions={filterOptions}
+            onSort={handleSort}
+            quickFilters={quickFilters}
+            quickFilterOptions={{
+              category: filterOptions.categories,
+              owner: filterOptions.people,
+              type: filterOptions.types,
+              debtTag: filterOptions.debtTags,
+            }}
             onQuickFilterChange={handleQuickFilterChange}
-            onQuickFilterToggle={handleQuickFilterToggle}
-            onQuickFilterSearch={handleSearchOptions}
+            onSortChange={handleSortStateChange}
           />
         )}
 
