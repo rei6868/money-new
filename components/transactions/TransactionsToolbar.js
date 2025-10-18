@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
+import { formatAmountWithTrailing } from '../../lib/numberFormat';
 
 export function TransactionsToolbar({
   searchValue,
@@ -149,13 +150,11 @@ export function TransactionsToolbar({
           {showClearButton ? (
             <button
               type="button"
-              className={styles.searchClearButton}
-              onMouseDown={handleClearMouseDown}
-              onClick={handleClearClick}
-              data-testid="transactions-search-clear"
-              aria-label="Clear search"
+              className={styles.secondaryButton}
+              onClick={onDeselectAll}
+              data-testid="transactions-quick-deselect"
             >
-              <FiX aria-hidden />
+              De-select
             </button>
           ) : null}
           <div className={styles.searchTrailingIcons}>

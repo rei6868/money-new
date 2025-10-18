@@ -572,6 +572,9 @@ export default function TransactionsHistoryPage() {
   const handleApplyQuery = (value) => {
     setQuery(value);
     setPreviousQuery('');
+    setDraftQuery(value);
+    setAppliedQuery(value);
+    setCurrentPage(1);
   };
 
   const handleSort = (columnId) => {

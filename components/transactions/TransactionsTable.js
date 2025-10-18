@@ -118,7 +118,7 @@ export function TransactionsTable({
   selectedIds,
   onSelectRow,
   onSelectAll,
-  selectionSummary,
+  selectionSummary = { count: 0, amount: 0, finalPrice: 0, totalBack: 0 },
   onOpenAdvanced,
   columnDefinitions = [],
   visibleColumns,
@@ -136,7 +136,8 @@ export function TransactionsTable({
     [columnDefinitions],
   );
   const selectionSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const allSelected = transactions.length > 0 && transactions.every((txn) => selectionSet.has(txn.id));
+  const allSelected =
+    transactions.length > 0 && transactions.every((txn) => selectionSet.has(txn.id));
   const isIndeterminate = selectionSet.size > 0 && !allSelected;
   const headerCheckboxRef = useRef(null);
   const [activeActionId, setActiveActionId] = useState(null);
@@ -387,7 +388,7 @@ export function TransactionsTable({
                   type="checkbox"
                   aria-label="Select all transactions"
                   checked={allSelected}
-                  onChange={(event) => onSelectAll(event.target.checked)}
+                  onChange={(event) => onSelectAll?.(event.target.checked)}
                   data-testid="transaction-select-all"
                 />
               </th>
@@ -412,6 +413,7 @@ export function TransactionsTable({
                       minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
                       width: `${column.width}px`,
                     }}
+                    ref={registerQuickFilterRef(column.id)}
                   >
                     <button
                       type="button"
@@ -512,15 +514,23 @@ export function TransactionsTable({
               <th
                 scope="col"
                 className={`${styles.headerCell} ${styles.stickyRight} ${styles.stickyRightEdge} ${styles.actionsCell}`}
+                aria-label="Row actions"
+                title="Row actions"
               >
-                Actions
+                <span className={styles.actionsEllipsis} aria-hidden>
+                  …
+                </span>
               </th>
             </tr>
           </thead>
           <tbody style={{ minWidth: `${minTableWidth + STICKY_COLUMN_BUFFER}px` }}>
             {transactions.length === 0 ? (
               <tr>
-                <td colSpan={visibleColumns.length + 2} className={styles.emptyState} data-testid="transactions-empty-state">
+                <td
+                  colSpan={visibleColumns.length + 2}
+                  className={styles.emptyState}
+                  data-testid="transactions-empty-state"
+                >
                   No transactions match the current search or filters.
                 </td>
               </tr>
@@ -528,7 +538,6 @@ export function TransactionsTable({
               transactions.map((txn) => {
                 const isSelected = selectionSet.has(txn.id);
                 const rowClass = `${styles.row} ${isSelected ? styles.rowSelected : ''}`;
-
                 return (
                   <tr key={txn.id} className={rowClass} data-testid={`transaction-row-${txn.id}`}>
                     <td
@@ -538,7 +547,7 @@ export function TransactionsTable({
                       <input
                         type="checkbox"
                         checked={isSelected}
-                        onChange={(event) => onSelectRow(txn.id, event.target.checked)}
+                        onChange={(event) => onSelectRow?.(txn.id, event.target.checked)}
                         aria-label={`Select transaction ${txn.id}`}
                         data-testid={`transaction-select-${txn.id}`}
                       />

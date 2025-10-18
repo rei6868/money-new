@@ -104,6 +104,28 @@
   outline-offset: 2px;
 }
 
+.searchSubmitButton {
+  border: none;
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+  color: #ffffff;
+  border-radius: 14px;
+  padding: 0.6rem 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 12px 22px rgba(79, 70, 229, 0.24);
+}
+
+.searchSubmitButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px rgba(79, 70, 229, 0.28);
+}
+
+.searchSubmitButton:focus-visible {
+  outline: 3px solid rgba(99, 102, 241, 0.3);
+  outline-offset: 2px;
+}
+
 .searchGroup:focus-within {
   border-color: rgba(99, 102, 241, 0.6);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
@@ -126,6 +148,12 @@
   right: 2.4rem;
   top: 50%;
   transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.searchIconButton {
   border: none;
   background: rgba(99, 102, 241, 0.16);
   color: var(--mf-accent-strong);
@@ -334,6 +362,16 @@
   border-spacing: 0;
   background: transparent;
   white-space: nowrap;
+}
+
+.table th,
+.table td {
+  border-right: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.table th:last-child,
+.table td:last-child {
+  border-right: none;
 }
 
 .headerCell {
@@ -567,6 +605,112 @@
   text-align: right;
 }
 
+.headerQuickFilterPopover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  max-height: 320px;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: var(--mf-sidebar-bg);
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.18);
+  padding: 0.65rem;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 64;
+}
+
+.headerQuickFilterOpen {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.quickFilterHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: var(--mf-text-primary);
+}
+
+.quickFilterClear {
+  border: none;
+  background: transparent;
+  color: var(--mf-text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.quickFilterClear:hover,
+.quickFilterClear:focus-visible {
+  color: var(--mf-accent-strong);
+  outline: none;
+}
+
+.quickFilterSearchRow {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.quickFilterSearchInput {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 12px;
+  padding: 0.45rem 0.6rem;
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--mf-text-primary);
+  font-size: 0.85rem;
+}
+
+.quickFilterSearchInput:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.35);
+  outline-offset: 1px;
+}
+
+.quickFilterList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-top: 0.35rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.quickFilterOption {
+  width: 100%;
+  border: none;
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--mf-text-secondary);
+  border-radius: 12px;
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.quickFilterOption:hover,
+.quickFilterOption:focus-visible {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--mf-text-primary);
+  outline: none;
+}
+
+.quickFilterOptionActive {
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--mf-accent-strong);
+  font-weight: 600;
+}
+
 .cell {
   padding: 0.85rem 1rem;
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
@@ -659,7 +803,8 @@
 }
 
 .checkboxCell {
-  width: 60px;
+  width: 64px;
+  min-width: 64px;
 }
 
 .actionsCell {
@@ -824,6 +969,138 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+}
+
+.actionsEllipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  font-size: 1.2rem;
+  letter-spacing: 0.12em;
+}
+
+.actionsCellTrigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.actionsTriggerButton {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--mf-text-secondary);
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border 0.15s ease;
+}
+
+.actionsTriggerButton:hover,
+.actionsTriggerButton:focus-visible,
+.actionsTriggerButtonActive {
+  border-color: rgba(99, 102, 241, 0.6);
+  background: rgba(99, 102, 241, 0.16);
+  color: var(--mf-accent-strong);
+  outline: none;
+}
+
+.actionsMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 220px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: var(--mf-sidebar-bg);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+  padding: 0.45rem 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 72;
+}
+
+.actionsMenuOpen {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.actionsMenuItem {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--mf-text-secondary);
+  padding: 0.55rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.actionsMenuItem:hover,
+.actionsMenuItem:focus-visible {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--mf-text-primary);
+  outline: none;
+}
+
+.actionsMenuDanger {
+  color: #b91c1c;
+}
+
+.actionsMenuDanger:hover,
+.actionsMenuDanger:focus-visible {
+  background: rgba(239, 68, 68, 0.16);
+  color: #991b1b;
+}
+
+.actionsMenuNested {
+  position: relative;
+  width: 100%;
+}
+
+.actionsMenuNestedLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.actionsMenuNestedCaret {
+  margin-left: auto;
+  opacity: 0.6;
+}
+
+.actionsSubmenu {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 8px);
+  width: 220px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: var(--mf-sidebar-bg);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+  padding: 0.45rem 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(6px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.actionsSubmenuOpen {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .tableActionIconButton {
