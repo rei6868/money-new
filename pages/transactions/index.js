@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiXCircle } from 'react-icons/fi';
 
 import AppLayout from '../../components/AppLayout';
@@ -6,20 +6,18 @@ import { CustomizeColumnsModal } from '../../components/transactions/CustomizeCo
 import { TransactionsFilterModal } from '../../components/transactions/TransactionsFilterModal';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
 import { TransactionsToolbar } from '../../components/transactions/TransactionsToolbar';
-import { TRANSACTION_COLUMN_DEFINITIONS, getDefaultColumnState } from '../../components/transactions/transactionColumns';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
-import { fetchMockTransactions } from '../../lib/mockTransactions';
 import styles from '../../styles/TransactionsHistory.module.css';
 
-const INITIAL_FILTERS = {
+const createInitialFilters = () => ({
   person: 'all',
   category: 'all',
   year: 'all',
   month: 'all',
-};
-
-const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long' });
+  types: [],
+  debtTags: [],
+});
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
 const NUMERIC_SORT_COLUMNS = new Set(['amount', 'percentBack', 'fixedBack', 'totalBack', 'finalPrice']);
 const DATE_SORT_COLUMNS = new Set(['date']);
@@ -46,14 +44,18 @@ export default function TransactionsHistoryPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
   const [transactions, setTransactions] = useState([]);
   const [isFetching, setIsFetching] = useState(true);
-  const [query, setQuery] = useState('');
+  const [draftQuery, setDraftQuery] = useState('');
+  const [appliedQuery, setAppliedQuery] = useState('');
   const [previousQuery, setPreviousQuery] = useState('');
-  const [appliedFilters, setAppliedFilters] = useState(INITIAL_FILTERS);
-  const [draftFilters, setDraftFilters] = useState(INITIAL_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState(() => createInitialFilters());
+  const [draftFilters, setDraftFilters] = useState(() => createInitialFilters());
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [advancedPanel, setAdvancedPanel] = useState(null);
-  const [columnState, setColumnState] = useState(() => getDefaultColumnState());
+  const [columnDefinitions, setColumnDefinitions] = useState([]);
+  const [columnState, setColumnState] = useState([]);
+  const [defaultColumnState, setDefaultColumnState] = useState([]);
+  const [sortState, setSortState] = useState([]);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1] ?? PAGE_SIZE_OPTIONS[0]);
@@ -64,6 +66,19 @@ export default function TransactionsHistoryPage() {
     owner: '',
     type: [],
     debtTag: [],
+  const [filterOptions, setFilterOptions] = useState({
+    people: [],
+    categories: [],
+    years: [],
+    months: [],
+    types: [],
+    debtTags: [],
+  });
+  const [selectionSummary, setSelectionSummary] = useState({
+    count: 0,
+    amount: 0,
+    finalPrice: 0,
+    totalBack: 0,
   });
 
   useEffect(() => {
@@ -72,31 +87,48 @@ export default function TransactionsHistoryPage() {
     }
 
     let isCancelled = false;
-    setIsFetching(true);
 
-    fetchMockTransactions()
+    fetch('/api/transactions/columns')
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch column metadata');
+        }
+        return response.json();
+      })
       .then((data) => {
         if (isCancelled) {
           return;
         }
 
-        const normalized = data.map((txn) => {
-          const dateValue = new Date(`${txn.date}T00:00:00`);
-          const isValidDate = !Number.isNaN(dateValue.getTime());
+        const definitions = Array.isArray(data.columns) ? data.columns : [];
+        const definitionLookupLocal = new Map(definitions.map((definition) => [definition.id, definition]));
+        const defaultState = Array.isArray(data.defaultState) ? data.defaultState : [];
+        const normalizedState = defaultState.map((column, index) => {
+          const definition = definitionLookupLocal.get(column.id) ?? {};
+          const minWidth = definition.minWidth ?? 120;
+          const rawWidth = column.width;
+          const fallbackWidth = definition.defaultWidth ?? minWidth;
+          const parsedWidth = Number(rawWidth);
+          const width = Number.isFinite(parsedWidth) ? parsedWidth : fallbackWidth;
 
           return {
-            ...txn,
-            year: isValidDate ? String(dateValue.getFullYear()) : '',
-            month: isValidDate ? monthFormatter.format(dateValue) : '',
+            id: column.id,
+            width: Math.max(width, minWidth),
+            visible: column.visible ?? definition.defaultVisible !== false,
+            order: column.order ?? index,
           };
         });
 
-        setTransactions(normalized);
-        setSelectedIds([]);
+        setColumnDefinitions(definitions);
+        setColumnState(normalizedState);
+        setDefaultColumnState(normalizedState.map((column) => ({ ...column })));
+        if (Array.isArray(data.defaultSort)) {
+          setSortState(data.defaultSort);
+        }
       })
-      .finally(() => {
+      .catch((error) => {
         if (!isCancelled) {
-          setIsFetching(false);
+          console.error(error);
         }
       });
 
@@ -106,41 +138,21 @@ export default function TransactionsHistoryPage() {
   }, [isAuthenticated]);
 
   const definitionLookup = useMemo(
-    () =>
-      new Map(
-        TRANSACTION_COLUMN_DEFINITIONS.map((definition) => [definition.id, definition]),
-      ),
-    [],
+    () => new Map(columnDefinitions.map((definition) => [definition.id, definition])),
+    [columnDefinitions],
   );
 
-  const orderedColumns = useMemo(
-    () =>
-      columnState
-        .slice()
-        .sort((a, b) => a.order - b.order)
-        .map((state) => {
-          const definition = definitionLookup.get(state.id) ?? {};
-          const minWidth = definition.minWidth ?? 120;
-          const defaultVisible = definition.defaultVisible !== false;
-          const normalizedWidth = Math.max(
-            state.width ?? definition.defaultWidth ?? minWidth,
-            minWidth,
-          );
+  const serializedFilters = useMemo(() => JSON.stringify(appliedFilters), [appliedFilters]);
+  const sortKey = useMemo(() => JSON.stringify(sortState), [sortState]);
 
-          return {
-            ...definition,
-            ...state,
-            width: normalizedWidth,
-            visible: state.visible ?? defaultVisible,
-          };
-        }),
-    [columnState, definitionLookup],
-  );
+  useEffect(() => {
+    if (!isAuthenticated || columnDefinitions.length === 0) {
+      return;
+    }
 
-  const visibleColumns = useMemo(
-    () => orderedColumns.filter((column) => column.visible),
-    [orderedColumns],
-  );
+    let isCancelled = false;
+    const controller = new AbortController();
+    setIsFetching(true);
 
   const filterOptions = useMemo(() => {
     const people = new Set();
@@ -180,12 +192,104 @@ export default function TransactionsHistoryPage() {
       ),
       types: Array.from(types).sort(),
       debtTags: Array.from(debtTags).sort(),
-    };
-  }, [transactions]);
+    let parsedFilters;
+    try {
+      parsedFilters = JSON.parse(serializedFilters);
+    } catch (error) {
+      parsedFilters = createInitialFilters();
+    }
 
-  const filteredTransactions = useMemo(() => {
-    const loweredQuery = query.trim().toLowerCase();
-    const requiresSearch = loweredQuery.length > 0;
+    let parsedSort;
+    try {
+      parsedSort = sortKey ? JSON.parse(sortKey) : [];
+    } catch (error) {
+      parsedSort = [];
+    }
+
+    const params = new URLSearchParams();
+    if (appliedQuery) {
+      params.set('search', appliedQuery);
+    }
+
+    if (parsedFilters.person && parsedFilters.person !== 'all') {
+      params.append('person', parsedFilters.person);
+    }
+    if (parsedFilters.category && parsedFilters.category !== 'all') {
+      params.append('category', parsedFilters.category);
+    }
+    if (parsedFilters.year && parsedFilters.year !== 'all') {
+      params.append('year', parsedFilters.year);
+    }
+    if (parsedFilters.month && parsedFilters.month !== 'all') {
+      params.append('month', parsedFilters.month);
+    }
+    (parsedFilters.types ?? []).forEach((type) => {
+      params.append('type', type);
+    });
+    (parsedFilters.debtTags ?? []).forEach((tag) => {
+      params.append('debtTag', tag);
+    });
+
+    if (parsedSort.length > 0) {
+      params.set(
+        'sort',
+        parsedSort
+          .map((sort) => `${sort.id}:${sort.direction === 'desc' ? 'desc' : 'asc'}`)
+          .join(','),
+      );
+    }
+
+    fetch(`/api/transactions?${params.toString()}`, {
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch transactions');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (isCancelled) {
+          return;
+        }
+
+        setTransactions(Array.isArray(data.rows) ? data.rows : []);
+        setSelectedIds((prev) => {
+          const available = new Set((data.rows ?? []).map((row) => row.id));
+          return prev.filter((id) => available.has(id));
+        });
+        if (data.filters) {
+          setFilterOptions((prev) => ({ ...prev, ...data.filters }));
+        }
+        if (Array.isArray(data.sort)) {
+          const nextKey = JSON.stringify(data.sort);
+          if (nextKey !== sortKey) {
+            setSortState(data.sort);
+          }
+        }
+      })
+      .catch((error) => {
+        if (!isCancelled && error.name !== 'AbortError') {
+          console.error(error);
+          setTransactions([]);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsFetching(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+    };
+  }, [isAuthenticated, columnDefinitions, appliedQuery, sortKey, serializedFilters]);
+
+  const orderedColumns = useMemo(() => {
+    if (columnState.length === 0) {
+      return [];
+    }
 
     return transactions.filter((txn) => {
       if (appliedFilters.person !== 'all' && txn.owner !== appliedFilters.person) {
@@ -212,10 +316,26 @@ export default function TransactionsHistoryPage() {
       if (quickFilters.debtTag.length > 0 && !quickFilters.debtTag.includes(txn.debtTag)) {
         return false;
       }
+    return columnState
+      .slice()
+      .sort((a, b) => a.order - b.order)
+      .map((state) => {
+        const definition = definitionLookup.get(state.id) ?? {};
+        const minWidth = definition.minWidth ?? 120;
+        const defaultVisible = definition.defaultVisible !== false;
+        const normalizedWidth = Math.max(
+          state.width ?? definition.defaultWidth ?? minWidth,
+          minWidth,
+        );
 
-      if (!requiresSearch) {
-        return true;
-      }
+        return {
+          ...definition,
+          ...state,
+          width: normalizedWidth,
+          visible: state.visible ?? defaultVisible,
+        };
+      });
+  }, [columnState, definitionLookup]);
 
       const searchable = [
         txn.id,
@@ -253,6 +373,12 @@ export default function TransactionsHistoryPage() {
       return String(aValue).localeCompare(String(bValue)) * direction;
     });
   }, [filteredTransactions, sortState]);
+  const visibleColumns = useMemo(
+    () => orderedColumns.filter((column) => column.visible),
+    [orderedColumns],
+  );
+
+  const filteredTransactions = useMemo(() => transactions, [transactions]);
 
   useEffect(() => {
     const filteredIds = new Set(filteredTransactions.map((txn) => txn.id));
@@ -298,26 +424,47 @@ export default function TransactionsHistoryPage() {
     return effectiveTransactions.slice(start, start + pageSize);
   }, [effectiveTransactions, currentPage, pageSize]);
 
-  const selectionSummary = useMemo(() => {
+  useEffect(() => {
     if (selectedIds.length === 0) {
-      return { count: 0, amount: 0, finalPrice: 0, totalBack: 0 };
+      setSelectionSummary({ count: 0, amount: 0, finalPrice: 0, totalBack: 0 });
+      return;
     }
 
-    return filteredTransactions.reduce(
-      (acc, txn) => {
-        if (!selectedLookup.has(txn.id)) {
-          return acc;
-        }
+    let isCancelled = false;
+    const controller = new AbortController();
 
-        acc.count += 1;
-        acc.amount += txn.amount ?? 0;
-        acc.finalPrice += txn.finalPrice ?? 0;
-        acc.totalBack += txn.totalBack ?? 0;
-        return acc;
-      },
-      { count: 0, amount: 0, finalPrice: 0, totalBack: 0 },
-    );
-  }, [filteredTransactions, selectedIds, selectedLookup]);
+    fetch('/api/transactions/selection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: selectedIds }),
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch selection summary');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (isCancelled) {
+          return;
+        }
+        setSelectionSummary(
+          data?.summary ?? { count: 0, amount: 0, finalPrice: 0, totalBack: 0 },
+        );
+      })
+      .catch((error) => {
+        if (!isCancelled && error.name !== 'AbortError') {
+          console.error(error);
+          setSelectionSummary({ count: 0, amount: 0, finalPrice: 0, totalBack: 0 });
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+    };
+  }, [selectedIds]);
 
   const filterCount = useMemo(() => {
     const baseCount = Object.values(appliedFilters).filter((value) => value !== 'all').length;
@@ -329,6 +476,27 @@ export default function TransactionsHistoryPage() {
     ].reduce((sum, value) => sum + value, 0);
     return baseCount + quickCount;
   }, [appliedFilters, quickFilters]);
+    let count = 0;
+    if (appliedFilters.person !== 'all') {
+      count += 1;
+    }
+    if (appliedFilters.category !== 'all') {
+      count += 1;
+    }
+    if (appliedFilters.year !== 'all') {
+      count += 1;
+    }
+    if (appliedFilters.month !== 'all') {
+      count += 1;
+    }
+    if ((appliedFilters.types ?? []).length > 0) {
+      count += 1;
+    }
+    if ((appliedFilters.debtTags ?? []).length > 0) {
+      count += 1;
+    }
+    return count;
+  }, [appliedFilters]);
 
   const handleSelectRow = (id, checked) => {
     setSelectedIds((prev) => {
@@ -368,17 +536,37 @@ export default function TransactionsHistoryPage() {
     setShowSelectedOnly(true);
   };
 
-  const handleClearQuery = () => {
-    if (!query) {
+  const handleSubmitQuery = useCallback(() => {
+    const normalized = draftQuery.trim();
+    if (normalized === appliedQuery.trim()) {
+      setAppliedQuery(normalized);
       return;
     }
-    setPreviousQuery(query);
-    setQuery('');
+
+    if (appliedQuery) {
+      setPreviousQuery(appliedQuery);
+    }
+    setAppliedQuery(normalized);
+    setCurrentPage(1);
+  }, [draftQuery, appliedQuery]);
+
+  const handleClearQuery = () => {
+    if (!draftQuery && !appliedQuery) {
+      return;
+    }
+    if (appliedQuery) {
+      setPreviousQuery(appliedQuery);
+    }
+    setDraftQuery('');
+    setAppliedQuery('');
+    setCurrentPage(1);
   };
 
   const handleRestoreQuery = (value) => {
-    setQuery(value);
     setPreviousQuery('');
+    setDraftQuery(value);
+    setAppliedQuery(value);
+    setCurrentPage(1);
   };
 
   const handleApplyQuery = (value) => {
@@ -417,16 +605,65 @@ export default function TransactionsHistoryPage() {
     }));
   };
 
+  const handleFilterToggle = (field, value, checked) => {
+    setDraftFilters((prev) => {
+      const current = new Set(prev[field] ?? []);
+      if (checked) {
+        current.add(value);
+      } else {
+        current.delete(value);
+      }
+      return {
+        ...prev,
+        [field]: Array.from(current),
+      };
+    });
+  };
+
   const handleFilterReset = () => {
-    setDraftFilters(INITIAL_FILTERS);
-    setAppliedFilters(INITIAL_FILTERS);
+    setDraftFilters(createInitialFilters());
+    setAppliedFilters(createInitialFilters());
     setIsFilterOpen(false);
+    setCurrentPage(1);
   };
 
   const handleFilterApply = () => {
-    setAppliedFilters(draftFilters);
+    setAppliedFilters({
+      ...draftFilters,
+      types: [...(draftFilters.types ?? [])],
+      debtTags: [...(draftFilters.debtTags ?? [])],
+    });
     setIsFilterOpen(false);
+    setCurrentPage(1);
   };
+
+  const handleSearchOptions = useCallback((field, term) => {
+    const optionKey = field === 'people' ? 'people' : field === 'categories' ? 'categories' : null;
+    if (!optionKey) {
+      return;
+    }
+
+    const params = new URLSearchParams({ field, query: term ?? '' });
+
+    fetch(`/api/transactions/options?${params.toString()}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch filter options');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setFilterOptions((prev) => ({
+          ...prev,
+          [optionKey]: Array.isArray(data.options) ? data.options : [],
+        }));
+      })
+      .catch((error) => {
+        if (error.name !== 'AbortError') {
+          console.error(error);
+        }
+      });
+  }, []);
 
   const handleAddTransaction = () => {
     setAdvancedPanel({
@@ -459,6 +696,7 @@ export default function TransactionsHistoryPage() {
           width: normalizedWidth,
           visible: column.visible ?? defaultVisible,
           order: index,
+          format: column.format ?? definition.defaultFormat,
         };
       }),
     );
@@ -466,9 +704,44 @@ export default function TransactionsHistoryPage() {
   };
 
   const handleResetColumns = () => {
-    setColumnState(getDefaultColumnState());
+    if (defaultColumnState.length > 0) {
+      setColumnState(
+        defaultColumnState.map((column, index) => ({
+          ...column,
+          order: column.order ?? index,
+        })),
+      );
+    }
     setIsCustomizeOpen(false);
   };
+
+  const handleSortStateChange = useCallback((columnId, options = {}) => {
+    setSortState((prev) => {
+      const existingIndex = prev.findIndex((item) => item.id === columnId);
+      const isMulti = options.multi;
+
+      if (existingIndex === -1) {
+        const nextSort = { id: columnId, direction: 'asc' };
+        return isMulti ? [...prev, nextSort] : [nextSort];
+      }
+
+      const existing = prev[existingIndex];
+      const nextDirection = existing.direction === 'asc' ? 'desc' : existing.direction === 'desc' ? null : 'asc';
+
+      if (nextDirection === null) {
+        const without = prev.filter((item) => item.id !== columnId);
+        return isMulti ? without : [];
+      }
+
+      if (isMulti) {
+        const next = [...prev];
+        next[existingIndex] = { id: columnId, direction: nextDirection };
+        return next;
+      }
+
+      return [{ id: columnId, direction: nextDirection }];
+    });
+  }, []);
 
   if (isLoading || !isAuthenticated) {
     return null;
@@ -484,6 +757,10 @@ export default function TransactionsHistoryPage() {
           query={query}
           onQueryChange={handleApplyQuery}
           onClearQuery={handleClearQuery}
+          searchValue={draftQuery}
+          onSearchChange={setDraftQuery}
+          onSubmitSearch={handleSubmitQuery}
+          onClearSearch={handleClearQuery}
           previousQuery={previousQuery}
           onRestoreQuery={handleRestoreQuery}
           onFilterClick={handleOpenFilters}
@@ -496,7 +773,7 @@ export default function TransactionsHistoryPage() {
           isShowingSelectedOnly={showSelectedOnly}
         />
 
-        {isFetching ? (
+        {isFetching || columnDefinitions.length === 0 ? (
           <div className={styles.tableCard} data-testid="transactions-loading">
             <div className={styles.emptyState}>Loading transactions...</div>
           </div>
@@ -508,6 +785,7 @@ export default function TransactionsHistoryPage() {
             onSelectAll={handleSelectAll}
             selectionSummary={selectionSummary}
             onOpenAdvanced={handleAdvanced}
+            columnDefinitions={columnDefinitions}
             visibleColumns={visibleColumns}
             pagination={{
               pageSize,
@@ -532,6 +810,7 @@ export default function TransactionsHistoryPage() {
               debtTag: filterOptions.debtTags,
             }}
             onQuickFilterChange={handleQuickFilterChange}
+            onSortChange={handleSortStateChange}
           />
         )}
 
@@ -541,15 +820,18 @@ export default function TransactionsHistoryPage() {
         isOpen={isFilterOpen}
         filters={draftFilters}
         onChange={handleFilterChange}
+        onToggleOption={handleFilterToggle}
         onClose={() => setIsFilterOpen(false)}
         onReset={handleFilterReset}
         onApply={handleFilterApply}
         options={filterOptions}
+        onSearchOptions={handleSearchOptions}
       />
 
       <CustomizeColumnsModal
         isOpen={isCustomizeOpen}
         columns={orderedColumns}
+        columnDefinitions={columnDefinitions}
         onClose={() => setIsCustomizeOpen(false)}
         onApply={handleApplyColumns}
         onReset={handleResetColumns}
