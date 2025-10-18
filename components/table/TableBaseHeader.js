@@ -106,7 +106,12 @@ export function TableBaseHeader({
     <>
       {columns.map((column) => {
           const definition = definitionMap.get(column.id);
-          const alignClass = definition?.align === 'right' ? styles.headerAlignRight : '';
+          const alignClass =
+            definition?.align === 'right'
+              ? styles.headerAlignRight
+              : definition?.align === 'center'
+              ? styles.headerAlignCenter
+              : '';
           const sortDescriptor = sortLookup.get(column.id);
           const isSorted = Boolean(sortDescriptor);
           const sortDirection = sortDescriptor?.direction ?? 'asc';
