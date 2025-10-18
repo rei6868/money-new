@@ -863,50 +863,23 @@
   position: sticky;
   left: 0;
   z-index: 32;
-  z-index: 28;
   background: var(--mf-sidebar-bg);
   box-shadow: 8px 0 18px rgba(15, 23, 42, 0.08);
 }
 
-.stickyRight {
-  position: sticky;
-  right: 0;
-  z-index: 32;
-  z-index: 18;
-  background: var(--mf-sidebar-bg);
-  box-shadow: -8px 0 18px rgba(15, 23, 42, 0.08);
+.stickyLeftNoShadow {
+  box-shadow: none;
 }
 
 .stickyLeftEdge {
   box-shadow: 10px 0 18px -16px rgba(15, 23, 42, 0.35);
 }
 
-.stickyRightEdge {
-  box-shadow: -10px 0 18px -16px rgba(15, 23, 42, 0.35);
-}
-
-.headerCell.stickyLeft,
-.headerCell.stickyRight {
+.headerCell.stickyLeft {
   z-index: 96;
 }
 
-.stickyLeftEdge {
-  box-shadow: 10px 0 18px -16px rgba(15, 23, 42, 0.35);
-}
-
-.stickyRightEdge {
-  box-shadow: -10px 0 18px -16px rgba(15, 23, 42, 0.35);
-}
-
 .checkboxCell {
-  width: 56px;
-  min-width: 56px;
-}
-
-.actionsCell {
-  width: 56px;
-  min-width: 56px;
-  text-align: center;
   width: 64px;
   min-width: 64px;
 }
@@ -914,6 +887,7 @@
 .actionsCell {
   width: 88px;
   min-width: 88px;
+  text-align: center;
 }
 
 .pill {
