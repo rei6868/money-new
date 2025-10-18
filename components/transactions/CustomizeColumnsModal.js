@@ -308,17 +308,22 @@ export function CustomizeColumnsModal({
                   key={column.id}
                   className={rowClass}
                   data-preview-position={previewPosition}
-                  draggable
-                  onDragStart={handleDragStart(column.id)}
                   onDragEnter={handleDragEnter(column.id)}
                   onDragOver={handleDragOver}
                   onDrop={handleDrop(column.id)}
-                  onDragEnd={handleDragEnd}
                   data-testid={`transactions-customize-row-${column.id}`}
                 >
-                  <span className={styles.columnDragHandle} aria-hidden>
-                    <FiMove />
-                  </span>
+                  <button
+                    type="button"
+                    className={styles.columnDragHandle}
+                    draggable
+                    onDragStart={handleDragStart(column.id)}
+                    onDragEnd={handleDragEnd}
+                    aria-label={`Reorder ${definition.label}`}
+                    data-testid={`transactions-customize-drag-${column.id}`}
+                  >
+                    <FiMove aria-hidden />
+                  </button>
                   <div className={styles.columnMainControls}>
                     <label className={styles.columnLabel} htmlFor={`column-visible-${column.id}`}>
                       <input

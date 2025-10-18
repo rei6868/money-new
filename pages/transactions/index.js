@@ -551,12 +551,15 @@ export default function TransactionsHistoryPage() {
   }, [draftQuery, appliedQuery]);
 
   const handleClearQuery = () => {
-    if (!draftQuery && !appliedQuery) {
+    const normalizedDraft = draftQuery.trim();
+    const normalizedApplied = appliedQuery.trim();
+    const clearedValue = normalizedDraft || normalizedApplied;
+
+    if (!clearedValue) {
       return;
     }
-    if (appliedQuery) {
-      setPreviousQuery(appliedQuery);
-    }
+
+    setPreviousQuery(clearedValue);
     setDraftQuery('');
     setAppliedQuery('');
     setCurrentPage(1);

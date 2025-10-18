@@ -16,8 +16,8 @@ import { createPortal } from 'react-dom';
 import styles from '../../styles/TransactionsHistory.module.css';
 import { formatAmount, formatAmountWithTrailing, formatPercent } from '../../lib/numberFormat';
 
-const CHECKBOX_COLUMN_WIDTH = 64;
-const ACTIONS_COLUMN_WIDTH = 64;
+const CHECKBOX_COLUMN_WIDTH = 56;
+const ACTIONS_COLUMN_WIDTH = 56;
 const STICKY_COLUMN_BUFFER = CHECKBOX_COLUMN_WIDTH + ACTIONS_COLUMN_WIDTH;
 
 const QUICK_FILTER_META = {
@@ -228,11 +228,13 @@ export function TransactionsTable({
   const quickFilterRefs = useRef(new Map());
   const quickFilterSearchRefs = useRef(new Map());
   const quickFilterPortalRef = useRef(null);
+  const quickFilterHoverTimer = useRef(null);
   const actionMenuCloseTimer = useRef(null);
   const headerCheckboxRef = useRef(null);
   const actionAnchorRefs = useRef(new Map());
   const actionMenuPortalRef = useRef(null);
   const [actionMenuPosition, setActionMenuPosition] = useState(null);
+  const [tooltipState, setTooltipState] = useState(null);
 
   const closeActionMenu = useCallback(() => {
     if (actionMenuCloseTimer.current) {
@@ -271,37 +273,28 @@ export function TransactionsTable({
     }
   }, [isIndeterminate]);
 
+
   useEffect(() => {
-    if (!openQuickFilter) {
+    return () => {
+      if (quickFilterHoverTimer.current) {
+        clearTimeout(quickFilterHoverTimer.current);
+        quickFilterHoverTimer.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!tooltipState) {
       return undefined;
     }
-
-    const handlePointerDown = (event) => {
-      const container = quickFilterRefs.current.get(openQuickFilter);
-      const portalNode = quickFilterPortalRef.current;
-      if (
-        !container ||
-        container.contains(event.target) ||
-        (portalNode && portalNode.contains(event.target))
-      ) {
-        return;
-      }
-      setOpenQuickFilter(null);
-    };
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        setOpenQuickFilter(null);
-      }
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
+    const dismissTooltip = () => setTooltipState(null);
+    window.addEventListener('scroll', dismissTooltip, true);
+    window.addEventListener('resize', dismissTooltip);
     return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', dismissTooltip, true);
+      window.removeEventListener('resize', dismissTooltip);
     };
-  }, [openQuickFilter]);
+  }, [tooltipState]);
 
   useEffect(() => {
     if (!openQuickFilter) {
@@ -475,10 +468,9 @@ export function TransactionsTable({
       if (!value.length) {
         return definition?.label ?? column.id;
       }
-      if (value.length === 1) {
-        return value[0];
-      }
-      return `${value[0]}`;
+      const displayLimit = column.id === 'debtTag' ? 3 : 1;
+      const visible = value.slice(0, displayLimit);
+      return visible.join(', ');
     }
 
     if (value && value !== 'all') {
@@ -487,11 +479,88 @@ export function TransactionsTable({
     return definition?.label ?? column.id;
   };
 
+  const cancelQuickFilterClose = useCallback(() => {
+    if (quickFilterHoverTimer.current) {
+      clearTimeout(quickFilterHoverTimer.current);
+      quickFilterHoverTimer.current = null;
+    }
+  }, []);
+
+  const scheduleQuickFilterClose = useCallback(() => {
+    cancelQuickFilterClose();
+    quickFilterHoverTimer.current = setTimeout(() => {
+      setOpenQuickFilter(null);
+    }, 180);
+  }, [cancelQuickFilterClose]);
+
+  const openQuickFilterMenu = useCallback(
+    (columnId) => {
+      cancelQuickFilterClose();
+      setOpenQuickFilter((prev) => (prev === columnId ? prev : columnId));
+    },
+    [cancelQuickFilterClose],
+  );
+
+  const showTooltip = useCallback((content, target) => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (!content || !target) {
+      setTooltipState(null);
+      return;
+    }
+    const rect = target.getBoundingClientRect();
+    setTooltipState({
+      content,
+      left: rect.left + rect.width / 2 + window.scrollX,
+      top: rect.top + window.scrollY,
+    });
+  }, []);
+
+  const hideTooltip = useCallback(() => {
+    setTooltipState(null);
+  }, []);
+
+  useEffect(() => {
+    if (!openQuickFilter) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event) => {
+      const container = quickFilterRefs.current.get(openQuickFilter);
+      const portalNode = quickFilterPortalRef.current;
+      if (
+        !container ||
+        container.contains(event.target) ||
+        (portalNode && portalNode.contains(event.target))
+      ) {
+        return;
+      }
+      setOpenQuickFilter(null);
+      hideTooltip();
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setOpenQuickFilter(null);
+        hideTooltip();
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openQuickFilter, hideTooltip]);
+
   const handleQuickFilterToggle = (columnId) => {
     const meta = QUICK_FILTER_META[columnId];
     if (!meta) {
       return;
     }
+    cancelQuickFilterClose();
     setOpenQuickFilter((prev) => (prev === columnId ? null : columnId));
   };
 
@@ -730,21 +799,25 @@ export function TransactionsTable({
     quickFilterPosition &&
     activeQuickFilterMeta &&
     typeof document !== 'undefined'
-      ? createPortal(
-          <div
-            ref={(node) => {
-              quickFilterPortalRef.current = node;
-            }}
-            className={`${styles.headerQuickFilterPopover} ${styles.headerQuickFilterOpen}`}
-            style={{
-              top: `${quickFilterPosition.top}px`,
-              left: `${quickFilterPosition.left}px`,
-              width: `${quickFilterPosition.width}px`,
-            }}
-            role="dialog"
-            aria-modal="false"
-            data-testid={`transactions-quick-filter-${openQuickFilter}-popover`}
-          >
+          ? createPortal(
+              <div
+                ref={(node) => {
+                  quickFilterPortalRef.current = node;
+                }}
+                className={`${styles.headerQuickFilterPopover} ${styles.headerQuickFilterOpen}`}
+                style={{
+                  top: `${quickFilterPosition.top}px`,
+                  left: `${quickFilterPosition.left}px`,
+                  width: `${quickFilterPosition.width}px`,
+                }}
+                role="dialog"
+                aria-modal="false"
+                data-testid={`transactions-quick-filter-${openQuickFilter}-popover`}
+                onMouseEnter={cancelQuickFilterClose}
+                onMouseLeave={scheduleQuickFilterClose}
+                onFocus={cancelQuickFilterClose}
+                onBlur={scheduleQuickFilterClose}
+              >
             <div className={styles.quickFilterHeader}>
               <span>{activeQuickFilterMeta.label}</span>
               <button
@@ -958,6 +1031,23 @@ export function TransactionsTable({
         )
       : null;
 
+  const tooltipPortal =
+    tooltipState && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            className={styles.tooltipPortal}
+            style={{
+              top: `${tooltipState.top}px`,
+              left: `${tooltipState.left}px`,
+            }}
+            role="tooltip"
+          >
+            {tooltipState.content}
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
     <section className={styles.tableCard} aria-label="Transactions history table">
       <div className={styles.tableScroll} data-testid="transactions-table-container">
@@ -997,7 +1087,12 @@ export function TransactionsTable({
               </th>
               {visibleColumns.map((column) => {
                 const definition = definitionMap.get(column.id);
-                const alignClass = definition?.align === 'right' ? styles.headerAlignRight : '';
+                const alignClass =
+                  definition?.align === 'right'
+                    ? styles.headerAlignRight
+                    : definition?.align === 'center'
+                    ? styles.headerAlignCenter
+                    : '';
                 const sortDescriptor = sortLookup.get(column.id);
                 const isSorted = Boolean(sortDescriptor);
                 const sortDirection = sortDescriptor?.direction ?? 'asc';
@@ -1006,10 +1101,22 @@ export function TransactionsTable({
                 const label = computeHeaderLabel(column, definition);
                 const meta = QUICK_FILTER_META[column.id];
                 const filterValues = meta ? getQuickFilterValue(column.id) : null;
-                const extraCount =
-                  Array.isArray(filterValues) && filterValues.length > 1
-                    ? filterValues.length - 1
+                const displayLimit =
+                  meta?.multi && Array.isArray(filterValues)
+                    ? column.id === 'debtTag'
+                      ? 3
+                      : 1
                     : 0;
+                const extraCount =
+                  meta?.multi &&
+                  Array.isArray(filterValues) &&
+                  filterValues.length > displayLimit
+                    ? filterValues.length - displayLimit
+                    : 0;
+                const quickFilterTooltip =
+                  Array.isArray(filterValues) && filterValues.length
+                    ? filterValues.join(', ')
+                    : label;
                 const isFilterActive = meta
                   ? meta.multi
                     ? (filterValues ?? []).length > 0
@@ -1048,9 +1155,25 @@ export function TransactionsTable({
                             isFilterActive ? styles.headerFilterActive : ''
                           }`}
                           onClick={() => handleQuickFilterToggle(column.id)}
+                          onMouseEnter={(event) => {
+                            openQuickFilterMenu(column.id);
+                            showTooltip(quickFilterTooltip, event.currentTarget);
+                          }}
+                          onMouseLeave={() => {
+                            scheduleQuickFilterClose();
+                            hideTooltip();
+                          }}
+                          onFocus={(event) => {
+                            openQuickFilterMenu(column.id);
+                            showTooltip(quickFilterTooltip, event.currentTarget);
+                          }}
+                          onBlur={() => {
+                            scheduleQuickFilterClose();
+                            hideTooltip();
+                          }}
                           data-testid={`transactions-quick-filter-${column.id}`}
                           title={
-                            Array.isArray(filterValues) && filterValues.length > 1
+                            Array.isArray(filterValues) && filterValues.length
                               ? filterValues.join(', ')
                               : label
                           }
@@ -1061,7 +1184,7 @@ export function TransactionsTable({
                           <span className={styles.headerLabelText}>{label}</span>
                           {extraCount > 0 ? (
                             <span className={styles.headerValueOverflow} data-testid={`transactions-quick-filter-${column.id}-more`}>
-                              +{extraCount}
+                              {column.id === 'debtTag' ? '+more' : `+${extraCount}`}
                             </span>
                           ) : null}
                         </button>
@@ -1072,13 +1195,17 @@ export function TransactionsTable({
                         {isSortable && onSortChange ? (
                           <button
                             type="button"
-                            className={`${styles.headerSortButton} ${styles.tooltipTrigger} ${
+                            className={`${styles.headerSortButton} ${
                               isSorted ? styles.headerSortActive : ''
                             }`}
                             onClick={handleSortToggle(column.id)}
                             data-testid={`transactions-sort-${column.id}`}
-                            data-tooltip={sortTooltip}
                             aria-label={sortAriaLabel}
+                            title={sortTooltip}
+                            onMouseEnter={(event) => showTooltip(sortTooltip, event.currentTarget)}
+                            onFocus={(event) => showTooltip(sortTooltip, event.currentTarget)}
+                            onMouseLeave={hideTooltip}
+                            onBlur={hideTooltip}
                           >
                             <SortGlyph direction={isSorted ? sortDirection : undefined} />
                             {isSorted && sortState?.length > 1 ? (
@@ -1159,7 +1286,12 @@ export function TransactionsTable({
                     </td>
                     {visibleColumns.map((column) => {
                       const definition = definitionMap.get(column.id);
-                      const alignClass = definition?.align === 'right' ? styles.cellAlignRight : '';
+                      const alignClass =
+                        definition?.align === 'right'
+                          ? styles.cellAlignRight
+                          : definition?.align === 'center'
+                          ? styles.cellAlignCenter
+                          : '';
                       return (
                         <td
                           key={column.id}
@@ -1243,6 +1375,7 @@ export function TransactionsTable({
             ) : null}
           </tbody>
         </table>
+        {tooltipPortal}
       </div>
       {quickFilterPopover}
       {actionMenuPortal}
