@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { FiPlus, FiRotateCcw, FiSearch, FiSettings, FiSliders, FiX } from 'react-icons/fi';
+import {
+  FiPlus,
+  FiRotateCcw,
+  FiSearch,
+  FiSettings,
+  FiSliders,
+  FiX,
+} from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 
@@ -14,12 +21,18 @@ export function TransactionsToolbar({
   filterCount,
   onAddTransaction,
   onCustomizeColumns,
+  selectionSummary,
+  onDeselectAll,
+  onToggleShowSelected,
+  isShowingSelectedOnly,
 }) {
   const hasQuery = Boolean(searchValue);
   const canRestore = Boolean(previousQuery);
   const hasFilters = filterCount > 0;
   const searchInputRef = useRef(null);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+  const [draftQuery, setDraftQuery] = useState(query);
+  const hasQuery = Boolean(draftQuery);
 
   const showClearButton = hasQuery;
   const showRestoreButton = canRestore && !hasQuery;
@@ -44,6 +57,7 @@ export function TransactionsToolbar({
   const handleSearchKeyDown = (event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
+      onQueryChange(draftQuery.trim());
       onSubmitSearch();
       return;
     }
@@ -53,6 +67,11 @@ export function TransactionsToolbar({
     }
   };
 
+  const handleSubmitSearch = () => {
+    onQueryChange(draftQuery.trim());
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
   const handleRestoreClick = () => {
     if (!previousQuery) {
       return;
@@ -82,6 +101,8 @@ export function TransactionsToolbar({
 
   const handleConfirmClear = () => {
     setIsConfirmingClear(false);
+    onClearQuery();
+    setDraftQuery('');
     onClearSearch();
     requestAnimationFrame(() => {
       searchInputRef.current?.focus();
@@ -93,6 +114,10 @@ export function TransactionsToolbar({
     focusSearchInput();
   };
 
+  useEffect(() => {
+    setDraftQuery(query);
+  }, [query]);
+
   return (
     <section className={styles.toolbarCard} aria-label="Transactions controls">
       <div className={styles.toolbarLeft}>
@@ -101,6 +126,8 @@ export function TransactionsToolbar({
             ref={searchInputRef}
             type="search"
             placeholder="Search all transactions"
+            value={draftQuery}
+            onChange={(event) => setDraftQuery(event.target.value)}
             value={searchValue}
             onChange={(event) => onSearchChange(event.target.value)}
             onFocus={handleFocus}
@@ -110,6 +137,27 @@ export function TransactionsToolbar({
             data-testid="transactions-search-input"
             aria-label="Search transactions"
           />
+          <button
+            type="button"
+            className={styles.searchSubmitButton}
+            onClick={handleSubmitSearch}
+            data-testid="transactions-search-submit"
+            aria-label="Apply search"
+          >
+            <FiSearch aria-hidden />
+          </button>
+          {showClearButton ? (
+            <button
+              type="button"
+              className={styles.searchClearButton}
+              onMouseDown={handleClearMouseDown}
+              onClick={handleClearClick}
+              data-testid="transactions-search-clear"
+              aria-label="Clear search"
+            >
+              <FiX aria-hidden />
+            </button>
+          ) : null}
           <div className={styles.searchTrailingIcons}>
             {showRestoreButton ? (
               <button
@@ -160,6 +208,27 @@ export function TransactionsToolbar({
           >
             <FiRotateCcw aria-hidden />
           </button>
+        ) : null}
+
+        {selectionSummary.count > 0 ? (
+          <div className={styles.toolbarSelectionControls}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={onDeselectAll}
+              data-testid="transactions-selection-clear"
+            >
+              De-select
+            </button>
+            <button
+              type="button"
+              className={styles.primaryPillButton}
+              onClick={onToggleShowSelected}
+              data-testid="transactions-selection-toggle"
+            >
+              {isShowingSelectedOnly ? 'Show all rows' : 'Show selected rows'}
+            </button>
+          </div>
         ) : null}
       </div>
 
