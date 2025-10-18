@@ -17,27 +17,10 @@ const createInitialFilters = () => ({
   month: 'all',
   types: [],
   debtTags: [],
+  accounts: [],
 });
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
-const NUMERIC_SORT_COLUMNS = new Set(['amount', 'percentBack', 'fixedBack', 'totalBack', 'finalPrice']);
-const DATE_SORT_COLUMNS = new Set(['date']);
-
-function getSortableValue(transaction, columnId) {
-  if (NUMERIC_SORT_COLUMNS.has(columnId)) {
-    const value = Number(transaction[columnId]);
-    return Number.isNaN(value) ? 0 : value;
-  }
-  if (DATE_SORT_COLUMNS.has(columnId)) {
-    const dateValue = new Date(`${transaction[columnId]}T00:00:00`).getTime();
-    return Number.isNaN(dateValue) ? 0 : dateValue;
-  }
-  const rawValue = transaction[columnId];
-  if (rawValue === undefined || rawValue === null) {
-    return '';
-  }
-  return String(rawValue).toLowerCase();
-}
 
 export default function TransactionsHistoryPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
@@ -73,11 +56,20 @@ export default function TransactionsHistoryPage() {
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1] ?? PAGE_SIZE_OPTIONS[0]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [quickFilters, setQuickFilters] = useState({
-    category: '',
-    owner: '',
-    type: [],
-    debtTag: [],
+  const [filterOptions, setFilterOptions] = useState({
+    people: [],
+    categories: [],
+    years: [],
+    months: [],
+    types: [],
+    debtTags: [],
+    accounts: [],
+  });
+  const [selectionSummary, setSelectionSummary] = useState({
+    count: 0,
+    amount: 0,
+    finalPrice: 0,
+    totalBack: 0,
   });
 
   useEffect(() => {
@@ -147,119 +139,19 @@ export default function TransactionsHistoryPage() {
     const controller = new AbortController();
     setIsFetching(true);
 
-    let sortForRequest = [];
+    let parsedFilters;
     try {
-      sortForRequest = serializedSort ? JSON.parse(serializedSort) : [];
+      parsedFilters = JSON.parse(serializedFilters);
     } catch (error) {
-      sortForRequest = [];
+      parsedFilters = createInitialFilters();
     }
 
-    const params = new URLSearchParams();
-    if (appliedQuery) {
-      params.set('search', appliedQuery);
+    let parsedSort;
+    try {
+      parsedSort = sortKey ? JSON.parse(sortKey) : [];
+    } catch (error) {
+      parsedSort = [];
     }
-    if (appliedFilters.person && appliedFilters.person !== 'all') {
-      params.append('person', appliedFilters.person);
-    }
-    if (appliedFilters.category && appliedFilters.category !== 'all') {
-      params.append('category', appliedFilters.category);
-    }
-    if (appliedFilters.year && appliedFilters.year !== 'all') {
-      params.append('year', appliedFilters.year);
-    }
-    if (appliedFilters.month && appliedFilters.month !== 'all') {
-      params.append('month', appliedFilters.month);
-    }
-    (appliedFilters.types ?? []).forEach((type) => params.append('type', type));
-    (appliedFilters.debtTags ?? []).forEach((tag) => params.append('debtTag', tag));
-    if (sortForRequest.length > 0) {
-      params.set(
-        'sort',
-        sortForRequest
-          .map((sort) => `${sort.id}:${sort.direction === 'desc' ? 'desc' : 'asc'}`)
-          .join(','),
-      );
-    }
-
-    fetch(`/api/transactions?${params.toString()}`, { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch transactions');
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setTransactions(Array.isArray(data.rows) ? data.rows : []);
-        if (data.filters) {
-          setFilterOptions((prev) => ({ ...prev, ...data.filters }));
-        }
-        if (Array.isArray(data.sort)) {
-          const nextKey = JSON.stringify(data.sort);
-          if (nextKey !== serializedSort) {
-            setSortState(data.sort);
-          }
-        }
-      })
-      .catch((error) => {
-        if (error.name !== 'AbortError') {
-          console.error(error);
-          setTransactions([]);
-        }
-      })
-      .finally(() => {
-        setIsFetching(false);
-      });
-
-    return () => {
-      controller.abort();
-    };
-  }, [isAuthenticated, appliedQuery, appliedFilters, serializedSort]);
-
-  useEffect(() => {
-    if (transactions.length === 0) {
-      return;
-    }
-
-    const people = new Set();
-    const categories = new Set();
-    const years = new Set();
-    const months = new Set();
-    const types = new Set();
-    const debtTags = new Set();
-
-    transactions.forEach((txn) => {
-      if (txn.owner) {
-        people.add(txn.owner);
-      }
-      if (txn.category) {
-        categories.add(txn.category);
-      }
-      if (txn.year) {
-        years.add(txn.year);
-      }
-      if (txn.month) {
-        months.add(txn.month);
-      }
-      if (txn.type) {
-        types.add(txn.type);
-      }
-      if (txn.debtTag) {
-        debtTags.add(txn.debtTag);
-      }
-    });
-
-    setFilterOptions((prev) => ({
-      people: prev.people.length > 0 ? prev.people : Array.from(people).sort(),
-      categories: prev.categories.length > 0 ? prev.categories : Array.from(categories).sort(),
-      years: prev.years.length > 0 ? prev.years : Array.from(years).sort(),
-      months:
-        prev.months.length > 0
-          ? prev.months
-          : Array.from(months).sort((a, b) => new Date(`${a} 1, 2000`) - new Date(`${b} 1, 2000`)),
-      types: prev.types.length > 0 ? prev.types : Array.from(types).sort(),
-      debtTags: prev.debtTags.length > 0 ? prev.debtTags : Array.from(debtTags).sort(),
-    }));
-  }, [transactions]);
 
   useEffect(() => {
     const available = new Set(transactions.map((txn) => txn.id));
@@ -271,6 +163,15 @@ export default function TransactionsHistoryPage() {
       setSelectionSummary({ count: 0, amount: 0, finalPrice: 0, totalBack: 0 });
       return;
     }
+    (parsedFilters.types ?? []).forEach((type) => {
+      params.append('type', type);
+    });
+    (parsedFilters.debtTags ?? []).forEach((tag) => {
+      params.append('debtTag', tag);
+    });
+    (parsedFilters.accounts ?? []).forEach((account) => {
+      params.append('account', account);
+    });
 
     const controller = new AbortController();
 
@@ -287,9 +188,38 @@ export default function TransactionsHistoryPage() {
         return response.json();
       })
       .then((data) => {
-        setSelectionSummary(
-          data?.summary ?? { count: selectedIds.length, amount: 0, finalPrice: 0, totalBack: 0 },
-        );
+        if (isCancelled) {
+          return;
+        }
+
+        const rows = Array.isArray(data.rows) ? data.rows : [];
+        setTransactions(rows);
+        setSelectedIds((prev) => {
+          const available = new Set(rows.map((row) => row.id));
+          return prev.filter((id) => available.has(id));
+        });
+        setFilterOptions((prev) => {
+          const merged = {
+            ...prev,
+            ...(data.filters ?? {}),
+          };
+          const accountSet = new Set(Array.isArray(merged.accounts) ? merged.accounts : []);
+          rows.forEach((row) => {
+            if (row.account) {
+              accountSet.add(row.account);
+            }
+          });
+          return {
+            ...merged,
+            accounts: Array.from(accountSet).sort((a, b) => a.localeCompare(b)),
+          };
+        });
+        if (Array.isArray(data.sort)) {
+          const nextKey = JSON.stringify(data.sort);
+          if (nextKey !== sortKey) {
+            setSortState(data.sort);
+          }
+        }
       })
       .catch((error) => {
         if (error.name !== 'AbortError') {
@@ -321,119 +251,55 @@ export default function TransactionsHistoryPage() {
 
     return columnState
       .slice()
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-      .map((column) => {
-        const definition = definitionLookup.get(column.id) ?? {};
+      .sort((a, b) => a.order - b.order)
+      .map((state) => {
+        const definition = definitionLookup.get(state.id) ?? {};
         const minWidth = definition.minWidth ?? 120;
         const defaultVisible = definition.defaultVisible !== false;
         const normalizedWidth = Math.max(
-          Number(column.width) || definition.defaultWidth || minWidth,
+          state.width ?? definition.defaultWidth ?? minWidth,
           minWidth,
         );
 
         return {
           ...definition,
-          ...column,
+          ...state,
           width: normalizedWidth,
-          visible: column.visible ?? defaultVisible,
+          visible: state.visible ?? defaultVisible,
         };
       });
   }, [columnState, definitionLookup]);
 
   const visibleColumns = useMemo(
-    () => orderedColumns.filter((column) => column.visible !== false),
+    () => orderedColumns.filter((column) => column.visible),
     [orderedColumns],
   );
 
-  const filteredTransactions = useMemo(() => {
-    if (transactions.length === 0) {
-      return [];
-    }
-    const loweredQuery = appliedQuery.trim().toLowerCase();
-    const quickCategory = quickFilters.category;
-    const quickOwner = quickFilters.owner;
-    const quickTypes = new Set(quickFilters.type ?? []);
-    const quickDebtTags = new Set(quickFilters.debtTag ?? []);
+  const filteredTransactions = useMemo(() => transactions, [transactions]);
 
-    return transactions.filter((txn) => {
-      if (appliedFilters.person !== 'all' && txn.owner !== appliedFilters.person) {
-        return false;
-      }
-      if (appliedFilters.category !== 'all' && txn.category !== appliedFilters.category) {
-        return false;
-      }
-      if (appliedFilters.year !== 'all' && String(txn.year) !== String(appliedFilters.year)) {
-        return false;
-      }
-      if (appliedFilters.month !== 'all' && String(txn.month) !== String(appliedFilters.month)) {
-        return false;
-      }
-      if ((appliedFilters.types ?? []).length > 0 && !(appliedFilters.types ?? []).includes(txn.type)) {
-        return false;
-      }
-      if ((appliedFilters.debtTags ?? []).length > 0 && !(appliedFilters.debtTags ?? []).includes(txn.debtTag)) {
-        return false;
-      }
-      if (quickCategory && txn.category !== quickCategory) {
-        return false;
-      }
-      if (quickOwner && txn.owner !== quickOwner) {
-        return false;
-      }
-      if (quickTypes.size > 0 && !quickTypes.has(txn.type)) {
-        return false;
-      }
-      if (quickDebtTags.size > 0 && !quickDebtTags.has(txn.debtTag)) {
-        return false;
-      }
-      if (!loweredQuery) {
-        return true;
-      }
-      const searchable = [
-        txn.id,
-        txn.notes,
-        txn.shop,
-        txn.account,
-        txn.category,
-        txn.owner,
-        txn.debtTag,
-        txn.cycleTag,
-      ]
-        .join(' ')
-        .toLowerCase();
-      return searchable.includes(loweredQuery);
+  useEffect(() => {
+    const filteredIds = new Set(filteredTransactions.map((txn) => txn.id));
+    setSelectedIds((prev) => {
+      const next = prev.filter((id) => filteredIds.has(id));
+      return next.length === prev.length ? prev : next;
     });
-  }, [transactions, appliedFilters, appliedQuery, quickFilters]);
+  }, [filteredTransactions]);
 
-  const sortedTransactions = useMemo(() => {
-    if (sortState.length === 0) {
-      return filteredTransactions;
+  useEffect(() => {
+    if (selectedIds.length === 0 && showSelectedOnly) {
+      setShowSelectedOnly(false);
     }
-
-    return filteredTransactions.slice().sort((a, b) => {
-      for (const sort of sortState) {
-        const direction = sort.direction === 'desc' ? -1 : 1;
-        const aValue = getSortableValue(a, sort.id);
-        const bValue = getSortableValue(b, sort.id);
-        if (aValue < bValue) {
-          return -1 * direction;
-        }
-        if (aValue > bValue) {
-          return 1 * direction;
-        }
-      }
-      return 0;
-    });
-  }, [filteredTransactions, sortState]);
+  }, [selectedIds, showSelectedOnly]);
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   const effectiveTransactions = useMemo(() => {
     if (!showSelectedOnly) {
-      return sortedTransactions;
+      return filteredTransactions;
     }
-    return sortedTransactions.filter((txn) => selectedSet.has(txn.id));
-  }, [showSelectedOnly, sortedTransactions, selectedSet]);
+
+    return filteredTransactions.filter((txn) => selectedLookup.has(txn.id));
+  }, [filteredTransactions, showSelectedOnly, selectedLookup]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -456,13 +322,38 @@ export default function TransactionsHistoryPage() {
   }, [effectiveTransactions, currentPage, pageSize]);
 
   const filterCount = useMemo(() => {
-    const baseCount = ['person', 'category', 'year', 'month'].filter(
-      (key) => appliedFilters[key] && appliedFilters[key] !== 'all',
-    ).length;
-    const multiCount = (appliedFilters.types?.length ?? 0) + (appliedFilters.debtTags?.length ?? 0);
-    const quickCount = Object.values(quickFilters).reduce((total, value) => {
-      if (Array.isArray(value)) {
-        return total + value.length;
+    let count = 0;
+    if (appliedFilters.person !== 'all') {
+      count += 1;
+    }
+    if (appliedFilters.category !== 'all') {
+      count += 1;
+    }
+    if (appliedFilters.year !== 'all') {
+      count += 1;
+    }
+    if (appliedFilters.month !== 'all') {
+      count += 1;
+    }
+    if ((appliedFilters.types ?? []).length > 0) {
+      count += 1;
+    }
+    if ((appliedFilters.debtTags ?? []).length > 0) {
+      count += 1;
+    }
+    if ((appliedFilters.accounts ?? []).length > 0) {
+      count += 1;
+    }
+    return count;
+  }, [appliedFilters]);
+
+  const handleSelectRow = (id, checked) => {
+    setSelectedIds((prev) => {
+      if (checked) {
+        if (prev.includes(id)) {
+          return prev;
+        }
+        return [...prev, id];
       }
       return total + (value ? 1 : 0);
     }, 0);
@@ -474,8 +365,23 @@ export default function TransactionsHistoryPage() {
     setAppliedQuery(draftQuery.trim());
   }, [appliedQuery, draftQuery]);
 
-  const handleClearSearch = useCallback(() => {
-    setPreviousQuery(appliedQuery);
+    if (appliedQuery) {
+      setPreviousQuery(appliedQuery);
+    }
+    setAppliedQuery(normalized);
+    setCurrentPage(1);
+  }, [draftQuery, appliedQuery]);
+
+  const handleClearQuery = () => {
+    const normalizedDraft = draftQuery.trim();
+    const normalizedApplied = appliedQuery.trim();
+    const clearedValue = normalizedDraft || normalizedApplied;
+
+    if (!clearedValue) {
+      return;
+    }
+
+    setPreviousQuery(clearedValue);
     setDraftQuery('');
     setAppliedQuery('');
   }, [appliedQuery]);
@@ -483,7 +389,13 @@ export default function TransactionsHistoryPage() {
   const handleRestoreQuery = useCallback((value) => {
     setDraftQuery(value);
     setAppliedQuery(value);
-  }, []);
+    setCurrentPage(1);
+  };
+
+  const handleOpenFilters = () => {
+    setDraftFilters(appliedFilters);
+    setIsFilterOpen(true);
+  };
 
   const handleFilterChange = useCallback((field, value) => {
     setDraftFilters((prev) => ({ ...prev, [field]: value }));
@@ -501,14 +413,68 @@ export default function TransactionsHistoryPage() {
     });
   }, []);
 
-  const handleFilterReset = useCallback(() => {
+  const updateFiltersSync = useCallback((updater) => {
+    setDraftFilters((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      return next;
+    });
+    setAppliedFilters((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      return next;
+    });
+    setCurrentPage(1);
+  }, []);
+
+  const handleFilterReset = () => {
     setDraftFilters(createInitialFilters());
   }, []);
 
-  const handleFilterApply = useCallback(() => {
-    setAppliedFilters(draftFilters);
+  const handleFilterApply = () => {
+    setAppliedFilters({
+      ...draftFilters,
+      types: [...(draftFilters.types ?? [])],
+      debtTags: [...(draftFilters.debtTags ?? [])],
+      accounts: [...(draftFilters.accounts ?? [])],
+    });
     setIsFilterOpen(false);
-  }, [draftFilters]);
+    setCurrentPage(1);
+  };
+
+  const handleQuickFilterChange = useCallback(
+    (field, value) => {
+      updateFiltersSync((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
+    },
+    [updateFiltersSync],
+  );
+
+  const handleQuickFilterToggle = useCallback(
+    (field, value, checked) => {
+      updateFiltersSync((prev) => {
+        const current = new Set(prev[field] ?? []);
+        if (checked) {
+          current.add(value);
+        } else {
+          current.delete(value);
+        }
+        return {
+          ...prev,
+          [field]: Array.from(current),
+        };
+      });
+    },
+    [updateFiltersSync],
+  );
+
+  const handleSearchOptions = useCallback((field, term) => {
+    const optionKey = field === 'people' ? 'people' : field === 'categories' ? 'categories' : null;
+    if (!optionKey) {
+      return;
+    }
+
+    const params = new URLSearchParams({ field, query: term ?? '' });
 
   const handleSelectRow = useCallback((id, checked) => {
     setSelectedIds((prev) => {
@@ -651,8 +617,10 @@ export default function TransactionsHistoryPage() {
           onRestoreQuery={handleRestoreQuery}
           onFilterClick={() => setIsFilterOpen(true)}
           filterCount={filterCount}
+          onClearFilters={handleFilterReset}
           onAddTransaction={handleAddTransaction}
           onCustomizeColumns={() => setIsCustomizeOpen(true)}
+          selectedCount={selectedIds.length}
           selectionSummary={selectionSummary}
           onDeselectAll={handleDeselectAll}
           onToggleShowSelected={handleToggleShowSelected}
@@ -688,14 +656,11 @@ export default function TransactionsHistoryPage() {
             }}
             sortState={sortState}
             onSortChange={handleSortStateChange}
-            quickFilters={quickFilters}
-            quickFilterOptions={{
-              category: filterOptions.categories,
-              owner: filterOptions.people,
-              type: filterOptions.types,
-              debtTag: filterOptions.debtTags,
-            }}
+            quickFilters={appliedFilters}
+            quickFilterOptions={filterOptions}
             onQuickFilterChange={handleQuickFilterChange}
+            onQuickFilterToggle={handleQuickFilterToggle}
+            onQuickFilterSearch={handleSearchOptions}
           />
         )}
       </div>

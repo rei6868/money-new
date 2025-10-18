@@ -13,43 +13,99 @@ export function TransactionsToolbar({
   onRestoreQuery,
   onFilterClick,
   filterCount,
+  onClearFilters,
   onAddTransaction,
   onCustomizeColumns,
-  selectionSummary,
+  selectedCount = 0,
+  selectionSummary = { amount: 0, finalPrice: 0, totalBack: 0 },
   onDeselectAll,
   onToggleShowSelected,
   isShowingSelectedOnly,
 }) {
-  const searchInputRef = useRef(null);
-  const hasSearch = Boolean(searchValue && searchValue.trim().length > 0);
+  const hasQuery = Boolean(searchValue?.trim());
   const canRestore = Boolean(previousQuery);
-  const hasSelection = (selectionSummary?.count ?? 0) > 0;
+  const hasFilters = filterCount > 0;
+  const searchInputRef = useRef(null);
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
-  const handleClearClick = () => {
-    if (!hasSearch) {
-      return;
-    }
-    onClearSearch();
-    onSearchChange('');
+  const showClearButton = hasQuery;
+  const showRestoreButton = canRestore && !hasQuery && isSearchFocused && !isConfirmingClear;
+
+  const focusSearchInput = () => {
     requestAnimationFrame(() => {
-      searchInputRef.current?.focus();
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+        setIsSearchFocused(true);
+      }
     });
   };
 
-  const handleRestore = () => {
+  const handleClearMouseDown = (event) => {
+    event.preventDefault();
+  };
+
+  const handleClearClick = () => {
+    if (!hasQuery) {
+      return;
+    }
+    setIsConfirmingClear(true);
+  };
+
+  const handleSearchKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      onSubmitSearch?.();
+    }
+    if (event.key === 'Escape' && hasQuery) {
+      event.preventDefault();
+      setIsConfirmingClear(true);
+    }
+  };
+
+  const handleRestoreClick = () => {
     if (!previousQuery) {
       return;
     }
-    onRestoreQuery(previousQuery);
-    onSearchChange(previousQuery);
-    requestAnimationFrame(() => {
-      searchInputRef.current?.focus();
-    });
+    onRestoreQuery?.(previousQuery);
+    focusSearchInput();
+  };
+
+  useEffect(() => {
+    if (!isConfirmingClear) {
+      return undefined;
+    }
+
+    const handleKey = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsConfirmingClear(false);
+        focusSearchInput();
+      }
+    };
+
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [isConfirmingClear]);
+
+  const handleConfirmClear = () => {
+    setIsConfirmingClear(false);
+    onClearSearch?.();
+    focusSearchInput();
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
     onSubmitSearch();
+  };
+
+  const handleToggleSelected = () => {
+    if (selectedCount === 0) {
+      return;
+    }
+    onToggleShowSelected?.();
   };
 
   return (
@@ -61,19 +117,14 @@ export function TransactionsToolbar({
             type="search"
             placeholder="Search all transactions"
             value={searchValue}
-            onChange={(event) => onSearchChange(event.target.value)}
+            onChange={(event) => onSearchChange?.(event.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
             className={styles.searchInput}
             data-testid="transactions-search-input"
             aria-label="Search transactions"
           />
-          <button
-            type="submit"
-            className={styles.searchSubmitButton}
-            data-testid="transactions-search-submit"
-            aria-label="Apply search"
-          >
-            <FiSearch aria-hidden />
-          </button>
           <div className={styles.searchTrailingIcons}>
             {canRestore ? (
               <button
@@ -103,18 +154,77 @@ export function TransactionsToolbar({
             </span>
           </div>
         </div>
-        <button type="submit" className={styles.searchSubmitButton} data-testid="transactions-search-apply">
+
+        <button
+          type="button"
+          className={styles.searchSubmitButton}
+          onClick={onSubmitSearch}
+          data-testid="transactions-search-submit"
+        >
           Search
         </button>
       </form>
 
-      <div className={styles.toolbarSelectionControls}>
-        <button type="button" className={styles.primaryPillButton} onClick={onAddTransaction}>
-          <FiPlus aria-hidden /> Add transaction
+        {selectedCount > 0 ? (
+          <div className={styles.selectionQuickActions} data-testid="transactions-selection-inline">
+            <span className={styles.selectionQuickSummary}>
+              {selectedCount} selected · Amount {formatAmountWithTrailing(selectionSummary.amount)} · Final {formatAmountWithTrailing(selectionSummary.finalPrice)} · Total Back {formatAmountWithTrailing(selectionSummary.totalBack)}
+              {selectedCount} selected · Amount {formatAmountWithTrailing(selectionSummary.amount)}
+            </span>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={onDeselectAll}
+              data-testid="transactions-quick-deselect"
+            >
+              De-select
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={handleToggleSelected}
+              data-testid="transactions-quick-toggle"
+            >
+              {isShowingSelectedOnly ? 'Show all rows' : 'Show selected rows'}
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      <div className={styles.actionsGroup}>
+        <button
+          type="button"
+          className={`${styles.filterButton} ${hasFilters ? styles.filterButtonActive : ''}`}
+          onClick={onFilterClick}
+          data-testid="transactions-filter-trigger"
+          aria-label="Open filters"
+        >
+          <FiSliders aria-hidden />
+          Filters
+          {hasFilters ? <span className={styles.countBadge}>{filterCount}</span> : null}
         </button>
-        <button type="button" className={styles.secondaryButton} onClick={onFilterClick} data-testid="transactions-open-filter">
-          <FiSliders aria-hidden /> Filters
-          {filterCount > 0 ? <span aria-hidden> ({filterCount})</span> : null}
+
+        {hasFilters ? (
+          <button
+            type="button"
+            className={`${styles.secondaryButton} ${styles.clearFilterButton}`}
+            onClick={() => onClearFilters?.()}
+            data-testid="transactions-clear-filters"
+            aria-label="Clear applied filters"
+          >
+            Clear filters
+          </button>
+        ) : null}
+
+        <button
+          type="button"
+          className={styles.filterButton}
+          onClick={onCustomizeColumns}
+          data-testid="transactions-customize-columns-trigger"
+          aria-label="Customize table columns"
+        >
+          <FiSettings aria-hidden />
+          Customize columns
         </button>
         <button type="button" className={styles.secondaryButton} onClick={onCustomizeColumns}>
           <FiSettings aria-hidden /> Customize
