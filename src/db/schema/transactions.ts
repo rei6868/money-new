@@ -8,6 +8,7 @@ import {
   varchar,
   numeric,
   date,
+  type PgTableWithColumns,
 } from "drizzle-orm/pg-core";
 
 import { accounts } from "./accounts";
@@ -48,7 +49,7 @@ export const transactionStatusEnum = pgEnum("transaction_status", [
  * platform. Each field is heavily documented to make maintenance and reporting
  * requirements explicit.
  */
-export const transactions = pgTable("transactions", {
+export const transactions: PgTableWithColumns<any> = pgTable("transactions", {
   /**
    * Primary key for the transaction. Stored as string to support UUIDs or IDs
    * sourced from external integrations.
@@ -175,7 +176,9 @@ export const linkedTxnStatusEnum = pgEnum("linked_txn_status", [
  * disbursement, batch import, or settlement run). Stores metadata needed to tie
  * individual ledger entries together for reporting and reconciliation.
  */
-export const linkedTransactions = pgTable("linked_transactions", {
+export const linkedTransactions: PgTableWithColumns<any> = pgTable(
+  "linked_transactions",
+  {
   /**
    * Primary key for the linked transaction group. Uses string identifiers for
    * interoperability with upstream services.
