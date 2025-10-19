@@ -6,26 +6,33 @@ import { orderFilterValues } from './tableUtils';
 import { TableQuickFilterPopover } from './TableQuickFilter';
 
 function SortIcon({ direction, dataType }) {
-  const iconClass =
-    dataType === 'number' ? styles.sortIconNumeric : styles.sortIconText;
-  const caretClass = `${styles.sortIconCaret} ${
-    direction === 'desc' ? styles.sortIconCaretDesc : ''
-  }`;
+  const iconType = dataType === 'number' ? 'number' : 'text';
+  const arrowClass = `${styles.sortIconArrow} ${
+    direction === 'desc' ? styles.sortIconArrowDesc : ''
+  }`.trim();
+  const rootClass = `${styles.sortIcon} ${direction ? styles.sortIconActive : ''}`.trim();
 
   return (
-    <span
-      className={`${styles.sortIcon} ${direction ? styles.sortIconActive : ''}`.trim()}
-      aria-hidden
-    >
-      <span className={iconClass}>
-        {dataType === 'number' ? (
+    <span className={rootClass} aria-hidden>
+      <span
+        className={`${styles.sortIconGlyph} ${
+          iconType === 'number' ? styles.sortIconDigits : styles.sortIconLines
+        }`.trim()}
+      >
+        {iconType === 'number' ? (
           <>
             <span>0</span>
             <span>9</span>
           </>
-        ) : null}
+        ) : (
+          <>
+            <span />
+            <span />
+            <span />
+          </>
+        )}
       </span>
-      <span className={caretClass} />
+      <span className={arrowClass} />
     </span>
   );
 }
@@ -90,15 +97,26 @@ export function TableBaseHeader({
           : false;
         const headerTitle = definition?.label ?? column.id;
         const filterTooltip = orderedValues.length ? orderedValues.join(', ') : headerTitle;
-        const sortTooltip = isSorted
+        const isHidden = column.visible === false;
+        const sortTooltip = isColumnReorderMode
+          ? 'Sorting is disabled while customizing columns'
+          : isSorted
           ? sortDirection === 'desc'
             ? 'Sort: Descending'
             : 'Sort: Ascending'
           : 'Sort: None';
         const availableOptions = meta ? quickFilterOptions[meta.optionsKey] ?? [] : [];
         const searchTerm = quickFilterSearch[column.id] ?? '';
-        const dataType = definition?.dataType ?? 'string';
+        const dataType = definition?.dataType === 'number' ? 'number' : 'text';
         const isDropping = isColumnReorderMode && activeDropTarget === column.id;
+        const isQuickDisabled = isColumnReorderMode;
+        const isSortDisabled = isColumnReorderMode;
+        const headerClassName = `${styles.headerCell} ${alignClass} ${
+          isColumnReorderMode ? styles.headerReorderActive : ''
+        } ${isDropping ? styles.headerReorderTarget : ''} ${
+          isHidden && isColumnReorderMode ? styles.headerCellHidden : ''
+        }`.trim();
+        const isDraggable = isColumnReorderMode && column.visible !== false;
 
         let labelContent = (
           <span className={styles.headerLabelText}>{headerTitle}</span>
@@ -127,17 +145,15 @@ export function TableBaseHeader({
           <th
             key={column.id}
             scope="col"
-            className={`${styles.headerCell} ${alignClass} ${
-              isColumnReorderMode ? styles.headerReorderActive : ''
-            } ${isDropping ? styles.headerReorderTarget : ''}`.trim()}
+            className={headerClassName}
             style={{
               minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
               width: `${column.width}px`,
             }}
             ref={registerQuickFilterAnchor(column.id)}
-            draggable={isColumnReorderMode}
+            draggable={isDraggable}
             onDragStart={
-              isColumnReorderMode && onColumnDragStart
+              isDraggable && onColumnDragStart
                 ? onColumnDragStart(column.id)
                 : undefined
             }
@@ -171,6 +187,7 @@ export function TableBaseHeader({
                       ? `${meta.label ?? headerTitle}: ${filterTooltip}`
                       : meta.label ?? headerTitle
                   }
+                  disabled={isQuickDisabled}
                 >
                   {meta.icon ? (
                     <span className={styles.headerLabelIcon}>{meta.icon}</span>
@@ -189,6 +206,7 @@ export function TableBaseHeader({
                   onClick={() => onQuickFilterClear(column.id)}
                   data-testid={`transactions-quick-filter-${column.id}-reset`}
                   aria-label={`Clear quick filter for ${meta.label ?? headerTitle}`}
+                  disabled={isQuickDisabled}
                 >
                   <FiX aria-hidden />
                 </button>
@@ -203,6 +221,7 @@ export function TableBaseHeader({
                   data-testid={`transactions-sort-${column.id}`}
                   aria-label={`Sort by ${headerTitle}`}
                   title={sortTooltip}
+                  disabled={isSortDisabled}
                 >
                   <SortIcon
                     direction={isSorted ? sortDirection : undefined}
@@ -214,7 +233,7 @@ export function TableBaseHeader({
                 </button>
               ) : null}
             </div>
-            {meta ? (
+            {meta && !isColumnReorderMode ? (
               <TableQuickFilterPopover
                 key={`${column.id}-popover`}
                 columnId={column.id}

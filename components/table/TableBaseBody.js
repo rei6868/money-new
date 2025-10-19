@@ -116,7 +116,7 @@ function renderCellContent(column, transaction) {
 
 export function TableBaseBody({
   transactions,
-  visibleColumns,
+  columns,
   definitionMap,
   selectionSet,
   onSelectRow,
@@ -131,6 +131,8 @@ export function TableBaseBody({
   onSubmenuEnter,
   registerActionMenu,
   isSubmenuFlipped = false,
+  hiddenColumnIds = new Set(),
+  isColumnReorderMode = false,
 }) {
   return (
     <tbody>
@@ -155,7 +157,7 @@ export function TableBaseBody({
                 aria-label={`Select transaction ${txn.id}`}
               />
             </td>
-            {visibleColumns.map((column) => {
+            {columns.map((column) => {
               const definition = definitionMap.get(column.id);
               const alignClass =
                 definition?.align === 'right'
@@ -164,15 +166,20 @@ export function TableBaseBody({
                   ? styles.cellAlignCenter
                   : '';
               const minWidth = Math.max(definition?.minWidth ?? 120, column.width);
+              const isHidden = hiddenColumnIds.has(column.id);
+              const cellClassName = `${styles.bodyCell} ${alignClass} ${
+                isHidden && isColumnReorderMode ? styles.bodyCellHidden : ''
+              }`.trim();
               return (
                 <td
                   key={column.id}
-                  className={`${styles.bodyCell} ${alignClass}`}
+                  className={cellClassName}
                   style={{
                     minWidth: `${minWidth}px`,
                     width: `${column.width}px`,
                   }}
                   data-testid={`transactions-cell-${column.id}-${txn.id}`}
+                  aria-hidden={isHidden && isColumnReorderMode ? 'true' : undefined}
                 >
                   {renderCellContent(column, txn)}
                 </td>
