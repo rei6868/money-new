@@ -9,12 +9,27 @@ export function TransactionAdvancedModal({ panelData, onClose, onQuickEditSave }
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  if (!panelData) {
-    return null;
-  }
+  const mode = panelData?.mode ?? null;
+  const transaction = panelData?.transaction ?? null;
+  const transactionId = transaction?.id ?? '';
+  const isCreateMode = mode === 'create';
+  const isDeleteMode = mode === 'delete';
+  const isEditMode = mode === 'edit';
 
-  const { transaction } = panelData;
-  const isEditMode = panelData.mode === 'edit';
+  useEffect(() => {
+    if (!panelData) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onClose?.();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [panelData, onClose]);
 
   useEffect(() => {
     if (isEditMode && transaction) {
@@ -27,8 +42,12 @@ export function TransactionAdvancedModal({ panelData, onClose, onQuickEditSave }
       setFormState({ owner: '', category: '', notes: '' });
     }
     setErrorMessage('');
-    setIsSaving(false);
+setIsSaving(false);
   }, [isEditMode, transaction]);
+
+  if (!panelData) {
+    return null;
+  }
 
   const handleInputChange = (field) => (event) => {
     const { value } = event.target;
@@ -87,6 +106,15 @@ export function TransactionAdvancedModal({ panelData, onClose, onQuickEditSave }
     }
   };
 
+  const modalTitle =
+    mode === 'create'
+      ? 'Quick Create Transaction'
+      : mode === 'edit'
+      ? `Edit ${transactionId}`
+      : mode === 'delete'
+      ? `Delete ${transactionId}`
+      : `Advanced options for ${transactionId}`;
+
   return (
     <div
       className={styles.advancedOverlay}
@@ -96,15 +124,7 @@ export function TransactionAdvancedModal({ panelData, onClose, onQuickEditSave }
     >
       <div className={styles.advancedPanel}>
         <div className={styles.advancedHeader}>
-          <h3 className={styles.advancedTitle}>
-            {panelData.mode === 'create'
-              ? 'Quick Create Transaction'
-              : panelData.mode === 'edit'
-              ? `Edit ${panelData.transaction?.id ?? ''}`
-              : panelData.mode === 'delete'
-              ? `Delete ${panelData.transaction?.id ?? ''}`
-              : `Advanced options for ${panelData.transaction?.id ?? ''}`}
-          </h3>
+          <h3 className={styles.advancedTitle}>{modalTitle}</h3>
           <button
             type="button"
             className={styles.iconButton}
@@ -116,7 +136,7 @@ export function TransactionAdvancedModal({ panelData, onClose, onQuickEditSave }
           </button>
         </div>
 
-        {panelData.mode === 'create' ? (
+        {isCreateMode ? (
           <div className={styles.modalBody}>
             <div className={styles.modalField}>
               <p className={styles.modalLabel}>Status</p>
@@ -206,19 +226,19 @@ export function TransactionAdvancedModal({ panelData, onClose, onQuickEditSave }
               <div className={styles.metricTile}>
                 <span className={styles.metricLabel}>Amount</span>
                 <span className={styles.metricValue}>
-                  {formatAmountWithTrailing(panelData.transaction?.amount)}
+                  {formatAmountWithTrailing(transaction?.amount)}
                 </span>
               </div>
               <div className={styles.metricTile}>
                 <span className={styles.metricLabel}>Total Back</span>
                 <span className={styles.metricValue}>
-                  {formatAmountWithTrailing(panelData.transaction?.totalBack)}
+                  {formatAmountWithTrailing(transaction?.totalBack)}
                 </span>
               </div>
               <div className={styles.metricTile}>
                 <span className={styles.metricLabel}>Final Price</span>
                 <span className={styles.metricValue}>
-                  {formatAmountWithTrailing(panelData.transaction?.finalPrice)}
+                  {formatAmountWithTrailing(transaction?.finalPrice)}
                 </span>
               </div>
             </div>
@@ -238,7 +258,7 @@ export function TransactionAdvancedModal({ panelData, onClose, onQuickEditSave }
               >
                 Close
               </button>
-              {panelData.mode === 'delete' ? (
+              {isDeleteMode ? (
                 <button
                   type="button"
                   className={`${styles.primaryButton} ${styles.wrap}`}
