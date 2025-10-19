@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FiPlus, FiSettings } from 'react-icons/fi';
+import { FiPlus, FiRefreshCw, FiSettings } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { TableConfirmModal, TableRestoreInput } from '../table';
@@ -18,10 +18,16 @@ export function TransactionsToolbar({
   onDeselectAll,
   onToggleShowSelected,
   isShowingSelectedOnly,
+  onToggleAllColumns,
+  allToggleableVisible,
+  someToggleableVisible,
+  onResetColumns,
+  onDoneCustomize,
 }) {
   const hasQuery = Boolean(searchValue?.trim());
   const searchInputRef = useRef(null);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+  const columnSelectAllRef = useRef(null);
 
   const focusSearchInput = () => {
     requestAnimationFrame(() => {
@@ -47,6 +53,14 @@ export function TransactionsToolbar({
       window.removeEventListener('keydown', handleKey);
     };
   }, [isConfirmingClear]);
+
+  useEffect(() => {
+    if (!columnSelectAllRef.current) {
+      return;
+    }
+    columnSelectAllRef.current.indeterminate =
+      Boolean(someToggleableVisible) && !allToggleableVisible;
+  }, [someToggleableVisible, allToggleableVisible]);
 
   const handleConfirmClear = () => {
     setIsConfirmingClear(false);
@@ -141,6 +155,41 @@ export function TransactionsToolbar({
       </div>
 
       <div className={styles.actionsGroup}>
+        {isReorderMode ? (
+          <div className={styles.toolbarCustomizeControls}>
+            <label className={styles.customizeSelectAll}>
+              <input
+                ref={columnSelectAllRef}
+                type="checkbox"
+                checked={Boolean(allToggleableVisible)}
+                onChange={(event) => onToggleAllColumns?.(event.target.checked)}
+                aria-label="Select or deselect all columns except Notes"
+              />
+              <span>All columns (excl. Notes)</span>
+            </label>
+
+            <div className={styles.customizeToolbarActions}>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => onResetColumns?.()}
+                data-testid="transactions-columns-reset"
+              >
+                <FiRefreshCw aria-hidden />
+                Reset
+              </button>
+              <button
+                type="button"
+                className={styles.primaryButton}
+                onClick={() => onDoneCustomize?.()}
+                data-testid="transactions-columns-done"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <button
           type="button"
           className={`${styles.filterButton} ${isReorderMode ? styles.filterButtonActive : ''}`}
@@ -158,6 +207,7 @@ export function TransactionsToolbar({
           className={styles.primaryButton}
           onClick={onAddTransaction}
           data-testid="transactions-add-button"
+          disabled={isCustomizeLocked}
         >
           <FiPlus aria-hidden />
           Add transaction

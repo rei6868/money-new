@@ -289,6 +289,13 @@
   box-shadow: 0 18px 36px rgba(79, 70, 229, 0.38);
 }
 
+.primaryButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
 .tableCard {
   --transactions-font-scale: 1;
   background: var(--mf-sidebar-bg);
@@ -647,48 +654,6 @@
   align-items: flex-start;
 }
 
-.selectionSummaryInline {
-  font-size: calc(var(--transactions-font-scale, 1) * 0.76rem);
-  font-weight: 600;
-  color: var(--mf-text-muted);
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.customizeRow {
-  background: rgba(15, 23, 42, 0.04);
-}
-
-.customizeCell {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-}
-
-.customizeControls {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.customizeToolbarRow {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-}
-
-@media (min-width: 768px) {
-  .customizeToolbarRow {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-}
-
 .customizeSelectAll {
   display: inline-flex;
   align-items: center;
@@ -710,96 +675,124 @@
   flex-wrap: wrap;
 }
 
-.customizeToggleGrid {
-  display: grid;
-  grid-auto-rows: minmax(100%, auto);
-  width: 100%;
-  overflow-x: auto;
-  border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(15, 23, 42, 0.02);
-  margin-top: 0.5rem;
-  align-items: stretch;
+.tableHeader {
+  position: relative;
 }
 
-.customizeToggleGrid > * {
-  min-width: 0;
-  border-right: 1px solid rgba(148, 163, 184, 0.16);
+.customizeHeaderRow {
+  background: rgba(15, 23, 42, 0.04);
 }
 
-.customizeToggleGrid > *:last-child {
-  border-right: none;
+.customizeHeaderRow th {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
 }
 
-.customizeToggleSpacer {
-  background: rgba(15, 23, 42, 0.02);
-  min-height: 100%;
+.columnToggleHeaderCell {
+  position: sticky;
+  background: var(--mf-sidebar-bg);
+  z-index: 58;
+  padding: 0.65rem 1rem;
+  vertical-align: middle;
+  overflow: visible;
 }
 
-.customizeToggle {
+.columnToggleHeaderCell.stickyLeft,
+.columnToggleHeaderCell.stickyRight {
+  z-index: 170;
+}
+
+.columnToggleContent {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.6rem;
-  padding: 0.75rem 0.85rem;
-  min-height: 100%;
-  background: transparent;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   width: 100%;
+  min-height: 32px;
 }
 
-.customizeToggleVisible {
-  background: rgba(99, 102, 241, 0.08);
+.columnToggleLabel {
+  font-size: calc(var(--transactions-font-scale, 1) * 0.82rem);
+  font-weight: 600;
+  color: var(--mf-text-primary);
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: normal;
+  word-break: break-word;
+  flex: 1 1 auto;
 }
 
-.customizeToggleHidden {
+.columnToggleSwitch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 46px;
+  height: 26px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.columnToggleSwitch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.columnToggleTrack {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.45);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+
+.columnToggleThumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transform: translateX(0);
+}
+
+.columnToggleSwitch input:checked + .columnToggleTrack {
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.32);
+}
+
+.columnToggleSwitch input:checked + .columnToggleTrack .columnToggleThumb {
+  transform: translateX(18px);
+}
+
+.columnToggleSwitch input:focus-visible + .columnToggleTrack {
+  outline: 3px solid rgba(99, 102, 241, 0.28);
+  outline-offset: 2px;
+}
+
+.columnToggleSwitch input:disabled + .columnToggleTrack {
+  background: rgba(148, 163, 184, 0.2);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.columnToggleSwitch input:disabled + .columnToggleTrack .columnToggleThumb {
+  box-shadow: none;
+  opacity: 0.7;
+}
+
+.columnToggleHidden {
   opacity: 0.55;
 }
 
-.customizeToggleLabel {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 0.35rem;
-  font-weight: 600;
-  font-size: calc(var(--transactions-font-scale, 1) * 0.78rem);
-  white-space: normal;
-  word-break: break-word;
-}
-
-.customizeToggleLabel input {
-  width: 16px;
-  height: 16px;
-}
-
-.customizeToggleActions {
-  display: inline-flex;
-  gap: 0.25rem;
-  flex-wrap: nowrap;
-}
-
-.customizeNudgeButton {
-  border: none;
-  background: rgba(15, 23, 42, 0.08);
-  color: var(--mf-text-primary);
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.18s ease, color 0.18s ease;
-}
-
-.customizeNudgeButton:hover:not(:disabled),
-.customizeNudgeButton:focus-visible:not(:disabled) {
-  background: rgba(99, 102, 241, 0.18);
-  color: var(--mf-accent-strong);
-  outline: none;
-}
-
-.customizeNudgeButton:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+.columnToggleVisible {
+  opacity: 1;
 }
 
 .cell {
@@ -913,6 +906,7 @@
   justify-content: center;
   padding: 1rem 0.5rem 0.9rem;
   border-left: 1px solid rgba(148, 163, 184, 0.18);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .actionsHeaderLabel {
@@ -955,6 +949,25 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
+}
+
+.toolbarCustomizeControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-right: 0.75rem;
+  margin-right: 0.75rem;
+  border-right: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+@media (max-width: 768px) {
+  .toolbarCustomizeControls {
+    padding-right: 0;
+    margin-right: 0;
+    border-right: none;
+    width: 100%;
+  }
 }
 
 .tableActionsGroup {
