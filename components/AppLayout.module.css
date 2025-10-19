@@ -335,8 +335,8 @@
     display: none;
   }
 
-  .mobileTopNav {
-    display: block;
+  .topNavBarContainer {
+    display: flex;
     padding: 1.1rem clamp(1.1rem, 6vw, 1.9rem) 0;
   }
 }
@@ -351,7 +351,7 @@
   }
 }
 
-.mobileTopNav {
+.topNavBarContainer {
   display: none;
   width: 100%;
 }

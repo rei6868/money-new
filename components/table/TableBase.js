@@ -285,10 +285,6 @@ export function TableBase({
     setOpenActionSubmenu(submenuId);
   }, []);
 
-  if (shouldShowTotals) {
-    console.log('Selection Summary in TableBase tfoot:', selectionSummary);
-  }
-
   return (
     <section
       className={styles.tableCard}
@@ -337,7 +333,6 @@ export function TableBase({
             hiddenColumnIds={hiddenColumnIds}
             isColumnReorderMode={isColumnReorderMode}
           />
-          {shouldShowTotals && console.log('Selection Summary in TableBase:', selectionSummary)}
           {shouldShowTotals ? (
             <tfoot>
               <tr className={styles.totalRow}>
@@ -365,16 +360,7 @@ export function TableBase({
                       : '';
                   const minWidth = Math.max(definition?.minWidth ?? 120, column.width);
                   const isHidden = hiddenColumnIds.has(column.id);
-                  let value = null;
-                  if (column.id === 'amount') {
-                    value = formattedTotals.amount ?? null;
-                  } else if (column.id === 'totalBack') {
-                    value = formattedTotals.totalBack ?? null;
-                  } else if (column.id === 'finalPrice') {
-                    value = formattedTotals.finalPrice ?? null;
-                  } else if (formattedTotals[column.id]) {
-                    value = formattedTotals[column.id];
-                  }
+                  const value = resolveTotalValue(column.id);
                   const cellClassName = `${styles.bodyCell} ${styles.totalRowCell} ${alignClass} ${
                     isHidden && isColumnReorderMode ? styles.bodyCellHidden : ''
                   }`.trim();
