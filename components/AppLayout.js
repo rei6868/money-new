@@ -233,8 +233,11 @@ export default function AppLayout({ title, subtitle, children }) {
   };
 
   useEffect(() => {
+    if (!isMobileNavOpen) {
+      return;
+    }
     setIsMobileNavOpen(false);
-  }, [router.pathname]);
+  }, [router.pathname, isMobileNavOpen]);
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -242,17 +245,36 @@ export default function AppLayout({ title, subtitle, children }) {
     }
 
     const { body } = document;
-    const previousOverflow = body.style.overflow;
+    const previousBodyOverflow = body.style.overflow;
+    const previousRootOverflow = document.documentElement.style.overflow;
     if (isMobileNavOpen) {
       body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
     } else {
       body.style.overflow = '';
+      document.documentElement.style.overflow = '';
     }
 
     return () => {
-      body.style.overflow = previousOverflow;
+      body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousRootOverflow;
     };
   }, [isMobileNavOpen]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const handleResize = () => {
+      if (window.innerWidth > 1024) {
+        setIsMobileNavOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const renderNavLink = (item) => {
     const Icon = item.icon;
