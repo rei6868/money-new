@@ -88,6 +88,7 @@ export function TableBase({
   onColumnOrderChange,
   onColumnReset,
   onColumnReorderExit,
+  fontScale = 1,
 }) {
   const [openQuickFilter, setOpenQuickFilter] = useState(null);
   const [quickFilterSearch, setQuickFilterSearch] = useState({});
@@ -99,6 +100,7 @@ export function TableBase({
   const actionMenuCloseTimer = useRef(null);
   const headerCheckboxRef = useRef(null);
   const dragSourceRef = useRef(null);
+  const columnSelectAllRef = useRef(null);
 
   const definitionMap = useDefinitionMap(columnDefinitions);
   const quickFilterRegistry = useQuickFilterRegistry();
@@ -117,9 +119,22 @@ export function TableBase({
     return lookup;
   }, [sortState]);
 
+  const displayColumns = useMemo(
+    () => (isColumnReorderMode ? allColumns : visibleColumns),
+    [isColumnReorderMode, allColumns, visibleColumns],
+  );
+
+  const hiddenColumnIds = useMemo(
+    () =>
+      new Set(
+        allColumns.filter((column) => column.visible === false).map((column) => column.id),
+      ),
+    [allColumns],
+  );
+
   const minTableWidth = useMemo(
-    () => computeMinWidth(visibleColumns, definitionMap),
-    [visibleColumns, definitionMap],
+    () => computeMinWidth(displayColumns, definitionMap),
+    [displayColumns, definitionMap],
   );
 
   useEffect(() => {
@@ -204,19 +219,31 @@ export function TableBase({
     }
   }, [isColumnReorderMode]);
 
+  useEffect(() => {
+    if (isColumnReorderMode) {
+      setOpenQuickFilter(null);
+    }
+  }, [isColumnReorderMode]);
+
   const handleQuickFilterToggle = useCallback(
     (columnId) => {
+      if (isColumnReorderMode) {
+        return;
+      }
       setOpenQuickFilter((current) => {
         const next = current === columnId ? null : columnId;
         onQuickFilterToggle?.(columnId, next !== null);
         return next;
       });
     },
-    [onQuickFilterToggle],
+    [onQuickFilterToggle, isColumnReorderMode],
   );
 
   const handleQuickFilterClear = useCallback(
     (columnId) => {
+      if (isColumnReorderMode) {
+        return;
+      }
       const meta = QUICK_FILTER_META[columnId];
       if (!meta) {
         return;
@@ -228,11 +255,14 @@ export function TableBase({
       }
       setOpenQuickFilter(null);
     },
-    [onQuickFilterChange],
+    [onQuickFilterChange, isColumnReorderMode],
   );
 
   const handleQuickFilterSelect = useCallback(
     (columnId, option) => {
+      if (isColumnReorderMode) {
+        return;
+      }
       const meta = QUICK_FILTER_META[columnId];
       if (!meta) {
         return;
@@ -250,15 +280,18 @@ export function TableBase({
         setOpenQuickFilter(null);
       }
     },
-    [quickFilters, onQuickFilterChange],
+    [quickFilters, onQuickFilterChange, isColumnReorderMode],
   );
 
   const handleQuickFilterSearch = useCallback(
     (columnId, value) => {
+      if (isColumnReorderMode) {
+        return;
+      }
       setQuickFilterSearch((state) => ({ ...state, [columnId]: value }));
       onQuickFilterSearch?.(columnId, value);
     },
-    [onQuickFilterSearch],
+    [onQuickFilterSearch, isColumnReorderMode],
   );
 
   const quickFilterMeta = useMemo(() => {
@@ -374,8 +407,43 @@ export function TableBase({
   );
 
   const visibleColumnCount = useMemo(
-    () => allColumns.filter((column) => column.visible).length,
+    () => allColumns.filter((column) => column.visible !== false).length,
     [allColumns],
+  );
+
+  const toggleableColumns = useMemo(
+    () => allColumns.filter((column) => column.id !== 'notes'),
+    [allColumns],
+  );
+
+  const toggleableVisibleCount = useMemo(
+    () => toggleableColumns.filter((column) => column.visible !== false).length,
+    [toggleableColumns],
+  );
+
+  const allToggleableCount = toggleableColumns.length;
+  const allToggleableVisible =
+    allToggleableCount > 0 && toggleableVisibleCount === allToggleableCount;
+  const someToggleableVisible =
+    toggleableVisibleCount > 0 && toggleableVisibleCount < allToggleableCount;
+
+  useEffect(() => {
+    if (columnSelectAllRef.current) {
+      columnSelectAllRef.current.indeterminate =
+        someToggleableVisible && !allToggleableVisible;
+    }
+  }, [someToggleableVisible, allToggleableVisible]);
+
+  const handleToggleAllColumns = useCallback(
+    (checked) => {
+      toggleableColumns.forEach((column) => {
+        const isVisible = column.visible !== false;
+        if (checked !== isVisible) {
+          onColumnVisibilityChange?.(column.id, checked);
+        }
+      });
+    },
+    [onColumnVisibilityChange, toggleableColumns],
   );
 
   const selectedCount = selectionSet.size;
@@ -434,7 +502,11 @@ export function TableBase({
     setOpenActionSubmenu(submenuId);
   }, []);
   return (
-    <section className={styles.tableCard} aria-label={tableTitle}>
+    <section
+      className={styles.tableCard}
+      aria-label={tableTitle}
+      style={{ '--transactions-font-scale': fontScale }}
+    >
       {toolbarSlot}
       <div className={styles.tableScroll} data-testid="transactions-table-container">
         <table className={styles.table} style={{ minWidth: `${minTableWidth + STICKY_COLUMN_BUFFER}px` }}>
@@ -468,7 +540,7 @@ export function TableBase({
                 </div>
               </th>
               <TableBaseHeader
-                columns={visibleColumns}
+                columns={displayColumns}
                 definitionMap={definitionMap}
                 sortLookup={sortLookup}
                 sortState={sortState}
@@ -513,26 +585,38 @@ export function TableBase({
             </tr>
           {isColumnReorderMode ? (
             <tr className={styles.customizeRow}>
-              <th colSpan={visibleColumns.length + 2} className={styles.customizeCell}>
+              <th colSpan={displayColumns.length + 2} className={styles.customizeCell}>
                 <div className={styles.customizeControls}>
-                  <div className={styles.customizeActions}>
-                    <button
-                      type="button"
-                      className={styles.secondaryButton}
-                      onClick={() => onColumnReset?.()}
-                      data-testid="transactions-columns-reset"
-                    >
-                      <FiRefreshCw aria-hidden />
-                      Reset
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.primaryButton}
-                      onClick={() => onColumnReorderExit?.()}
-                      data-testid="transactions-columns-done"
-                    >
-                      Done
-                    </button>
+                  <div className={styles.customizeToolbar}>
+                    <label className={styles.customizeSelectAll}>
+                      <input
+                        ref={columnSelectAllRef}
+                        type="checkbox"
+                        checked={allToggleableVisible}
+                        onChange={(event) => handleToggleAllColumns(event.target.checked)}
+                        aria-label="Select or deselect all columns except Notes"
+                      />
+                      <span>All columns (excl. Notes)</span>
+                    </label>
+                    <div className={styles.customizeToolbarActions}>
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => onColumnReset?.()}
+                        data-testid="transactions-columns-reset"
+                      >
+                        <FiRefreshCw aria-hidden />
+                        Reset
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.primaryButton}
+                        onClick={() => onColumnReorderExit?.()}
+                        data-testid="transactions-columns-done"
+                      >
+                        Done
+                      </button>
+                    </div>
                   </div>
                   <div
                     className={styles.customizeToggleGrid}
@@ -603,7 +687,7 @@ export function TableBase({
           </thead>
           <TableBaseBody
             transactions={transactions}
-            visibleColumns={visibleColumns}
+            columns={displayColumns}
             definitionMap={definitionMap}
             selectionSet={selectionSet}
             onSelectRow={onSelectRow}
@@ -618,6 +702,8 @@ export function TableBase({
             onSubmenuEnter={handleSubmenuEnter}
             registerActionMenu={actionRegistry.registerMenu}
             isSubmenuFlipped={isSubmenuFlipped}
+            hiddenColumnIds={hiddenColumnIds}
+            isColumnReorderMode={isColumnReorderMode}
           />
         </table>
       </div>

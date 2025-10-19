@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { FiPlus, FiSettings, FiSliders } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
-import { formatAmountWithTrailing } from '../../lib/numberFormat';
 import { TableConfirmModal, TableRestoreInput } from '../table';
 
 export function TransactionsToolbar({
@@ -18,7 +17,6 @@ export function TransactionsToolbar({
   onCustomizeColumns,
   isReorderMode = false,
   selectedCount = 0,
-  selectionSummary = { amount: 0, finalPrice: 0, totalBack: 0 },
   onDeselectAll,
   onToggleShowSelected,
   isShowingSelectedOnly,
@@ -71,6 +69,8 @@ export function TransactionsToolbar({
     onToggleShowSelected?.();
   };
 
+  const isCustomizeLocked = isReorderMode;
+
   return (
     <section className={styles.toolbarCard} aria-label="Transactions controls">
       <div className={styles.toolbarLeft}>
@@ -88,7 +88,6 @@ export function TransactionsToolbar({
           }}
           placeholder="Search all transactions"
           containerClassName={styles.searchGroup}
-          containerProps={{ 'data-testid': 'transactions-search-group' }}
           inputClassName={styles.searchInput}
           iconButtonClassName={styles.searchIconButton}
           restoreButtonClassName={styles.searchRestoreButton}
@@ -101,6 +100,14 @@ export function TransactionsToolbar({
           restoreButtonAriaLabel={previousQuery ? `Restore search ${previousQuery}` : 'Restore search'}
           clearButtonTitle="Clear search"
           restoreButtonTitle={previousQuery ? `Restore “${previousQuery}”` : undefined}
+          inputProps={{
+            disabled: isCustomizeLocked,
+            'aria-disabled': isCustomizeLocked ? 'true' : undefined,
+          }}
+          containerProps={{
+            'data-testid': 'transactions-search-group',
+            'data-disabled': isCustomizeLocked ? 'true' : undefined,
+          }}
         />
 
         <button
@@ -108,15 +115,14 @@ export function TransactionsToolbar({
           className={styles.searchSubmitButton}
           onClick={onSubmitSearch}
           data-testid="transactions-search-submit"
+          disabled={isCustomizeLocked}
         >
           Search
         </button>
 
         {selectedCount > 0 ? (
           <div className={styles.selectionQuickActions} data-testid="transactions-selection-inline">
-            <span className={styles.selectionQuickSummary}>
-              {selectedCount} selected · Amount {formatAmountWithTrailing(selectionSummary.amount)}
-            </span>
+            <span className={styles.selectionQuickSummary}>{selectedCount} selected</span>
             <button
               type="button"
               className={styles.secondaryButton}
@@ -144,6 +150,7 @@ export function TransactionsToolbar({
           onClick={onFilterClick}
           data-testid="transactions-filter-trigger"
           aria-label="Open filters"
+          disabled={isCustomizeLocked}
         >
           <FiSliders aria-hidden />
           Filters
