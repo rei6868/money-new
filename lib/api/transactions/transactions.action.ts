@@ -53,8 +53,8 @@ function normalizeRowUpdate(row: TransactionRecord, updates: Record<string, unkn
   return recalculateRewardFields(next);
 }
 
-function calculateSelectionTotals(ids: string[]): TransactionTotals {
-  const dataset = loadTransactionDataset();
+async function calculateSelectionTotals(ids: string[]): Promise<TransactionTotals> {
+  const dataset = await loadTransactionDataset();
   const selection = dataset.filter((row) => ids.includes(row.id));
   return selection.reduce(
     (acc, row) => {
@@ -68,12 +68,12 @@ function calculateSelectionTotals(ids: string[]): TransactionTotals {
   );
 }
 
-function handleQuickEdit(payload: Record<string, unknown>): TransactionActionResponse {
+async function handleQuickEdit(payload: Record<string, unknown>): Promise<TransactionActionResponse> {
   const id = typeof payload.id === 'string' ? payload.id : '';
   if (!id) {
     return { status: 'error', message: 'Missing transaction id for quick edit.' };
   }
-  const dataset = loadTransactionDataset();
+  const dataset = await loadTransactionDataset();
   const record = dataset.find((row) => row.id === id);
   if (!record) {
     return { status: 'error', message: `Transaction ${id} not found.` };
@@ -113,12 +113,12 @@ function handleBulkDelete(payload: Record<string, unknown>): TransactionActionRe
   };
 }
 
-function handleSyncSelection(payload: Record<string, unknown>): TransactionActionResponse {
+async function handleSyncSelection(payload: Record<string, unknown>): Promise<TransactionActionResponse> {
   const ids = normalizeIds(payload.ids);
   if (ids.length === 0) {
     return { status: 'success', message: 'No transactions selected.', summary: { count: 0, amount: 0, totalBack: 0, finalPrice: 0 } };
   }
-  const totals = calculateSelectionTotals(ids);
+  const totals = await calculateSelectionTotals(ids);
   return {
     status: 'success',
     message: 'Selection summary recalculated.',
@@ -140,7 +140,9 @@ function handleSyncPermissions(): TransactionActionResponse {
   };
 }
 
-export function executeTransactionAction(request: TransactionActionRequest): TransactionActionResponse {
+export async function executeTransactionAction(
+  request: TransactionActionRequest,
+): Promise<TransactionActionResponse> {
   const payload = (request.payload as Record<string, unknown>) ?? {};
   switch (request.action) {
     case 'quickEdit':
