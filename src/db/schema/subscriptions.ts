@@ -69,7 +69,7 @@ export const subscriptions = pgTable(
       .notNull()
       .references(() => accounts.accountId, { onDelete: "restrict" }),
     status: subscriptionStatusEnum("status").notNull().default("active"),
-    imageUrl: text("img_url"),
+    imageUrl: text("image_url"),
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
