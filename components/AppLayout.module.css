@@ -221,6 +221,8 @@
   background: rgba(15, 23, 42, 0.35);
   backdrop-filter: blur(1px);
   z-index: 180;
+  touch-action: none;
+  cursor: pointer;
 }
 
 .mainColumn {
