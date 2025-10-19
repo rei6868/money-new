@@ -200,19 +200,36 @@ export default function TransactionsHistoryPage() {
           return prev.filter((id) => available.has(id));
         });
         setFilterOptions((prev) => {
-          const merged = {
-            ...prev,
-            ...(data.filters ?? {}),
+          const optionBuckets = data?.filters?.options ?? {};
+          const nextFromDataset = {
+            people: Array.isArray(optionBuckets.owners) ? optionBuckets.owners : [],
+            categories: Array.isArray(optionBuckets.categories) ? optionBuckets.categories : [],
+            years: Array.isArray(optionBuckets.years) ? optionBuckets.years : [],
+            months: Array.isArray(optionBuckets.months) ? optionBuckets.months : [],
+            types: Array.isArray(optionBuckets.types) ? optionBuckets.types : [],
+            debtTags: Array.isArray(optionBuckets.debtTags) ? optionBuckets.debtTags : [],
+            accounts: Array.isArray(optionBuckets.accounts) ? optionBuckets.accounts : [],
           };
-          const accountSet = new Set(Array.isArray(merged.accounts) ? merged.accounts : []);
+          const mergeList = (incoming, fallback = []) =>
+            Array.isArray(incoming) ? incoming : Array.isArray(fallback) ? fallback : [];
+          const accountSet = new Set([
+            ...mergeList(nextFromDataset.accounts, prev.accounts),
+          ]);
           rows.forEach((row) => {
-            if (row.account) {
+            if (row.account && typeof row.account === 'string') {
               accountSet.add(row.account);
             }
           });
           return {
-            ...merged,
-            accounts: Array.from(accountSet).sort((a, b) => a.localeCompare(b)),
+            people: mergeList(nextFromDataset.people, prev.people),
+            categories: mergeList(nextFromDataset.categories, prev.categories),
+            years: mergeList(nextFromDataset.years, prev.years),
+            months: mergeList(nextFromDataset.months, prev.months),
+            types: mergeList(nextFromDataset.types, prev.types),
+            debtTags: mergeList(nextFromDataset.debtTags, prev.debtTags),
+            accounts: Array.from(accountSet).sort((a, b) =>
+              a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }),
+            ),
           };
         });
         if (Array.isArray(data.sort)) {

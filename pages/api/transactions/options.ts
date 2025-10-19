@@ -39,7 +39,10 @@ function filterOptions(values: string[], query: string): string[] {
   return values.filter((value) => value.toLowerCase().includes(lowered));
 }
 
-export default function handler(req: NextApiRequest, res: NextApiResponse<OptionsResponse | { error: string }>) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<OptionsResponse | { error: string }>,
+) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
     res.status(405).json({ error: 'Method not allowed' });
@@ -49,7 +52,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse<Option
   const field = normalizeQuery(req.query.field);
   const query = normalizeQuery(req.query.query);
 
-  const dataset = loadTransactionDataset();
+  const dataset = await loadTransactionDataset();
   const optionBuckets = buildFilterOptions(dataset);
   const key = FIELD_MAPPING[field];
 

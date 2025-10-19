@@ -158,12 +158,12 @@ function buildQuickFilterSummaries(
   });
 }
 
-export function getTransactionsTable(
+export async function getTransactionsTable(
   request: TransactionsTableRequest,
   restoreToken?: string | null,
-): TransactionTableResponse {
+): Promise<TransactionTableResponse> {
   const t0 = performance.now();
-  const dataset = loadTransactionDataset();
+  const dataset = await loadTransactionDataset();
   const meta = getTransactionMeta();
   const defaultState = getDefaultTableState();
   const normalizedRequest: TransactionsTableRequest = {

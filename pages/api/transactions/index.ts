@@ -71,7 +71,7 @@ function parseSort(sortParam: string | string[] | undefined): SortDescriptor[] {
     .filter((item): item is SortDescriptor => item !== null);
 }
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
     res.status(405).json({ error: 'Method not allowed' });
@@ -94,6 +94,6 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     quickFilterId,
   };
 
-  const response = getTransactionsTable(request, restoreToken);
+  const response = await getTransactionsTable(request, restoreToken);
   res.status(200).json(response);
 }
