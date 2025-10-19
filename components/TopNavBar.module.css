@@ -1,0 +1,203 @@
+.topNavBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 18px;
+  border: 1px solid var(--mf-border-subtle);
+  background: var(--mf-sidebar-bg);
+  box-shadow: var(--mf-elevation-sm);
+}
+
+.brandLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+  color: #ffffff;
+  font-size: 1.35rem;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.brandInitials {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--mf-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.navLink:hover,
+.navLink:focus-visible {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--mf-accent-strong);
+  border-color: transparent;
+  outline: none;
+}
+
+.navLinkActive {
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--mf-accent-strong);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.moreMenu {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.moreMenuButton {
+  border: none;
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--mf-accent-strong);
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.moreMenuButton:hover,
+.moreMenuButton:focus-visible,
+.moreMenuButtonActive {
+  background: rgba(99, 102, 241, 0.18);
+  outline: none;
+}
+
+.moreMenuPopover {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 200px;
+  border-radius: 16px;
+  border: 1px solid var(--mf-border-subtle);
+  background: var(--mf-sidebar-bg);
+  box-shadow: var(--mf-elevation-md);
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.25rem;
+  z-index: 220;
+}
+
+.moreMenuLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0.45rem 0.75rem;
+  border-radius: 12px;
+  color: var(--mf-text-secondary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.moreMenuLink:hover,
+.moreMenuLink:focus-visible {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--mf-accent-strong);
+  outline: none;
+}
+
+.moreMenuLinkActive {
+  color: var(--mf-accent-strong);
+}
+
+.navActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.iconButton {
+  border: none;
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--mf-text-secondary);
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.iconButton:hover,
+.iconButton:focus-visible {
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--mf-accent-strong);
+  outline: none;
+}
+
+.iconButtonPrimary {
+  background: rgba(99, 102, 241, 0.16);
+  color: var(--mf-accent-strong);
+}
+
+.iconButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.navLinksScroll {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  overflow: hidden;
+}
+
+@media (max-width: 600px) {
+  .topNavBar {
+    padding: 0.75rem 0.85rem;
+    border-radius: 16px;
+  }
+
+  .navLink {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .navActions {
+    gap: 0.3rem;
+  }
+
+  .iconButton,
+  .moreMenuButton {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+}

@@ -113,3 +113,22 @@ export function useDefinitionMap(definitions = []) {
     [definitions],
   );
 }
+
+const NUMERIC_COLUMN_IDS = new Set(['amount', 'percentBack', 'fixedBack', 'totalBack', 'finalPrice']);
+const DATE_COLUMN_IDS = new Set(['date']);
+
+export function resolveColumnSortType(columnId, definition) {
+  if (!columnId) {
+    return 'string';
+  }
+
+  if (DATE_COLUMN_IDS.has(columnId)) {
+    return 'date';
+  }
+
+  if (NUMERIC_COLUMN_IDS.has(columnId) || definition?.align === 'right') {
+    return 'number';
+  }
+
+  return 'string';
+}
