@@ -4,12 +4,9 @@ import { FiChevronDown, FiSearch } from 'react-icons/fi';
 import styles from '../../styles/TransactionsHistory.module.css';
 import { slugify } from '../table/tableUtils';
 
-type DropdownVariant = 'modal' | 'popover';
-
 type OptionFormatter = (value: string) => string;
 
 interface DropdownWithSearchContentProps {
-  variant?: DropdownVariant;
   options: string[];
   includeAllOption?: boolean;
   searchValue: string;
@@ -55,7 +52,6 @@ function defaultFormatter(value: string): string {
 }
 
 export function DropdownWithSearchContent({
-  variant = 'modal',
   options,
   includeAllOption = true,
   searchValue,
@@ -74,29 +70,17 @@ export function DropdownWithSearchContent({
   const selectedSet = useMemo(() => new Set(selectedValues ?? []), [selectedValues]);
 
   const renderSearchField = () => (
-    <div
-      className={
-        variant === 'popover'
-          ? `${styles.quickFilterSearchField}`
-          : `${styles.modalPickerSearch} ${styles.modalSearchGroup}`
-      }
-    >
+    <div className={`${styles.modalPickerSearch} ${styles.modalSearchGroup}`}>
       <FiSearch
         aria-hidden
-        className={variant === 'popover' ? styles.quickFilterSearchIcon : styles.modalSearchIcon}
+        className={styles.modalSearchIcon}
       />
       <input
         type="search"
         value={searchValue}
         onChange={(event) => onSearchChange(event.target.value)}
-        placeholder={
-          searchPlaceholder
-            ? searchPlaceholder
-            : variant === 'popover'
-            ? 'Search options'
-            : 'Search'
-        }
-        className={variant === 'popover' ? styles.quickFilterSearchInput : styles.modalSearchInput}
+        placeholder={searchPlaceholder ? searchPlaceholder : 'Search'}
+        className={styles.modalSearchInput}
         data-testid={testIdPrefix ? `${testIdPrefix}-search` : undefined}
       />
     </div>
@@ -104,39 +88,7 @@ export function DropdownWithSearchContent({
 
   const renderOptionList = () => {
     if (filtered.length === 0) {
-      return (
-        <div className={variant === 'popover' ? styles.quickFilterEmpty : styles.emptyOption}>
-          {emptyMessage}
-        </div>
-      );
-    }
-
-    if (variant === 'popover') {
-      return (
-        <ul className={styles.quickFilterList} role="listbox">
-          {filtered.map((option) => {
-            const isActive = multi ? selectedSet.has(option) : selectedValue === option;
-            return (
-              <li key={`${option}-${slugify(option)}`}>
-                <button
-                  type="button"
-                  className={`${styles.quickFilterOption} ${
-                    isActive ? styles.quickFilterOptionActive : ''
-                  }`}
-                  onClick={() => onSelectOption(option)}
-                  role="option"
-                  aria-selected={isActive}
-                  data-testid={
-                    testIdPrefix ? `${testIdPrefix}-option-${slugify(option)}` : undefined
-                  }
-                >
-                  {optionFormatter(option)}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      );
+      return <div className={styles.emptyOption}>{emptyMessage}</div>;
     }
 
     return (
@@ -171,7 +123,7 @@ export function DropdownWithSearchContent({
   };
 
   return (
-    <div className={variant === 'popover' ? styles.quickFilterSearchRow : styles.modalPicker}>
+    <div className={styles.modalPicker}>
       {renderSearchField()}
       {renderOptionList()}
     </div>
@@ -231,7 +183,6 @@ export function DropdownWithSearch({
           aria-label={label}
         >
           <DropdownWithSearchContent
-            variant="modal"
             options={options}
             includeAllOption={includeAllOption}
             searchValue={searchValue}

@@ -277,6 +277,8 @@ export function TableBaseBody({
                     aria-expanded={openActionId === txn.id}
                     aria-label="Show row actions"
                     onMouseEnter={() => onActionTriggerEnter(txn.id)}
+                    disabled={isColumnReorderMode}
+                    aria-disabled={isColumnReorderMode ? 'true' : undefined}
                   >
                     <FiMoreHorizontal aria-hidden />
                   </button>

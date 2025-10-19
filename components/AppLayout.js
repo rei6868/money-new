@@ -18,8 +18,6 @@ import {
   FiChevronDown,
   FiChevronLeft,
   FiChevronRight,
-  FiMenu,
-  FiX,
 } from 'react-icons/fi';
 
 import { useAuth } from '../context/AuthContext';
@@ -134,7 +132,6 @@ export default function AppLayout({ title, subtitle, children }) {
   const router = useRouter();
   const { logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(() => getInitialSidebarState());
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [theme, setTheme] = useState(() => getInitialTheme());
 
   const [expandedGroups, setExpandedGroups] = useState(() => {
@@ -176,21 +173,6 @@ export default function AppLayout({ title, subtitle, children }) {
     });
   }, [router.pathname]);
 
-  useEffect(() => {
-    if (!isMobileNavOpen) {
-      return;
-    }
-
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        setIsMobileNavOpen(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isMobileNavOpen]);
-
   const activeKeys = useMemo(() => {
     const currentPath = router.pathname;
     return NAV_ITEMS.reduce((acc, item) => {
@@ -227,32 +209,6 @@ export default function AppLayout({ title, subtitle, children }) {
   const handleCollapse = () => {
     setIsCollapsed((prev) => !prev);
   };
-
-  const handleMobileNavToggle = () => {
-    setIsMobileNavOpen((prev) => !prev);
-  };
-
-  useEffect(() => {
-    setIsMobileNavOpen(false);
-  }, [router.pathname]);
-
-  useEffect(() => {
-    if (typeof document === 'undefined') {
-      return;
-    }
-
-    const { body } = document;
-    const previousOverflow = body.style.overflow;
-    if (isMobileNavOpen) {
-      body.style.overflow = 'hidden';
-    } else {
-      body.style.overflow = '';
-    }
-
-    return () => {
-      body.style.overflow = previousOverflow;
-    };
-  }, [isMobileNavOpen]);
 
   const renderNavLink = (item) => {
     const Icon = item.icon;
@@ -330,9 +286,7 @@ export default function AppLayout({ title, subtitle, children }) {
     <div className={styles.appShell} data-testid="app-root">
       <aside
         id="moneyflow-sidebar"
-        className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ''} ${
-          isMobileNavOpen ? styles.sidebarMobileOpen : ''
-        }`}
+        className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ''}`}
       >
         <div className={styles.brandSection}>
           <Link
@@ -411,41 +365,8 @@ export default function AppLayout({ title, subtitle, children }) {
         </div>
       </aside>
 
-      {isMobileNavOpen ? (
-        <div
-          className={styles.mobileOverlay}
-          role="presentation"
-          onClick={handleMobileNavToggle}
-          onPointerDown={(event) => {
-            if (event.pointerType === 'touch') {
-              event.preventDefault();
-              handleMobileNavToggle();
-            }
-          }}
-          data-testid="mobile-sidebar-overlay"
-        />
-      ) : null}
-
       <div className={styles.mainColumn}>
         <header className={styles.topBar}>
-          <button
-            type="button"
-            className={styles.mobileToggle}
-            onClick={handleMobileNavToggle}
-            data-testid="mobile-sidebar-toggle"
-            aria-expanded={isMobileNavOpen}
-            aria-controls="moneyflow-sidebar"
-            aria-label="Toggle navigation"
-            onPointerDown={(event) => {
-              if (event.pointerType === 'touch') {
-                event.preventDefault();
-                handleMobileNavToggle();
-              }
-            }}
-          >
-            {isMobileNavOpen ? <FiX /> : <FiMenu />}
-          </button>
-
           <div className={styles.pageHeading}>
             {title ? (
               <h1 className={styles.pageTitle} data-testid="layout-title">

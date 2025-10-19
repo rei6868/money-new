@@ -124,11 +124,6 @@ export function TransactionsTable(props) {
     pagination,
     sortState,
     onSortChange,
-    quickFilters,
-    quickFilterOptions,
-    onQuickFilterChange,
-    onQuickFilterToggle,
-    onQuickFilterSearch,
     isColumnReorderMode = false,
     onColumnVisibilityChange,
     onColumnOrderChange,
@@ -178,11 +173,6 @@ export function TransactionsTable(props) {
       pagination={paginationRenderer}
       sortState={sortState}
       onSortChange={(columnId, options) => onSortChange?.(columnId, options)}
-      quickFilters={quickFilters}
-      quickFilterOptions={quickFilterOptions}
-      onQuickFilterChange={onQuickFilterChange}
-      onQuickFilterToggle={onQuickFilterToggle}
-      onQuickFilterSearch={onQuickFilterSearch}
       isColumnReorderMode={isColumnReorderMode}
       onColumnVisibilityChange={onColumnVisibilityChange}
       onColumnOrderChange={onColumnOrderChange}

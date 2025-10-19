@@ -3,7 +3,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'reac
 export const CHECKBOX_COLUMN_WIDTH = 64;
 export const ACTIONS_COLUMN_WIDTH = 80;
 export const STICKY_COLUMN_BUFFER = CHECKBOX_COLUMN_WIDTH + ACTIONS_COLUMN_WIDTH;
-export const QUICK_FILTER_MIN_WIDTH = 240;
 export const ACTION_MENU_MIN_WIDTH = 224;
 
 export function computeMinWidth(columns, definitionMap) {
@@ -25,26 +24,6 @@ export function slugify(value) {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '') || 'value'
   );
-}
-
-export function orderFilterValues(columnId, values = [], quickFilterOptions = {}) {
-  if (!Array.isArray(values) || values.length === 0) {
-    return [];
-  }
-
-  if (columnId === 'debtTag') {
-    const available = quickFilterOptions.debtTags ?? [];
-    if (Array.isArray(available) && available.length > 0) {
-      const ranking = new Map(available.map((option, index) => [option, index]));
-      return [...values].sort((a, b) => {
-        const rankA = ranking.has(a) ? ranking.get(a) : Number.POSITIVE_INFINITY;
-        const rankB = ranking.has(b) ? ranking.get(b) : Number.POSITIVE_INFINITY;
-        return rankA - rankB;
-      });
-    }
-  }
-
-  return [...values];
 }
 
 export function useIsMounted() {

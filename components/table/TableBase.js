@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  FiArrowLeft,
-  FiArrowRight,
-  FiCreditCard,
-  FiFilter,
-  FiRefreshCw,
-  FiTag,
-  FiUser,
-  FiX,
-} from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiRefreshCw } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
@@ -19,51 +10,11 @@ import {
   computeMinWidth,
   useDefinitionMap,
 } from './tableUtils';
-import { useQuickFilterRegistry } from './TableQuickFilter';
 import { useActionMenuRegistry } from './TableActions';
 import { TableBaseHeader } from './TableBaseHeader';
 import { TableBaseBody } from './TableBaseBody';
 
-const QUICK_FILTER_META = {
-  type: {
-    field: 'types',
-    label: 'Type',
-    multi: true,
-    optionsKey: 'types',
-    icon: <FiFilter aria-hidden />,
-  },
-  account: {
-    field: 'accounts',
-    label: 'Account',
-    multi: true,
-    optionsKey: 'accounts',
-    icon: <FiCreditCard aria-hidden />,
-  },
-  owner: {
-    field: 'person',
-    label: 'People',
-    multi: false,
-    optionsKey: 'people',
-    icon: <FiUser aria-hidden />,
-  },
-  category: {
-    field: 'category',
-    label: 'Category',
-    multi: false,
-    optionsKey: 'categories',
-    icon: <FiFilter aria-hidden />,
-  },
-  debtTag: {
-    field: 'debtTags',
-    label: 'Debt Tag',
-    multi: true,
-    optionsKey: 'debtTags',
-    icon: <FiTag aria-hidden />,
-  },
-};
-
 const ACTION_SUBMENU_WIDTH = 220;
-const CUSTOMIZE_COLUMN_MIN_WIDTH = 160;
 
 export function TableBase({
   transactions,
@@ -77,11 +28,6 @@ export function TableBase({
   pagination,
   sortState = [],
   onSortChange,
-  quickFilters = {},
-  quickFilterOptions = {},
-  onQuickFilterChange,
-  onQuickFilterToggle,
-  onQuickFilterSearch,
   toolbarSlot,
   tableTitle = 'Transactions history table',
   allColumns = [],
@@ -92,20 +38,18 @@ export function TableBase({
   onColumnReorderExit,
   fontScale = 1,
 }) {
-  const [openQuickFilter, setOpenQuickFilter] = useState(null);
-  const [quickFilterSearch, setQuickFilterSearch] = useState({});
   const [openActionId, setOpenActionId] = useState(null);
   const [openActionSubmenu, setOpenActionSubmenu] = useState(null);
   const [isSubmenuFlipped, setIsSubmenuFlipped] = useState(false);
   const [activeDropTarget, setActiveDropTarget] = useState(null);
-  const previousQuickFilterRef = useRef(null);
   const actionMenuCloseTimer = useRef(null);
   const headerCheckboxRef = useRef(null);
   const dragSourceRef = useRef(null);
   const columnSelectAllRef = useRef(null);
+  const [pendingColumnVisibility, setPendingColumnVisibility] = useState(new Map());
+  const previousReorderModeRef = useRef(isColumnReorderMode);
 
   const definitionMap = useDefinitionMap(columnDefinitions);
-  const quickFilterRegistry = useQuickFilterRegistry();
   const actionRegistry = useActionMenuRegistry();
 
   const selectionSet = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -139,46 +83,56 @@ export function TableBase({
     [displayColumns, definitionMap],
   );
 
+  const baseVisibility = useMemo(() => {
+    const map = new Map();
+    allColumns.forEach((column) => {
+      map.set(column.id, column.visible !== false);
+    });
+    return map;
+  }, [allColumns]);
+
+  useEffect(() => {
+    if (!isColumnReorderMode) {
+      setPendingColumnVisibility((current) => (current.size > 0 ? new Map() : current));
+      return;
+    }
+
+    setPendingColumnVisibility((current) => {
+      if (current.size === 0) {
+        return new Map(baseVisibility);
+      }
+
+      let changed = false;
+      const next = new Map(current);
+      baseVisibility.forEach((value, key) => {
+        if (!next.has(key)) {
+          next.set(key, value);
+          changed = true;
+        }
+      });
+      next.forEach((_, key) => {
+        if (!baseVisibility.has(key)) {
+          next.delete(key);
+          changed = true;
+        }
+      });
+
+      return changed ? next : current;
+    });
+  }, [isColumnReorderMode, baseVisibility]);
+
+  const effectiveVisibility = useMemo(() => {
+    if (isColumnReorderMode && pendingColumnVisibility.size > 0) {
+      return pendingColumnVisibility;
+    }
+    return baseVisibility;
+  }, [isColumnReorderMode, pendingColumnVisibility, baseVisibility]);
+
   useEffect(() => {
     if (headerCheckboxRef.current) {
       headerCheckboxRef.current.indeterminate = isIndeterminate;
     }
   }, [isIndeterminate]);
-
-  useEffect(() => {
-    if (!openQuickFilter) {
-      return undefined;
-    }
-
-    const handlePointerDown = (event) => {
-      const anchorNode = quickFilterRegistry.getAnchor(openQuickFilter);
-      const contentNode = quickFilterRegistry.getContent(openQuickFilter);
-      if (anchorNode?.contains(event.target) || contentNode?.contains(event.target)) {
-        return;
-      }
-      setOpenQuickFilter(null);
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-    };
-  }, [openQuickFilter, quickFilterRegistry]);
-
-  useEffect(() => {
-    const previous = previousQuickFilterRef.current;
-    if (previous && previous !== openQuickFilter) {
-      setQuickFilterSearch((searchState) => {
-        if (!searchState[previous]) {
-          return searchState;
-        }
-        const nextState = { ...searchState };
-        delete nextState[previous];
-        return nextState;
-      });
-    }
-    previousQuickFilterRef.current = openQuickFilter;
-  }, [openQuickFilter]);
 
   useEffect(() => {
     return () => {
@@ -221,113 +175,39 @@ export function TableBase({
     }
   }, [isColumnReorderMode]);
 
-  useEffect(() => {
-    if (isColumnReorderMode) {
-      setOpenQuickFilter(null);
-    }
-  }, [isColumnReorderMode]);
-
-  const handleQuickFilterToggle = useCallback(
-    (columnId) => {
-      if (isColumnReorderMode) {
-        return;
-      }
-      setOpenQuickFilter((current) => {
-        const next = current === columnId ? null : columnId;
-        onQuickFilterToggle?.(columnId, next !== null);
-        return next;
-      });
-    },
-    [onQuickFilterToggle, isColumnReorderMode],
-  );
-
-  const handleQuickFilterClear = useCallback(
-    (columnId) => {
-      if (isColumnReorderMode) {
-        return;
-      }
-      const meta = QUICK_FILTER_META[columnId];
-      if (!meta) {
-        return;
-      }
-      if (meta.multi) {
-        onQuickFilterChange?.(meta.field, []);
-      } else {
-        onQuickFilterChange?.(meta.field, 'all');
-      }
-      setOpenQuickFilter(null);
-    },
-    [onQuickFilterChange, isColumnReorderMode],
-  );
-
-  const handleQuickFilterSelect = useCallback(
-    (columnId, option) => {
-      if (isColumnReorderMode) {
-        return;
-      }
-      const meta = QUICK_FILTER_META[columnId];
-      if (!meta) {
-        return;
-      }
-      if (meta.multi) {
-        const currentValues = new Set(Array.isArray(quickFilters[meta.field]) ? quickFilters[meta.field] : []);
-        if (currentValues.has(option)) {
-          currentValues.delete(option);
-        } else {
-          currentValues.add(option);
-        }
-        onQuickFilterChange?.(meta.field, Array.from(currentValues));
-      } else {
-        onQuickFilterChange?.(meta.field, option);
-        setOpenQuickFilter(null);
-      }
-    },
-    [quickFilters, onQuickFilterChange, isColumnReorderMode],
-  );
-
-  const handleQuickFilterSearch = useCallback(
-    (columnId, value) => {
-      if (isColumnReorderMode) {
-        return;
-      }
-      setQuickFilterSearch((state) => ({ ...state, [columnId]: value }));
-      onQuickFilterSearch?.(columnId, value);
-    },
-    [onQuickFilterSearch, isColumnReorderMode],
-  );
-
-  const quickFilterMeta = useMemo(() => {
-    const map = {};
-    Object.entries(QUICK_FILTER_META).forEach(([columnId, meta]) => {
-      map[columnId] = {
-        ...meta,
-        getValue: () => quickFilters[meta.field],
-        getAnchor: () => quickFilterRegistry.getAnchor(columnId),
-      };
-    });
-    return map;
-  }, [quickFilters, quickFilterRegistry]);
-
   const visibleColumnIds = useMemo(
     () => visibleColumns.map((column) => column.id),
     [visibleColumns],
   );
 
-  const customizeGridTemplateColumns = useMemo(() => {
-    if (!isColumnReorderMode) {
-      return null;
+  const applyPendingVisibility = useCallback(() => {
+    if (pendingColumnVisibility.size === 0) {
+      return;
     }
-    const resolvedColumns = [
-      CHECKBOX_COLUMN_WIDTH,
-      ...displayColumns.map((column) => {
-        const definition = definitionMap.get(column.id);
-        const preferredWidth = Math.max(column.width ?? 0, definition?.minWidth ?? 0);
-        return Math.max(preferredWidth, CUSTOMIZE_COLUMN_MIN_WIDTH);
-      }),
-      ACTIONS_COLUMN_WIDTH,
-    ];
-    return resolvedColumns.map((width) => `${width}px`).join(' ');
-  }, [isColumnReorderMode, displayColumns, definitionMap]);
+    pendingColumnVisibility.forEach((nextVisible, columnId) => {
+      const currentVisible = baseVisibility.get(columnId);
+      if (currentVisible !== nextVisible) {
+        onColumnVisibilityChange?.(columnId, nextVisible);
+      }
+    });
+  }, [pendingColumnVisibility, baseVisibility, onColumnVisibilityChange]);
+
+  useEffect(() => {
+    if (previousReorderModeRef.current && !isColumnReorderMode) {
+      if (pendingColumnVisibility.size > 0) {
+        applyPendingVisibility();
+        setPendingColumnVisibility(new Map());
+      }
+    }
+    previousReorderModeRef.current = isColumnReorderMode;
+  }, [isColumnReorderMode, applyPendingVisibility, pendingColumnVisibility]);
+
+  useEffect(() => {
+    if (isColumnReorderMode) {
+      setOpenActionId(null);
+      setOpenActionSubmenu(null);
+    }
+  }, [isColumnReorderMode]);
 
   const handleColumnDragStart = useCallback(
     (columnId) => (event) => {
@@ -425,8 +305,12 @@ export function TableBase({
   );
 
   const visibleColumnCount = useMemo(
-    () => allColumns.filter((column) => column.visible !== false).length,
-    [allColumns],
+    () =>
+      allColumns.reduce(
+        (count, column) => (effectiveVisibility.get(column.id) !== false ? count + 1 : count),
+        0,
+      ),
+    [allColumns, effectiveVisibility],
   );
 
   const toggleableColumns = useMemo(
@@ -435,8 +319,12 @@ export function TableBase({
   );
 
   const toggleableVisibleCount = useMemo(
-    () => toggleableColumns.filter((column) => column.visible !== false).length,
-    [toggleableColumns],
+    () =>
+      toggleableColumns.reduce(
+        (count, column) => (effectiveVisibility.get(column.id) !== false ? count + 1 : count),
+        0,
+      ),
+    [toggleableColumns, effectiveVisibility],
   );
 
   const allToggleableCount = toggleableColumns.length;
@@ -454,15 +342,40 @@ export function TableBase({
 
   const handleToggleAllColumns = useCallback(
     (checked) => {
+      if (isColumnReorderMode) {
+        setPendingColumnVisibility((current) => {
+          const next = current.size > 0 ? new Map(current) : new Map(baseVisibility);
+          toggleableColumns.forEach((column) => {
+            next.set(column.id, checked);
+          });
+          return next;
+        });
+        return;
+      }
+
       toggleableColumns.forEach((column) => {
-        const isVisible = column.visible !== false;
-        if (checked !== isVisible) {
+        const isVisible = baseVisibility.get(column.id);
+        if (isVisible !== checked) {
           onColumnVisibilityChange?.(column.id, checked);
         }
       });
     },
-    [onColumnVisibilityChange, toggleableColumns],
+    [isColumnReorderMode, toggleableColumns, onColumnVisibilityChange, baseVisibility],
   );
+
+  const handleResetColumnsClick = useCallback(() => {
+    if (!onColumnReset) {
+      return;
+    }
+    onColumnReset();
+    setPendingColumnVisibility(new Map());
+  }, [onColumnReset]);
+
+  const handleCustomizeDone = useCallback(() => {
+    applyPendingVisibility();
+    setPendingColumnVisibility(new Map());
+    onColumnReorderExit?.();
+  }, [applyPendingVisibility, onColumnReorderExit]);
 
   const selectedCount = selectionSet.size;
   const selectionLabel = selectedCount
@@ -470,14 +383,20 @@ export function TableBase({
     : null;
 
   const handleActionTriggerEnter = useCallback((transactionId) => {
+    if (isColumnReorderMode) {
+      return;
+    }
     if (actionMenuCloseTimer.current) {
       clearTimeout(actionMenuCloseTimer.current);
       actionMenuCloseTimer.current = null;
     }
     setOpenActionId(transactionId);
-  }, []);
+  }, [isColumnReorderMode]);
 
   const handleActionTriggerLeave = useCallback(() => {
+    if (isColumnReorderMode) {
+      return;
+    }
     if (actionMenuCloseTimer.current) {
       clearTimeout(actionMenuCloseTimer.current);
     }
@@ -485,13 +404,19 @@ export function TableBase({
       setOpenActionId(null);
       setOpenActionSubmenu(null);
     }, 100);
-  }, []);
+  }, [isColumnReorderMode]);
 
   const handleActionFocus = useCallback((transactionId) => {
+    if (isColumnReorderMode) {
+      return;
+    }
     setOpenActionId(transactionId);
-  }, []);
+  }, [isColumnReorderMode]);
 
   const handleActionBlur = useCallback((event) => {
+    if (isColumnReorderMode) {
+      return;
+    }
     const nextFocus = event?.relatedTarget;
     if (nextFocus && event.currentTarget.contains(nextFocus)) {
       return;
@@ -500,10 +425,13 @@ export function TableBase({
       setOpenActionId(null);
       setOpenActionSubmenu(null);
     }, 100);
-  }, []);
+  }, [isColumnReorderMode]);
 
   const handleAction = useCallback(
     (payload) => () => {
+      if (isColumnReorderMode) {
+        return;
+      }
       if (!payload) {
         setOpenActionId(null);
         setOpenActionSubmenu(null);
@@ -513,12 +441,15 @@ export function TableBase({
       setOpenActionId(null);
       setOpenActionSubmenu(null);
     },
-    [onOpenAdvanced],
+    [onOpenAdvanced, isColumnReorderMode],
   );
 
   const handleSubmenuEnter = useCallback((submenuId) => () => {
+    if (isColumnReorderMode) {
+      return;
+    }
     setOpenActionSubmenu(submenuId);
-  }, []);
+  }, [isColumnReorderMode]);
   return (
     <section
       className={styles.tableCard}
@@ -526,6 +457,39 @@ export function TableBase({
       style={{ '--transactions-font-scale': fontScale }}
     >
       {toolbarSlot}
+      {isColumnReorderMode ? (
+        <div className={styles.customizeToolbar}>
+          <label className={styles.customizeSelectAll}>
+            <input
+              ref={columnSelectAllRef}
+              type="checkbox"
+              checked={allToggleableVisible}
+              onChange={(event) => handleToggleAllColumns(event.target.checked)}
+              aria-label="Select or deselect all columns except Notes"
+            />
+            <span>All columns (excl. Notes)</span>
+          </label>
+          <div className={styles.customizeToolbarActions}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={handleResetColumnsClick}
+              data-testid="transactions-columns-reset"
+            >
+              <FiRefreshCw aria-hidden />
+              Reset
+            </button>
+            <button
+              type="button"
+              className={styles.primaryButton}
+              onClick={handleCustomizeDone}
+              data-testid="transactions-columns-done"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      ) : null}
       <div className={styles.tableScroll} data-testid="transactions-table-container">
         <table className={styles.table} style={{ minWidth: `${minTableWidth + STICKY_COLUMN_BUFFER}px` }}>
           <thead>
@@ -569,16 +533,6 @@ export function TableBase({
                   const isMulti = event.shiftKey || event.metaKey || event.ctrlKey;
                   onSortChange(columnId, { multi: isMulti });
                 }}
-                onQuickFilterClear={handleQuickFilterClear}
-                onQuickFilterToggle={handleQuickFilterToggle}
-                onQuickFilterSelect={handleQuickFilterSelect}
-                quickFilterOptions={quickFilterOptions}
-                quickFilterMeta={quickFilterMeta}
-                openQuickFilter={openQuickFilter}
-                quickFilterSearch={quickFilterSearch}
-                onQuickFilterSearch={handleQuickFilterSearch}
-                registerQuickFilterAnchor={quickFilterRegistry.registerAnchor}
-                registerQuickFilterContent={quickFilterRegistry.registerContent}
                 isColumnReorderMode={isColumnReorderMode}
                 activeDropTarget={activeDropTarget}
                 onColumnDragStart={handleColumnDragStart}
@@ -603,113 +557,102 @@ export function TableBase({
             </tr>
           {isColumnReorderMode ? (
             <tr className={styles.customizeRow}>
-              <th colSpan={displayColumns.length + 2} className={styles.customizeCell}>
-                <div className={styles.customizeControls}>
-                  <div className={styles.customizeToolbarRow}>
-                    <label className={styles.customizeSelectAll}>
-                      <input
-                        ref={columnSelectAllRef}
-                        type="checkbox"
-                        checked={allToggleableVisible}
-                        onChange={(event) => handleToggleAllColumns(event.target.checked)}
-                        aria-label="Select or deselect all columns except Notes"
-                      />
-                      <span>All columns (excl. Notes)</span>
-                    </label>
-                    <div className={styles.customizeToolbarActions}>
-                      <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={() => onColumnReset?.()}
-                        data-testid="transactions-columns-reset"
-                      >
-                        <FiRefreshCw aria-hidden />
-                        Reset
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.primaryButton}
-                        onClick={() => onColumnReorderExit?.()}
-                        data-testid="transactions-columns-done"
-                      >
-                        Done
-                      </button>
-                    </div>
-                  </div>
-                  <div
-                    className={styles.customizeToggleGrid}
-                    role="group"
-                    aria-label="Toggle column visibility"
-                    style={
-                      customizeGridTemplateColumns
-                        ? { gridTemplateColumns: customizeGridTemplateColumns }
-                        : undefined
-                    }
+              <th
+                className={`${styles.customizeCell} ${styles.stickyLeft} ${styles.checkboxCell} ${styles.stickyLeftNoShadow}`}
+                style={{
+                  minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
+                  width: `${CHECKBOX_COLUMN_WIDTH}px`,
+                }}
+                aria-hidden="true"
+              >
+                <div className={styles.customizePlaceholder} aria-hidden="true" />
+              </th>
+              {displayColumns.map((column) => {
+                const definition = definitionMap.get(column.id);
+                const label = definition?.label ?? column.id;
+                const minWidth = Math.max(definition?.minWidth ?? 120, column.width);
+                const isVisible = effectiveVisibility.get(column.id) !== false;
+                const visibleIndex = visibleColumnIds.indexOf(column.id);
+                const isToggleable = column.id !== 'notes';
+                const canToggle = isToggleable && !(isVisible && visibleColumnCount <= 1);
+                const canMoveLeft = isVisible && visibleIndex > 0;
+                const canMoveRight =
+                  isVisible && visibleIndex > -1 && visibleIndex < visibleColumnIds.length - 1;
+
+                const handleVisibilityChange = (event) => {
+                  if (!isToggleable) {
+                    return;
+                  }
+                  const nextVisible = event.target.checked;
+                  if (isColumnReorderMode) {
+                    setPendingColumnVisibility((current) => {
+                      const next = current.size > 0 ? new Map(current) : new Map(baseVisibility);
+                      next.set(column.id, nextVisible);
+                      return next;
+                    });
+                    return;
+                  }
+                  onColumnVisibilityChange?.(column.id, nextVisible);
+                };
+
+                return (
+                  <th
+                    key={`customize-${column.id}`}
+                    className={`${styles.customizeCell} ${
+                      isVisible ? styles.customizeCellVisible : styles.customizeCellDimmed
+                    }`.trim()}
+                    style={{
+                      minWidth: `${minWidth}px`,
+                      width: `${column.width}px`,
+                    }}
+                    scope="col"
                   >
-                    <div className={styles.customizeToggleSpacer} aria-hidden="true" />
-                    {displayColumns.map((column) => {
-                      const definition = definitionMap.get(column.id);
-                      const label = definition?.label ?? column.id;
-                      const isVisible = column.visible !== false;
-                      const visibleIndex = visibleColumnIds.indexOf(column.id);
-                      const isToggleable = column.id !== 'notes';
-                      const canToggle = isToggleable && !(isVisible && visibleColumnCount <= 1);
-                      const canMoveLeft = isVisible && visibleIndex > 0;
-                      const canMoveRight =
-                        isVisible && visibleIndex > -1 && visibleIndex < visibleColumnIds.length - 1;
-
-                      const handleVisibilityChange = (event) => {
-                        if (!isToggleable) {
-                          return;
-                        }
-                        onColumnVisibilityChange?.(column.id, event.target.checked);
-                      };
-
-                      return (
-                        <div
-                          key={`customize-${column.id}`}
-                          className={`${styles.customizeToggle} ${
-                            isVisible ? styles.customizeToggleVisible : styles.customizeToggleHidden
-                          }`}
+                    <div className={styles.customizeColumnContent}>
+                      <label className={styles.customizeToggleLabel}>
+                        <input
+                          type="checkbox"
+                          checked={isVisible}
+                          onChange={handleVisibilityChange}
+                          disabled={!canToggle}
+                          data-testid={`transactions-columns-toggle-${column.id}`}
+                        />
+                        <span>{label}</span>
+                      </label>
+                      <div className={styles.customizeToggleActions}>
+                        <button
+                          type="button"
+                          className={styles.customizeNudgeButton}
+                          onClick={() => handleColumnNudge(column.id, 'left')}
+                          disabled={!canMoveLeft}
+                          aria-label={`Move ${label} column left`}
+                          title={canMoveLeft ? 'Move left' : undefined}
                         >
-                          <label className={styles.customizeToggleLabel}>
-                            <input
-                              type="checkbox"
-                              checked={isVisible}
-                              onChange={handleVisibilityChange}
-                              disabled={!canToggle}
-                              data-testid={`transactions-columns-toggle-${column.id}`}
-                            />
-                            <span>{label}</span>
-                          </label>
-                          <div className={styles.customizeToggleActions}>
-                            <button
-                              type="button"
-                              className={styles.customizeNudgeButton}
-                              onClick={() => handleColumnNudge(column.id, 'left')}
-                              disabled={!canMoveLeft}
-                              aria-label={`Move ${label} column left`}
-                              title={canMoveLeft ? 'Move left' : undefined}
-                            >
-                              <FiArrowLeft aria-hidden />
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.customizeNudgeButton}
-                              onClick={() => handleColumnNudge(column.id, 'right')}
-                              disabled={!canMoveRight}
-                              aria-label={`Move ${label} column right`}
-                              title={canMoveRight ? 'Move right' : undefined}
-                            >
-                              <FiArrowRight aria-hidden />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <div className={styles.customizeToggleSpacer} aria-hidden="true" />
-                  </div>
-                </div>
+                          <FiArrowLeft aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.customizeNudgeButton}
+                          onClick={() => handleColumnNudge(column.id, 'right')}
+                          disabled={!canMoveRight}
+                          aria-label={`Move ${label} column right`}
+                          title={canMoveRight ? 'Move right' : undefined}
+                        >
+                          <FiArrowRight aria-hidden />
+                        </button>
+                      </div>
+                    </div>
+                  </th>
+                );
+              })}
+              <th
+                className={`${styles.customizeCell} ${styles.stickyRight} ${styles.actionsHeader}`}
+                style={{
+                  minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
+                  width: `${ACTIONS_COLUMN_WIDTH}px`,
+                }}
+                aria-hidden="true"
+              >
+                <div className={styles.customizePlaceholder} aria-hidden="true" />
               </th>
             </tr>
           ) : null}
