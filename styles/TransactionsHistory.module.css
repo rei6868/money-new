@@ -1081,26 +1081,12 @@
 }
 
 .actionsHeader {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   padding: 1rem 0.75rem 0.9rem;
   border-left: 1px solid rgba(148, 163, 184, 0.18);
   border-bottom: 1px solid rgba(148, 163, 184, 0.18);
   box-sizing: border-box;
-  min-height: 100%;
-}
-
-.actionsHeaderLabel {
-  display: inline-block;
-  max-width: 100%;
-  font-size: calc(var(--transactions-font-scale, 1) * 0.72rem);
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  height: 100%;
 }
 
 .pill {

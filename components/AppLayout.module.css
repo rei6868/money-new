@@ -220,6 +220,11 @@
   background: var(--mf-canvas);
 }
 
+.topNavBarContainer {
+  display: none;
+  width: 100%;
+}
+
 .topBar {
   display: flex;
   align-items: center;
@@ -351,10 +356,6 @@
   }
 }
 
-.topNavBarContainer {
-  display: none;
-  width: 100%;
-}
 
 @media (max-width: 520px) {
   .topBar {
