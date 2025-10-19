@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import AppLayout from '../../components/AppLayout';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
 import { TransactionsToolbar } from '../../components/transactions/TransactionsToolbar';
-import { resolveColumnSortType } from '../../components/table/tableUtils';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
 import TransactionAdvancedModal from '../../components/transactions/TransactionAdvancedModal';
@@ -33,6 +32,7 @@ export default function TransactionsHistoryPage() {
     totalBack: 0,
   });
   const [sortState, setSortState] = useState({ columnId: null, direction: null });
+  const [serverPagination, setServerPagination] = useState({ totalPages: 1, totalRows: 0 });
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -105,8 +105,19 @@ export default function TransactionsHistoryPage() {
     if (appliedQuery) {
       params.set('search', appliedQuery);
     }
+    params.set('page', String(currentPage));
+    params.set('pageSize', String(pageSize));
+    if (sortState?.columnId) {
+      params.set('sortBy', sortState.columnId);
+    }
+    if (sortState?.direction) {
+      params.set('sortDir', sortState.direction);
+    }
 
-    fetch(`/api/transactions?${params.toString()}`, {
+    const queryString = params.toString();
+    const url = queryString ? `/api/transactions?${queryString}` : '/api/transactions';
+
+    fetch(url, {
       signal: controller.signal,
     })
       .then((response) => {
@@ -126,11 +137,34 @@ export default function TransactionsHistoryPage() {
           const available = new Set(rows.map((row) => row.id));
           return prev.filter((id) => available.has(id));
         });
+
+        const pagination = data?.pagination ?? {};
+        const parsedTotalPages = Number(pagination.totalPages);
+        const parsedTotalRows = Number(pagination.totalRows);
+        const parsedPageSize = Number(pagination.pageSize);
+        const parsedPage = Number(pagination.page);
+
+        setServerPagination((prev) => ({
+          totalPages:
+            Number.isFinite(parsedTotalPages) && parsedTotalPages > 0
+              ? parsedTotalPages
+              : prev.totalPages || 1,
+          totalRows: Number.isFinite(parsedTotalRows) && parsedTotalRows >= 0 ? parsedTotalRows : rows.length,
+        }));
+
+        if (Number.isFinite(parsedPageSize) && parsedPageSize > 0 && parsedPageSize !== pageSize) {
+          setPageSize(parsedPageSize);
+        }
+
+        if (Number.isFinite(parsedPage) && parsedPage > 0 && parsedPage !== currentPage) {
+          setCurrentPage(parsedPage);
+        }
       })
       .catch((error) => {
         if (!isCancelled && error.name !== 'AbortError') {
           console.error(error);
           setTransactions([]);
+          setServerPagination({ totalPages: 1, totalRows: 0 });
         }
       })
       .finally(() => {
@@ -143,7 +177,15 @@ export default function TransactionsHistoryPage() {
       isCancelled = true;
       controller.abort();
     };
-  }, [isAuthenticated, columnDefinitions, appliedQuery]);
+  }, [
+    isAuthenticated,
+    columnDefinitions,
+    appliedQuery,
+    currentPage,
+    pageSize,
+    sortState?.columnId,
+    sortState?.direction,
+  ]);
 
   const orderedColumns = useMemo(() => {
     if (columnState.length === 0) {
@@ -191,73 +233,6 @@ export default function TransactionsHistoryPage() {
   const someToggleableVisible =
     toggleableVisibleCount > 0 && toggleableVisibleCount < toggleableColumns.length;
 
-  const sortedTransactions = useMemo(() => {
-    if (!Array.isArray(transactions) || transactions.length <= 1) {
-      return transactions;
-    }
-
-    if (!sortState?.columnId || !sortState.direction) {
-      return transactions;
-    }
-
-    const definition = definitionLookup.get(sortState.columnId);
-    const sortType = resolveColumnSortType(sortState.columnId, definition);
-    const multiplier = sortState.direction === 'asc' ? 1 : -1;
-
-    const toComparable = (row) => {
-      const rawValue = row?.[sortState.columnId];
-      if (rawValue === null || rawValue === undefined || rawValue === '') {
-        return null;
-      }
-
-      if (sortType === 'number') {
-        const numeric = Number(rawValue);
-        return Number.isFinite(numeric) ? numeric : null;
-      }
-
-      if (sortType === 'date') {
-        const timestamp = Date.parse(rawValue);
-        return Number.isNaN(timestamp) ? null : timestamp;
-      }
-
-      return String(rawValue).toLowerCase();
-    };
-
-    const sorted = transactions.slice();
-    sorted.sort((a, b) => {
-      const aValue = toComparable(a);
-      const bValue = toComparable(b);
-
-      if (aValue === null && bValue === null) {
-        return 0;
-      }
-      if (aValue === null) {
-        return 1;
-      }
-      if (bValue === null) {
-        return -1;
-      }
-
-      let result = 0;
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        if (aValue === bValue) {
-          result = 0;
-        } else {
-          result = aValue < bValue ? -1 : 1;
-        }
-      } else {
-        result = String(aValue).localeCompare(String(bValue), undefined, {
-          sensitivity: 'base',
-          numeric: sortType === 'number' || sortType === 'date',
-        });
-      }
-
-      return result * multiplier;
-    });
-
-    return sorted;
-  }, [transactions, sortState, definitionLookup]);
-
   useEffect(() => {
     const filteredIds = new Set(transactions.map((txn) => txn.id));
     setSelectedIds((prev) => {
@@ -274,34 +249,14 @@ export default function TransactionsHistoryPage() {
 
   const selectedLookup = useMemo(() => new Set(selectedIds), [selectedIds]);
 
-  const effectiveTransactions = useMemo(() => {
-    const base = Array.isArray(sortedTransactions) ? sortedTransactions : [];
+  const displayedTransactions = useMemo(() => {
+    const base = Array.isArray(transactions) ? transactions : [];
     if (!showSelectedOnly) {
       return base;
     }
 
     return base.filter((txn) => selectedLookup.has(txn.id));
-  }, [sortedTransactions, showSelectedOnly, selectedLookup]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [pageSize, sortedTransactions, showSelectedOnly, sortState]);
-
-  const totalPages = Math.max(1, Math.ceil(effectiveTransactions.length / pageSize));
-
-  useEffect(() => {
-    setCurrentPage((prev) => {
-      if (prev > totalPages) {
-        return totalPages;
-      }
-      return prev;
-    });
-  }, [totalPages]);
-
-  const paginatedTransactions = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return effectiveTransactions.slice(start, start + pageSize);
-  }, [effectiveTransactions, currentPage, pageSize]);
+  }, [transactions, showSelectedOnly, selectedLookup]);
 
   useEffect(() => {
     if (selectedIds.length === 0) {
@@ -352,22 +307,22 @@ export default function TransactionsHistoryPage() {
       }
 
       if (!columnId || !direction) {
-        setSortState((prev) =>
-          prev.columnId === null && prev.direction === null
-            ? prev
-            : { columnId: null, direction: null },
-        );
+        if (sortState.columnId === null && sortState.direction === null) {
+          return;
+        }
+        setSortState({ columnId: null, direction: null });
+        setCurrentPage(1);
         return;
       }
 
-      setSortState((prev) => {
-        if (prev.columnId === columnId && prev.direction === direction) {
-          return prev;
-        }
-        return { columnId, direction };
-      });
+      if (sortState.columnId === columnId && sortState.direction === direction) {
+        return;
+      }
+
+      setSortState({ columnId, direction });
+      setCurrentPage(1);
     },
-    [isReorderMode],
+    [isReorderMode, sortState],
   );
 
   const handleSelectRow = (id, checked) => {
@@ -388,8 +343,9 @@ export default function TransactionsHistoryPage() {
       return;
     }
 
-    const targetRows = showSelectedOnly ? effectiveTransactions : sortedTransactions;
-    setSelectedIds(targetRows.map((txn) => txn.id));
+    const targetRows = showSelectedOnly ? displayedTransactions : transactions;
+    const mapped = Array.isArray(targetRows) ? targetRows.map((txn) => txn.id) : [];
+    setSelectedIds(mapped);
   };
 
   const handleDeselectAll = () => {
@@ -593,7 +549,7 @@ export default function TransactionsHistoryPage() {
           </div>
         ) : (
           <TransactionsTable
-            transactions={paginatedTransactions}
+            transactions={displayedTransactions}
             selectedIds={selectedIds}
             onSelectRow={handleSelectRow}
             onSelectAll={handleSelectAll}
@@ -606,12 +562,16 @@ export default function TransactionsHistoryPage() {
               pageSize,
               pageSizeOptions: PAGE_SIZE_OPTIONS,
               currentPage,
-              totalPages,
-              onPageSizeChange: (value) =>
-                setPageSize(PAGE_SIZE_OPTIONS.includes(value) ? value : PAGE_SIZE_OPTIONS[0]),
+              totalPages: Math.max(1, serverPagination.totalPages || 1),
+              onPageSizeChange: (value) => {
+                const normalized = PAGE_SIZE_OPTIONS.includes(value) ? value : PAGE_SIZE_OPTIONS[0];
+                setPageSize(normalized);
+                setCurrentPage(1);
+              },
               onPageChange: (page) =>
                 setCurrentPage((prev) => {
-                  const next = Math.min(Math.max(page, 1), totalPages);
+                  const maxPages = Math.max(1, serverPagination.totalPages || 1);
+                  const next = Math.min(Math.max(page, 1), maxPages);
                   return next;
                 }),
             }}

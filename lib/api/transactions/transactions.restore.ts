@@ -3,6 +3,7 @@ import { Buffer } from 'node:buffer';
 import { getTransactionMeta } from './transactions.meta';
 import {
   type TransactionRestorePayload,
+  type TransactionSortState,
   type TransactionTableState,
   type TransactionsTableRequest,
 } from './transactions.types';
@@ -21,11 +22,18 @@ function sanitizePagination(page?: number, pageSize?: number): { page: number; p
   };
 }
 
+function sanitizeSort(sort?: Partial<TransactionSortState> | null): TransactionSortState {
+  const columnId = typeof sort?.columnId === 'string' && sort.columnId.trim() ? sort.columnId : null;
+  const direction = sort?.direction === 'asc' || sort?.direction === 'desc' ? sort.direction : null;
+  return { columnId, direction };
+}
+
 export function getDefaultTableState(): TransactionTableState {
   const meta = getTransactionMeta();
   return {
     searchTerm: '',
     pagination: { page: 1, pageSize: meta.pagination.defaultPageSize },
+    sort: { columnId: null, direction: null },
   };
 }
 
@@ -35,6 +43,7 @@ function sanitizeState(state: Partial<TransactionTableState> | undefined): Trans
   return {
     searchTerm: typeof state?.searchTerm === 'string' ? state.searchTerm : defaults.searchTerm,
     pagination,
+    sort: sanitizeSort(state?.sort ?? defaults.sort),
   };
 }
 
@@ -68,9 +77,14 @@ export function mergeStateWithRequest(
   const requestedPage = Number(request.pagination?.page ?? base.pagination.page);
   const requestedPageSize = Number(request.pagination?.pageSize ?? base.pagination.pageSize);
   const pagination = sanitizePagination(requestedPage, requestedPageSize);
+  const sort = sanitizeSort({
+    columnId: (request.sortBy ?? base.sort.columnId) ?? null,
+    direction: (request.sortDir ?? base.sort.direction) ?? null,
+  });
   return {
     searchTerm: typeof request.searchTerm === 'string' ? request.searchTerm : base.searchTerm,
     pagination,
+    sort,
   };
 }
 

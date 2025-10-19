@@ -45,6 +45,7 @@ export interface TransactionTotals {
 export interface TransactionTableState {
   searchTerm: string;
   pagination: PaginationParams;
+  sort: TransactionSortState;
 }
 
 export interface TransactionRestorePayload {
@@ -108,6 +109,15 @@ export interface TransactionTableResponse {
 export interface TransactionsTableRequest {
   searchTerm?: string;
   pagination?: Partial<PaginationParams>;
+  sortBy?: string | null;
+  sortDir?: SortDirection | null;
+}
+
+export type SortDirection = 'asc' | 'desc';
+
+export interface TransactionSortState {
+  columnId: string | null;
+  direction: SortDirection | null;
 }
 
 export interface TransactionActionRequest {
