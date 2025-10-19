@@ -374,7 +374,7 @@ export default function AppLayout({ title, subtitle, children }) {
         </div>
       </aside>
       <div className={styles.mainColumn}>
-        <div className={styles.mobileTopNav}>
+        <div className={styles.topNavBarContainer}>
           <TopNavBar
             navItems={NAV_ITEMS}
             activeKeys={topNavActiveKeys}
