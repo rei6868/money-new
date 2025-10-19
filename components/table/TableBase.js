@@ -51,7 +51,7 @@ export function TableBase({
     transactions.length > 0 && transactions.every((txn) => selectionSet.has(txn.id));
   const isIndeterminate = selectionSet.size > 0 && !allSelected;
   const totalSelectionCount = selectionSummary?.count ?? selectionSet.size;
-  const shouldShowTotals = totalSelectionCount > 0;
+  const shouldShowTotals = selectedIds.length > 0;
 
   const displayColumns = useMemo(
     () => (isColumnReorderMode ? allColumns : visibleColumns),
@@ -324,6 +324,7 @@ export function TableBase({
             hiddenColumnIds={hiddenColumnIds}
             isColumnReorderMode={isColumnReorderMode}
           />
+          {shouldShowTotals && console.log('Selection Summary in TableBase:', selectionSummary)}
           {shouldShowTotals ? (
             <tfoot>
               <tr className={styles.totalRow}>
@@ -351,7 +352,16 @@ export function TableBase({
                       : '';
                   const minWidth = Math.max(definition?.minWidth ?? 120, column.width);
                   const isHidden = hiddenColumnIds.has(column.id);
-                  const value = formattedTotals[column.id];
+                  let value = null;
+                  if (column.id === 'amount') {
+                    value = formattedTotals.amount ?? null;
+                  } else if (column.id === 'totalBack') {
+                    value = formattedTotals.totalBack ?? null;
+                  } else if (column.id === 'finalPrice') {
+                    value = formattedTotals.finalPrice ?? null;
+                  } else if (formattedTotals[column.id]) {
+                    value = formattedTotals[column.id];
+                  }
                   const cellClassName = `${styles.bodyCell} ${styles.totalRowCell} ${alignClass} ${
                     isHidden && isColumnReorderMode ? styles.bodyCellHidden : ''
                   }`.trim();
