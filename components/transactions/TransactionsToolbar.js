@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FiPlus, FiSettings, FiSliders } from 'react-icons/fi';
+import { FiPlus, FiSettings } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { TableConfirmModal, TableRestoreInput } from '../table';
@@ -11,8 +11,6 @@ export function TransactionsToolbar({
   onClearSearch,
   previousQuery,
   onRestoreQuery,
-  onFilterClick,
-  filterCount,
   onAddTransaction,
   onCustomizeColumns,
   isReorderMode = false,
@@ -22,7 +20,6 @@ export function TransactionsToolbar({
   isShowingSelectedOnly,
 }) {
   const hasQuery = Boolean(searchValue?.trim());
-  const hasFilters = filterCount > 0;
   const searchInputRef = useRef(null);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
 
@@ -144,19 +141,6 @@ export function TransactionsToolbar({
       </div>
 
       <div className={styles.actionsGroup}>
-        <button
-          type="button"
-          className={`${styles.filterButton} ${hasFilters ? styles.filterButtonActive : ''}`}
-          onClick={onFilterClick}
-          data-testid="transactions-filter-trigger"
-          aria-label="Open filters"
-          disabled={isCustomizeLocked}
-        >
-          <FiSliders aria-hidden />
-          Filters
-          {hasFilters ? <span className={styles.countBadge}>{filterCount}</span> : null}
-        </button>
-
         <button
           type="button"
           className={`${styles.filterButton} ${isReorderMode ? styles.filterButtonActive : ''}`}

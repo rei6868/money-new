@@ -14,10 +14,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   res.status(200).json({
     availableColumns: meta.availableColumns,
     stickyColumns: meta.stickyColumns,
-    defaultSort: meta.defaultSort,
-    defaultFilters: meta.defaultFilters,
     availableActions: meta.availableActions,
-    quickFilterOptions: meta.quickFilterOptions,
     fieldMapping: meta.fieldMapping,
     formatSettings: meta.formatSettings,
     pagination: meta.pagination,

@@ -4,8 +4,7 @@
 This project aims to migrate and standardize the financial management system from AppSheet + Google Sheet to a modern web application using Neon DB.
 
 ## Sprint 3 Enhancements
-- Added dedicated `/api/transactions/columns` and `/api/transactions/options` endpoints to unblock the transactions table metadata and filter option fetches.
-- Refactored the transactions filter modal with reusable dropdown components, outside-click dismissal, and consistent quick filter behaviour across the table UI.
+- Streamlined the transactions experience by focusing on core column metadata (`/api/transactions/columns`) and removing legacy filter/sort flows from the UI and API responses.
 - Introduced a persistent collapsed sidebar preference and refreshed the product iconography with a money bag favicon and updated manifest assets.
 
 ### Development Flow
