@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { getDefaultTableState } from '../../../lib/api/transactions/transactions.restore';
 import { getTransactionMeta } from '../../../lib/api/transactions/transactions.meta';
 
 interface ColumnsResponse {
@@ -10,8 +9,6 @@ interface ColumnsResponse {
     label: string;
     minWidth: number;
     defaultWidth: number;
-    sortable: boolean;
-    dataType: string;
     align?: 'left' | 'center' | 'right';
     defaultVisible?: boolean;
   }>;
@@ -22,7 +19,6 @@ interface ColumnsResponse {
     order: number;
     format?: string;
   }>;
-  defaultSort: Array<{ id: string; direction: 'asc' | 'desc' }>;
   stickyColumns: { left: string[]; right: string[] };
 }
 
@@ -48,14 +44,12 @@ export default function handler(req: NextApiRequest, res: NextApiResponse<Column
 
   const meta = getTransactionMeta();
   const columns = meta.availableColumns.map((column) => ({ ...column }));
-  const state = getDefaultTableState();
   const defaultState = buildDefaultColumnState(columns);
 
   const response: ColumnsResponse = {
     generatedAt: new Date().toISOString(),
     columns,
     defaultState,
-    defaultSort: state.sort.map((item) => ({ ...item })),
     stickyColumns: { ...meta.stickyColumns },
   };
 

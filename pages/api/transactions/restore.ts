@@ -17,15 +17,6 @@ function toTransactionsRequest(value: unknown): TransactionsTableRequest {
   if (typeof payload.searchTerm === 'string') {
     request.searchTerm = payload.searchTerm;
   }
-  if (Array.isArray(payload.sort)) {
-    request.sort = payload.sort.filter(
-      (item): item is { id: string; direction: 'asc' | 'desc' } =>
-        typeof item?.id === 'string' && (item?.direction === 'asc' || item?.direction === 'desc'),
-    );
-  }
-  if (payload.filters && typeof payload.filters === 'object') {
-    request.filters = payload.filters as TransactionsTableRequest['filters'];
-  }
   if (payload.pagination && typeof payload.pagination === 'object') {
     const pagination = payload.pagination as Record<string, unknown>;
     const page = Number(pagination.page);
@@ -34,9 +25,6 @@ function toTransactionsRequest(value: unknown): TransactionsTableRequest {
       page: Number.isFinite(page) ? page : undefined,
       pageSize: Number.isFinite(pageSize) ? pageSize : undefined,
     } as TransactionsTableRequest['pagination'];
-  }
-  if (typeof payload.quickFilterId === 'string') {
-    request.quickFilterId = payload.quickFilterId;
   }
   return request;
 }

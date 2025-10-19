@@ -830,7 +830,6 @@
   transform: translateY(0);
 }
 
-.quickFilterHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -839,7 +838,6 @@
   color: var(--mf-text-primary);
 }
 
-.quickFilterClear {
   border: none;
   background: transparent;
   color: var(--mf-text-muted);
@@ -848,17 +846,13 @@
   padding: 0;
 }
 
-.quickFilterClear:hover,
-.quickFilterClear:focus-visible {
   color: var(--mf-accent-strong);
   outline: none;
 }
 
-.quickFilterSearchRow {
   margin: 0.5rem 0;
 }
 
-.quickFilterSearchField {
   position: relative;
   display: flex;
   align-items: center;
@@ -868,12 +862,10 @@
   padding: 0.4rem 2.2rem 0.4rem 2rem;
 }
 
-.quickFilterSearchField:focus-within {
   border-color: rgba(99, 102, 241, 0.45);
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
 }
 
-.quickFilterSearchIcon {
   position: absolute;
   left: 0.65rem;
   font-size: 0.9rem;
@@ -881,7 +873,6 @@
   pointer-events: none;
 }
 
-.quickFilterSearchInput {
   flex: 1 1 auto;
   border: none;
   background: transparent;
@@ -891,7 +882,6 @@
   outline: none;
 }
 
-.quickFilterSearchTrailing {
   position: absolute;
   right: 0.35rem;
   display: inline-flex;
@@ -899,7 +889,6 @@
   gap: 0.25rem;
 }
 
-.quickFilterSearchButton {
   border: none;
   background: transparent;
   color: var(--mf-text-muted);
@@ -912,22 +901,17 @@
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.quickFilterSearchButton:hover,
-.quickFilterSearchButton:focus-visible {
   background: rgba(99, 102, 241, 0.12);
   color: var(--mf-text-primary);
   outline: none;
 }
 
-.quickFilterRestoreButton {
   color: rgba(37, 99, 235, 0.95);
 }
 
-.quickFilterClearButton {
   color: rgba(220, 38, 38, 0.9);
 }
 
-.quickFilterList {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -938,14 +922,12 @@
   gap: 0.25rem;
 }
 
-.quickFilterEmpty {
   padding: 0.35rem 0.2rem;
   text-align: center;
   color: var(--mf-text-muted);
   font-size: 0.85rem;
 }
 
-.quickFilterOption {
   width: 100%;
   border: none;
   background: rgba(148, 163, 184, 0.1);
@@ -958,14 +940,11 @@
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.quickFilterOption:hover,
-.quickFilterOption:focus-visible {
   background: rgba(99, 102, 241, 0.12);
   color: var(--mf-text-primary);
   outline: none;
 }
 
-.quickFilterOptionActive {
   background: rgba(99, 102, 241, 0.2);
   color: var(--mf-accent-strong);
   font-weight: 600;

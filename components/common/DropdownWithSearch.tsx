@@ -4,12 +4,9 @@ import { FiChevronDown, FiSearch } from 'react-icons/fi';
 import styles from '../../styles/TransactionsHistory.module.css';
 import { slugify } from '../table/tableUtils';
 
-type DropdownVariant = 'modal' | 'popover';
-
 type OptionFormatter = (value: string) => string;
 
 interface DropdownWithSearchContentProps {
-  variant?: DropdownVariant;
   options: string[];
   includeAllOption?: boolean;
   searchValue: string;
@@ -30,7 +27,6 @@ interface DropdownWithSearchProps extends DropdownWithSearchContentProps {
   isOpen: boolean;
   onToggle: (id: string) => void;
   placeholder?: string;
-  searchPlaceholder?: string;
   renderValue?: (value: string | undefined, fallback: string) => string;
 }
 
@@ -55,7 +51,6 @@ function defaultFormatter(value: string): string {
 }
 
 export function DropdownWithSearchContent({
-  variant = 'modal',
   options,
   includeAllOption = true,
   searchValue,
@@ -74,29 +69,14 @@ export function DropdownWithSearchContent({
   const selectedSet = useMemo(() => new Set(selectedValues ?? []), [selectedValues]);
 
   const renderSearchField = () => (
-    <div
-      className={
-        variant === 'popover'
-          ? `${styles.quickFilterSearchField}`
-          : `${styles.modalPickerSearch} ${styles.modalSearchGroup}`
-      }
-    >
-      <FiSearch
-        aria-hidden
-        className={variant === 'popover' ? styles.quickFilterSearchIcon : styles.modalSearchIcon}
-      />
+    <div className={`${styles.modalPickerSearch} ${styles.modalSearchGroup}`}>
+      <FiSearch aria-hidden className={styles.modalSearchIcon} />
       <input
         type="search"
         value={searchValue}
         onChange={(event) => onSearchChange(event.target.value)}
-        placeholder={
-          searchPlaceholder
-            ? searchPlaceholder
-            : variant === 'popover'
-            ? 'Search options'
-            : 'Search'
-        }
-        className={variant === 'popover' ? styles.quickFilterSearchInput : styles.modalSearchInput}
+        placeholder={searchPlaceholder ? searchPlaceholder : 'Search'}
+        className={styles.modalSearchInput}
         data-testid={testIdPrefix ? `${testIdPrefix}-search` : undefined}
       />
     </div>
@@ -104,39 +84,7 @@ export function DropdownWithSearchContent({
 
   const renderOptionList = () => {
     if (filtered.length === 0) {
-      return (
-        <div className={variant === 'popover' ? styles.quickFilterEmpty : styles.emptyOption}>
-          {emptyMessage}
-        </div>
-      );
-    }
-
-    if (variant === 'popover') {
-      return (
-        <ul className={styles.quickFilterList} role="listbox">
-          {filtered.map((option) => {
-            const isActive = multi ? selectedSet.has(option) : selectedValue === option;
-            return (
-              <li key={`${option}-${slugify(option)}`}>
-                <button
-                  type="button"
-                  className={`${styles.quickFilterOption} ${
-                    isActive ? styles.quickFilterOptionActive : ''
-                  }`}
-                  onClick={() => onSelectOption(option)}
-                  role="option"
-                  aria-selected={isActive}
-                  data-testid={
-                    testIdPrefix ? `${testIdPrefix}-option-${slugify(option)}` : undefined
-                  }
-                >
-                  {optionFormatter(option)}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      );
+      return <div className={styles.emptyOption}>{emptyMessage}</div>;
     }
 
     return (
@@ -158,9 +106,7 @@ export function DropdownWithSearchContent({
               onClick={() => onSelectOption(option)}
               role="option"
               aria-selected={isActive}
-              data-testid={
-                testIdPrefix ? `${testIdPrefix}-option-${slugify(option)}` : undefined
-              }
+              data-testid={testIdPrefix ? `${testIdPrefix}-option-${slugify(option)}` : undefined}
             >
               {optionFormatter(option)}
             </button>
@@ -171,7 +117,7 @@ export function DropdownWithSearchContent({
   };
 
   return (
-    <div className={variant === 'popover' ? styles.quickFilterSearchRow : styles.modalPicker}>
+    <div className={styles.modalPicker}>
       {renderSearchField()}
       {renderOptionList()}
     </div>
@@ -193,59 +139,55 @@ export function DropdownWithSearch({
   selectedValues,
   multi,
   emptyMessage,
-  testIdPrefix,
-  placeholder,
+  placeholder = 'Select option',
   renderValue,
+  testIdPrefix,
   optionFormatter,
 }: DropdownWithSearchProps) {
-  const normalizedSelected = multi ? selectedValues ?? [] : [selectedValue ?? ''];
-  const displayValue = renderValue
-    ? renderValue(multi ? undefined : selectedValue, normalizedSelected[0])
-    : optionFormatter?.(selectedValue ?? '') ?? defaultFormatter(selectedValue ?? '');
+  const normalizedOptions = useMemo(() => normalizeOptions(options, includeAllOption ?? true), [options, includeAllOption]);
+  const selectedLabel = useMemo(() => {
+    if (multi && Array.isArray(selectedValues) && selectedValues.length > 0) {
+      return selectedValues.map((value) => optionFormatter?.(value) ?? defaultFormatter(value)).join(', ');
+    }
+    if (!multi && selectedValue) {
+      return optionFormatter?.(selectedValue) ?? defaultFormatter(selectedValue);
+    }
+    return placeholder;
+  }, [multi, selectedValues, selectedValue, placeholder, optionFormatter]);
 
   return (
-    <div className={styles.modalDropdown}>
+    <div className={styles.modalPickerRoot}>
       <button
+        id={id}
         type="button"
-        className={styles.modalDropdownTrigger}
-        onClick={() => onToggle(id)}
+        className={`${styles.modalPickerTrigger} ${isOpen ? styles.modalPickerTriggerActive : ''}`}
+        aria-haspopup="listbox"
         aria-expanded={isOpen}
-        aria-controls={`${id}-options`}
+        onClick={() => onToggle(id)}
         data-testid={testIdPrefix ? `${testIdPrefix}-trigger` : undefined}
       >
-        <span className={styles.modalDropdownLabelGroup}>
-          <span className={styles.modalLabel}>{label}</span>
-          <span className={styles.modalDropdownValue}>
-            {normalizedSelected.length > 0 && normalizedSelected[0]
-              ? displayValue
-              : placeholder ?? 'Select'}
-          </span>
+        <span className={styles.modalPickerLabel}>{label}</span>
+        <span className={styles.modalPickerValue}>
+          {renderValue ? renderValue(selectedValue, selectedLabel) : selectedLabel}
         </span>
-        <FiChevronDown aria-hidden className={styles.modalDropdownChevron} />
+        <FiChevronDown aria-hidden className={styles.modalPickerCaret} />
       </button>
+
       {isOpen ? (
-        <div
-          id={`${id}-options`}
-          className={styles.modalDropdownContent}
-          role="dialog"
-          aria-label={label}
-        >
-          <DropdownWithSearchContent
-            variant="modal"
-            options={options}
-            includeAllOption={includeAllOption}
-            searchValue={searchValue}
-            searchPlaceholder={searchPlaceholder}
-            onSearchChange={onSearchChange}
-            onSelectOption={onSelectOption}
-            selectedValue={selectedValue}
-            selectedValues={selectedValues}
-            multi={multi}
-            emptyMessage={emptyMessage}
-            testIdPrefix={testIdPrefix}
-            optionFormatter={optionFormatter}
-          />
-        </div>
+        <DropdownWithSearchContent
+          options={normalizedOptions}
+          includeAllOption={includeAllOption}
+          searchValue={searchValue}
+          searchPlaceholder={searchPlaceholder}
+          onSearchChange={onSearchChange}
+          onSelectOption={onSelectOption}
+          selectedValue={selectedValue}
+          selectedValues={selectedValues}
+          multi={multi}
+          emptyMessage={emptyMessage}
+          testIdPrefix={testIdPrefix}
+          optionFormatter={optionFormatter}
+        />
       ) : null}
     </div>
   );
