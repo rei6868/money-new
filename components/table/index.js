@@ -2,7 +2,6 @@ export * from './TableBase';
 export * from './TableActions';
 export * from './TableQuickFilter';
 export * from './TableFilterModal';
-export * from './TableCustomizeModal';
 export * from './TableRestoreInput';
 export * from './TableHamburgerMenu';
 export * from './TableTooltip';
