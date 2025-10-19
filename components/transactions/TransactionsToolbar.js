@@ -155,52 +155,54 @@ export function TransactionsToolbar({
       </div>
 
       <div className={styles.actionsGroup}>
-        {isReorderMode ? (
-          <div className={styles.toolbarCustomizeControls}>
-            <label className={styles.customizeSelectAll}>
-              <input
-                ref={columnSelectAllRef}
-                type="checkbox"
-                checked={Boolean(allToggleableVisible)}
-                onChange={(event) => onToggleAllColumns?.(event.target.checked)}
-                aria-label="Select or deselect all columns except Notes"
-              />
-              <span>All columns (excl. Notes)</span>
-            </label>
+        <div className={styles.customizeActionsGroup}>
+          {isReorderMode ? (
+            <div className={styles.toolbarCustomizeControls}>
+              <label className={styles.customizeSelectAll}>
+                <input
+                  ref={columnSelectAllRef}
+                  type="checkbox"
+                  checked={Boolean(allToggleableVisible)}
+                  onChange={(event) => onToggleAllColumns?.(event.target.checked)}
+                  aria-label="Select or deselect all columns except Notes"
+                />
+                <span>All columns (excl. Notes)</span>
+              </label>
 
-            <div className={styles.customizeToolbarActions}>
-              <button
-                type="button"
-                className={styles.secondaryButton}
-                onClick={() => onResetColumns?.()}
-                data-testid="transactions-columns-reset"
-              >
-                <FiRefreshCw aria-hidden />
-                Reset
-              </button>
-              <button
-                type="button"
-                className={styles.primaryButton}
-                onClick={() => onDoneCustomize?.()}
-                data-testid="transactions-columns-done"
-              >
-                Done
-              </button>
+              <div className={styles.customizeToolbarActions}>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => onResetColumns?.()}
+                  data-testid="transactions-columns-reset"
+                >
+                  <FiRefreshCw aria-hidden />
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  className={styles.primaryButton}
+                  onClick={() => onDoneCustomize?.()}
+                  data-testid="transactions-columns-done"
+                >
+                  Done
+                </button>
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        <button
-          type="button"
-          className={`${styles.filterButton} ${isReorderMode ? styles.filterButtonActive : ''}`}
-          onClick={onCustomizeColumns}
-          data-testid="transactions-customize-columns-trigger"
-          aria-label={isReorderMode ? 'Finish customizing columns' : 'Customize table columns'}
-          aria-pressed={isReorderMode}
-        >
-          <FiSettings aria-hidden />
-          {isReorderMode ? 'Done customizing' : 'Customize columns'}
-        </button>
+          <button
+            type="button"
+            className={`${styles.filterButton} ${isReorderMode ? styles.filterButtonActive : ''}`}
+            onClick={onCustomizeColumns}
+            data-testid="transactions-customize-columns-trigger"
+            aria-label={isReorderMode ? 'Finish customizing columns' : 'Customize table columns'}
+            aria-pressed={isReorderMode}
+          >
+            <FiSettings aria-hidden />
+            {isReorderMode ? 'Done customizing' : 'Customize columns'}
+          </button>
+        </div>
 
         <button
           type="button"

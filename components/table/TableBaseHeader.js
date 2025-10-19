@@ -109,11 +109,9 @@ export function TableBaseHeader({
         style={{
           minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
           width: `${column.width}px`,
-          top: `${mainHeaderHeight}px`,
         }}
       >
         <div className={styles.columnToggleContent}>
-          <span className={styles.columnToggleLabel}>{headerTitle}</span>
           <label
             className={styles.columnToggleSwitch}
             title="Show/hide this column"
@@ -137,8 +135,12 @@ export function TableBaseHeader({
     );
   };
 
+  const headerStyle = isColumnReorderMode
+    ? { '--table-header-main-height': `${mainHeaderHeight}px` }
+    : undefined;
+
   return (
-    <thead className={styles.tableHeader}>
+    <thead className={styles.tableHeader} style={headerStyle}>
       <tr ref={headerRowRef}>
         <th
           scope="col"
@@ -181,7 +183,6 @@ export function TableBaseHeader({
             style={{
               minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
               width: `${CHECKBOX_COLUMN_WIDTH}px`,
-              top: `${mainHeaderHeight}px`,
             }}
           />
           {columns.map((column) => renderToggleCell(column))}
@@ -192,7 +193,6 @@ export function TableBaseHeader({
               left: `${CHECKBOX_COLUMN_WIDTH}px`,
               minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
               width: `${ACTIONS_COLUMN_WIDTH}px`,
-              top: `${mainHeaderHeight}px`,
             }}
           />
         </tr>
