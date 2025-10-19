@@ -894,15 +894,21 @@
   outline-offset: 2px;
 }
 
-.columnToggleSwitch input:disabled + .columnToggleTrack {
+.columnToggleSwitch input:disabled + .columnToggleTrack,
+.columnToggleSwitch[data-disabled='true'] .columnToggleTrack {
   background: rgba(148, 163, 184, 0.2);
   box-shadow: none;
   cursor: not-allowed;
 }
 
-.columnToggleSwitch input:disabled + .columnToggleTrack .columnToggleThumb {
+.columnToggleSwitch input:disabled + .columnToggleTrack .columnToggleThumb,
+.columnToggleSwitch[data-disabled='true'] .columnToggleThumb {
   box-shadow: none;
   opacity: 0.7;
+}
+
+.columnToggleSwitch[data-disabled='true'] {
+  cursor: not-allowed;
 }
 
 .columnToggleHidden {

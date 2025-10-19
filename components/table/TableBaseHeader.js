@@ -92,14 +92,23 @@ export function TableBaseHeader({
   const renderToggleCell = (column) => {
     const definition = definitionMap.get(column.id);
     const headerTitle = definition?.label ?? column.id;
-    const isVisible = visibleIdSet.has(column.id);
-    const isToggleable = column.id !== 'notes';
+    const isVisible = column.visible !== false;
     const totalVisibleColumns = visibleIdSet.size;
-    const canToggle = isToggleable && !(isVisible && totalVisibleColumns <= 1);
+    const isToggleable = column.id !== 'notes';
+    const isLastVisible = isVisible && totalVisibleColumns <= 1;
+    const isInteractive = isToggleable && !isLastVisible;
 
     const baseClass = `${styles.columnToggleHeaderCell} ${
       isVisible ? styles.columnToggleVisible : styles.columnToggleHidden
     }`;
+
+    const handleToggleChange = (event) => {
+      if (!isInteractive) {
+        event.preventDefault();
+        return;
+      }
+      onColumnVisibilityChange?.(column.id, event.target.checked);
+    };
 
     return (
       <th
@@ -115,15 +124,14 @@ export function TableBaseHeader({
           <label
             className={styles.columnToggleSwitch}
             title="Show/hide this column"
+            data-disabled={isInteractive ? undefined : 'true'}
           >
             <input
               type="checkbox"
               checked={isVisible}
-              onChange={(event) =>
-                onColumnVisibilityChange?.(column.id, event.target.checked)
-              }
-              disabled={!canToggle}
+              onChange={handleToggleChange}
               aria-label={`Show or hide ${headerTitle} column`}
+              aria-disabled={isInteractive ? undefined : 'true'}
               data-testid={`transactions-columns-toggle-${column.id}`}
             />
             <span className={styles.columnToggleTrack}>
