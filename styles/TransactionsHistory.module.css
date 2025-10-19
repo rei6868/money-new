@@ -802,10 +802,13 @@
 
 .tableHeader {
   position: relative;
+  --table-header-main-height: 0px;
 }
 
 .customizeHeaderRow {
   background: rgba(15, 23, 42, 0.04);
+  position: relative;
+  z-index: 59;
 }
 
 .customizeHeaderRow th {
@@ -819,6 +822,7 @@
   padding: 0.65rem 1rem;
   vertical-align: middle;
   overflow: visible;
+  top: var(--table-header-main-height, 0px);
 }
 
 .columnToggleHeaderCell.stickyLeft,
@@ -829,21 +833,10 @@
 .columnToggleContent {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  justify-content: flex-end;
+  gap: 0.25rem;
   width: 100%;
   min-height: 32px;
-}
-
-.columnToggleLabel {
-  font-size: calc(var(--transactions-font-scale, 1) * 0.82rem);
-  font-weight: 600;
-  color: var(--mf-text-primary);
-  text-transform: none;
-  letter-spacing: 0;
-  white-space: normal;
-  word-break: break-word;
-  flex: 1 1 auto;
 }
 
 .columnToggleSwitch {
@@ -1113,9 +1106,22 @@
 }
 
 .actionsGroup {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.customizeActionsGroup {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .toolbarCustomizeControls {
@@ -1126,14 +1132,27 @@
   padding-right: 0.75rem;
   margin-right: 0.75rem;
   border-right: 1px solid rgba(148, 163, 184, 0.18);
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 @media (max-width: 768px) {
+  .actionsGroup {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .toolbarCustomizeControls {
     padding-right: 0;
     margin-right: 0;
     border-right: none;
     width: 100%;
+    justify-content: space-between;
+  }
+
+  .customizeActionsGroup {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 
