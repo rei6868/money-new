@@ -1,9 +1,11 @@
+import { useCallback, useState } from 'react';
 import { FiChevronRight, FiEdit2, FiFilter, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { formatAmount, formatPercent } from '../../lib/numberFormat';
 import { ACTIONS_COLUMN_WIDTH, CHECKBOX_COLUMN_WIDTH } from './tableUtils';
 import { TableActionMenuPortal } from './TableActions';
+import { TableTooltip } from './TableTooltip';
 
 const dateFormatters = {
   'DD/MM/YY': new Intl.DateTimeFormat('en-GB', {
@@ -62,7 +64,10 @@ function TotalBackCell({ transaction }) {
   )}`;
 
   return (
-    <div className={styles.totalBackCell} title={canShowFormula ? formulaText : undefined}>
+    <div
+      className={styles.totalBackCell}
+      data-tooltip-text={canShowFormula ? formulaText : undefined}
+    >
       <span className={styles.totalBackValue}>{totalBack}</span>
       {canShowFormula ? <span className={styles.totalBackFormula}>{formulaText}</span> : null}
     </div>
@@ -134,177 +139,247 @@ export function TableBaseBody({
   hiddenColumnIds = new Set(),
   isColumnReorderMode = false,
 }) {
+  const [tooltipState, setTooltipState] = useState({ anchor: null, content: '', isVisible: false });
+
+  const hideTooltip = useCallback(() => {
+    setTooltipState((state) => (state.isVisible ? { anchor: null, content: '', isVisible: false } : state));
+  }, []);
+
+  const resolveTooltip = useCallback((cell) => {
+    if (!cell) {
+      return { content: '', force: false };
+    }
+    const explicitNode = cell.querySelector('[data-tooltip-text]');
+    const explicitContent = explicitNode?.getAttribute('data-tooltip-text');
+    if (explicitContent) {
+      return { content: explicitContent, force: true };
+    }
+    const textValue = cell.textContent ?? '';
+    return { content: textValue.trim(), force: false };
+  }, []);
+
+  const showTooltip = useCallback(
+    (cell) => {
+      if (!cell) {
+        hideTooltip();
+        return;
+      }
+      const { content, force } = resolveTooltip(cell);
+      if (!content) {
+        hideTooltip();
+        return;
+      }
+      const isOverflowing = cell.scrollWidth - cell.clientWidth > 1;
+      if (!force && !isOverflowing) {
+        hideTooltip();
+        return;
+      }
+      setTooltipState({ anchor: cell, content, isVisible: true });
+    },
+    [hideTooltip, resolveTooltip],
+  );
+
+  const handleCellEnter = useCallback(
+    (event) => {
+      showTooltip(event.currentTarget);
+    },
+    [showTooltip],
+  );
+
+  const handleCellLeave = useCallback(() => {
+    hideTooltip();
+  }, [hideTooltip]);
+
+  const tooltipAnchor = tooltipState.anchor;
+  const tooltipContent = tooltipState.content;
+  const tooltipVisible = tooltipState.isVisible;
+
   return (
-    <tbody>
-      {transactions.map((txn) => {
-        const isSelected = selectionSet.has(txn.id);
-        return (
-          <tr
-            key={txn.id}
-            className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`.trim()}
-          >
-            <td
-              className={`${styles.bodyCell} ${styles.stickyLeft} ${styles.checkboxCell}`}
-              style={{
-                minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
-                width: `${CHECKBOX_COLUMN_WIDTH}px`,
-              }}
+    <>
+      <tbody>
+        {transactions.map((txn) => {
+          const isSelected = selectionSet.has(txn.id);
+          return (
+            <tr
+              key={txn.id}
+              className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`.trim()}
             >
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={(event) => onSelectRow?.(txn.id, event.target.checked)}
-                aria-label={`Select transaction ${txn.id}`}
-              />
-            </td>
-            {columns.map((column) => {
-              const definition = definitionMap.get(column.id);
-              const alignClass =
-                definition?.align === 'right'
-                  ? styles.cellAlignRight
-                  : definition?.align === 'center'
-                  ? styles.cellAlignCenter
-                  : '';
-              const minWidth = Math.max(definition?.minWidth ?? 120, column.width);
-              const isHidden = hiddenColumnIds.has(column.id);
-              const cellClassName = `${styles.bodyCell} ${alignClass} ${
-                isHidden && isColumnReorderMode ? styles.bodyCellHidden : ''
-              }`.trim();
-              return (
-                <td
-                  key={column.id}
-                  className={cellClassName}
-                  style={{
-                    minWidth: `${minWidth}px`,
-                    width: `${column.width}px`,
-                  }}
-                  data-testid={`transactions-cell-${column.id}-${txn.id}`}
-                  aria-hidden={isHidden && isColumnReorderMode ? 'true' : undefined}
-                >
-                  {renderCellContent(column, txn)}
-                </td>
-              );
-            })}
-            <td
-              className={`${styles.bodyCell} ${styles.stickyRight}`}
-              style={{
-                left: `${CHECKBOX_COLUMN_WIDTH}px`,
-                minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
-                width: `${ACTIONS_COLUMN_WIDTH}px`,
-              }}
-            >
-              <div
-                className={styles.actionsCellTrigger}
-                ref={actionRegistry.registerTrigger(txn.id)}
-                onMouseEnter={() => onActionTriggerEnter(txn.id)}
-                onMouseLeave={onActionTriggerLeave}
-                onFocus={() => onActionFocus(txn.id)}
-                onBlur={onActionBlur}
-              >
-                <button
-                  type="button"
-                  className={`${styles.actionsTriggerButton} ${
-                    openActionId === txn.id ? styles.actionsTriggerButtonActive : ''
-                  }`}
-                  data-testid={`transaction-actions-trigger-${txn.id}`}
-                  aria-haspopup="menu"
-                  aria-expanded={openActionId === txn.id}
-                  aria-label="Show row actions"
-                  onMouseEnter={() => onActionTriggerEnter(txn.id)}
-                >
-                  <FiMoreHorizontal aria-hidden />
-                </button>
-              </div>
-              <TableActionMenuPortal
-                rowId={txn.id}
-                anchor={actionRegistry.getTrigger(txn.id)}
-                isOpen={openActionId === txn.id}
-                onClose={() => onAction(null)()}
-                registerContent={registerActionMenu}
-                className={`${styles.actionsMenu} ${styles.actionsMenuOpen} ${
-                  isSubmenuFlipped ? styles.actionsMenuFlipped : ''
-                }`.trim()}
-                containerProps={{
-                  onMouseEnter: () => onActionTriggerEnter(txn.id),
-                  onMouseLeave: onActionTriggerLeave,
-                  onFocus: () => onActionFocus(txn.id),
-                  onBlur: onActionBlur,
+              <td
+                className={`${styles.bodyCell} ${styles.stickyLeft} ${styles.checkboxCell}`}
+                style={{
+                  minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
+                  width: `${CHECKBOX_COLUMN_WIDTH}px`,
                 }}
-                dataTestId={`transaction-actions-menu-${txn.id}`}
               >
-                <button
-                  type="button"
-                  className={styles.actionsMenuItem}
-                  onMouseEnter={onSubmenuEnter(null)}
-                  onClick={onAction({ mode: 'edit', transaction: txn })}
-                  data-testid={`transaction-action-edit-${txn.id}`}
-                >
-                  <FiEdit2 aria-hidden />
-                  <span>Quick edit</span>
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.actionsMenuItem} ${styles.actionsMenuDanger}`}
-                  onMouseEnter={onSubmenuEnter(null)}
-                  onClick={onAction({ mode: 'delete', transaction: txn })}
-                  data-testid={`transaction-action-delete-${txn.id}`}
-                >
-                  <FiTrash2 aria-hidden />
-                  <span>Delete</span>
-                </button>
-                <div
-                  className={`${styles.actionsMenuItem} ${styles.actionsMenuNested}`}
-                  onMouseEnter={onSubmenuEnter('more')}
-                  data-testid={`transaction-action-more-${txn.id}`}
-                >
-                  <div className={styles.actionsMenuNestedLabel}>
-                    <FiMoreHorizontal aria-hidden />
-                    <span>More actions</span>
-                  </div>
-                  <FiChevronRight className={styles.actionsMenuNestedCaret} aria-hidden />
-                  <div
-                    className={`${styles.actionsSubmenu} ${
-                      isSubmenuFlipped ? styles.actionsSubmenuFlipped : ''
-                    } ${
-                      openActionId === txn.id && openActionSubmenu === 'more'
-                        ? styles.actionsSubmenuOpen
-                        : ''
-                    }`.trim()}
-                    role="menu"
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={(event) => onSelectRow?.(txn.id, event.target.checked)}
+                  aria-label={`Select transaction ${txn.id}`}
+                />
+              </td>
+              {columns.map((column) => {
+                const definition = definitionMap.get(column.id);
+                const alignClass =
+                  definition?.align === 'right'
+                    ? styles.cellAlignRight
+                    : definition?.align === 'center'
+                    ? styles.cellAlignCenter
+                    : '';
+                const minWidth = Math.max(definition?.minWidth ?? 120, column.width);
+                const isHidden = hiddenColumnIds.has(column.id);
+                const cellClassName = `${styles.bodyCell} ${alignClass} ${
+                  isHidden && isColumnReorderMode ? styles.bodyCellHidden : ''
+                }`.trim();
+                return (
+                  <td
+                    key={column.id}
+                    className={cellClassName}
+                    style={{
+                      minWidth: `${minWidth}px`,
+                      width: `${column.width}px`,
+                    }}
+                    data-testid={`transactions-cell-${column.id}-${txn.id}`}
+                    aria-hidden={isHidden && isColumnReorderMode ? 'true' : undefined}
+                    onMouseEnter={handleCellEnter}
+                    onMouseLeave={handleCellLeave}
+                    onFocus={handleCellEnter}
+                    onBlur={handleCellLeave}
+                    onClick={handleCellEnter}
                   >
-                    <button
-                      type="button"
-                      className={styles.actionsMenuItem}
-                      onClick={onAction({
-                        mode: 'advanced',
-                        transaction: txn,
-                        intent: 'advanced-panel',
-                      })}
-                      data-testid={`transaction-action-advanced-${txn.id}`}
-                    >
-                      <FiFilter aria-hidden />
-                      <span>Open advanced panel</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.actionsMenuItem}
-                      onClick={onAction({
-                        mode: 'advanced',
-                        transaction: txn,
-                        intent: 'duplicate-draft',
-                      })}
-                      data-testid={`transaction-action-duplicate-${txn.id}`}
-                    >
-                      <FiEdit2 aria-hidden />
-                      <span>Duplicate as draft</span>
-                    </button>
-                  </div>
+                    {renderCellContent(column, txn)}
+                  </td>
+                );
+              })}
+              <td
+                className={`${styles.bodyCell} ${styles.stickyRight}`}
+                style={{
+                  left: `${CHECKBOX_COLUMN_WIDTH}px`,
+                  minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
+                  width: `${ACTIONS_COLUMN_WIDTH}px`,
+                }}
+              >
+                <div
+                  className={styles.actionsCellTrigger}
+                  ref={actionRegistry.registerTrigger(txn.id)}
+                  onMouseEnter={() => onActionTriggerEnter(txn.id)}
+                  onMouseLeave={onActionTriggerLeave}
+                  onFocus={() => onActionFocus(txn.id)}
+                  onBlur={onActionBlur}
+                >
+                  <button
+                    type="button"
+                    className={`${styles.actionsTriggerButton} ${
+                      openActionId === txn.id ? styles.actionsTriggerButtonActive : ''
+                    }`}
+                    data-testid={`transaction-actions-trigger-${txn.id}`}
+                    aria-haspopup="menu"
+                    aria-expanded={openActionId === txn.id}
+                    aria-label="Show row actions"
+                    onMouseEnter={() => onActionTriggerEnter(txn.id)}
+                  >
+                    <FiMoreHorizontal aria-hidden />
+                  </button>
                 </div>
-              </TableActionMenuPortal>
-            </td>
-          </tr>
-        );
-      })}
-    </tbody>
+                <TableActionMenuPortal
+                  rowId={txn.id}
+                  anchor={actionRegistry.getTrigger(txn.id)}
+                  isOpen={openActionId === txn.id}
+                  onClose={() => onAction(null)()}
+                  registerContent={registerActionMenu}
+                  className={`${styles.actionsMenu} ${styles.actionsMenuOpen} ${
+                    isSubmenuFlipped ? styles.actionsMenuFlipped : ''
+                  }`.trim()}
+                  containerProps={{
+                    onMouseEnter: () => onActionTriggerEnter(txn.id),
+                    onMouseLeave: onActionTriggerLeave,
+                    onFocus: () => onActionFocus(txn.id),
+                    onBlur: onActionBlur,
+                  }}
+                  dataTestId={`transaction-actions-menu-${txn.id}`}
+                >
+                  <button
+                    type="button"
+                    className={styles.actionsMenuItem}
+                    onMouseEnter={onSubmenuEnter(null)}
+                    onClick={onAction({ mode: 'edit', transaction: txn })}
+                    data-testid={`transaction-action-edit-${txn.id}`}
+                  >
+                    <FiEdit2 aria-hidden />
+                    <span>Quick edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.actionsMenuItem} ${styles.actionsMenuDanger}`}
+                    onMouseEnter={onSubmenuEnter(null)}
+                    onClick={onAction({ mode: 'delete', transaction: txn })}
+                    data-testid={`transaction-action-delete-${txn.id}`}
+                  >
+                    <FiTrash2 aria-hidden />
+                    <span>Delete</span>
+                  </button>
+                  <div
+                    className={`${styles.actionsMenuItem} ${styles.actionsMenuNested}`}
+                    onMouseEnter={onSubmenuEnter('more')}
+                    data-testid={`transaction-action-more-${txn.id}`}
+                  >
+                    <div className={styles.actionsMenuNestedLabel}>
+                      <FiMoreHorizontal aria-hidden />
+                      <span>More actions</span>
+                    </div>
+                    <FiChevronRight className={styles.actionsMenuNestedCaret} aria-hidden />
+                    <div
+                      className={`${styles.actionsSubmenu} ${
+                        isSubmenuFlipped ? styles.actionsSubmenuFlipped : ''
+                      } ${
+                        openActionId === txn.id && openActionSubmenu === 'more'
+                          ? styles.actionsSubmenuOpen
+                          : ''
+                      }`.trim()}
+                      role="menu"
+                    >
+                      <button
+                        type="button"
+                        className={styles.actionsMenuItem}
+                        onClick={onAction({
+                          mode: 'advanced',
+                          transaction: txn,
+                          intent: 'advanced-panel',
+                        })}
+                        data-testid={`transaction-action-advanced-${txn.id}`}
+                      >
+                        <FiFilter aria-hidden />
+                        <span>Open advanced panel</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.actionsMenuItem}
+                        onClick={onAction({
+                          mode: 'advanced',
+                          transaction: txn,
+                          intent: 'duplicate-draft',
+                        })}
+                        data-testid={`transaction-action-duplicate-${txn.id}`}
+                      >
+                        <FiEdit2 aria-hidden />
+                        <span>Duplicate as draft</span>
+                      </button>
+                    </div>
+                  </div>
+                </TableActionMenuPortal>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+      <TableTooltip
+        anchor={tooltipAnchor}
+        isVisible={tooltipVisible}
+        className={styles.tooltipPortal}
+        offset={{ x: 0, y: -8 }}
+      >
+        {tooltipContent}
+      </TableTooltip>
+    </>
   );
 }
