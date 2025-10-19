@@ -1,7 +1,7 @@
 import { FiChevronRight, FiEdit2, FiFilter, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
-import { formatAmount, formatAmountWithTrailing, formatPercent } from '../../lib/numberFormat';
+import { formatAmount, formatPercent } from '../../lib/numberFormat';
 import { ACTIONS_COLUMN_WIDTH, CHECKBOX_COLUMN_WIDTH } from './tableUtils';
 import { TableActionMenuPortal } from './TableActions';
 
@@ -130,8 +130,7 @@ export function TableBaseBody({
   onAction,
   onSubmenuEnter,
   registerActionMenu,
-  totals,
-  isTotalsVisible,
+  isSubmenuFlipped = false,
 }) {
   return (
     <tbody>
@@ -215,7 +214,9 @@ export function TableBaseBody({
                 isOpen={openActionId === txn.id}
                 onClose={() => onAction(null)()}
                 registerContent={registerActionMenu}
-                className={`${styles.actionsMenu} ${styles.actionsMenuOpen}`}
+                className={`${styles.actionsMenu} ${styles.actionsMenuOpen} ${
+                  isSubmenuFlipped ? styles.actionsMenuFlipped : ''
+                }`.trim()}
                 containerProps={{
                   onMouseEnter: () => onActionTriggerEnter(txn.id),
                   onMouseLeave: onActionTriggerLeave,
@@ -256,10 +257,12 @@ export function TableBaseBody({
                   <FiChevronRight className={styles.actionsMenuNestedCaret} aria-hidden />
                   <div
                     className={`${styles.actionsSubmenu} ${
+                      isSubmenuFlipped ? styles.actionsSubmenuFlipped : ''
+                    } ${
                       openActionId === txn.id && openActionSubmenu === 'more'
                         ? styles.actionsSubmenuOpen
                         : ''
-                    }`}
+                    }`.trim()}
                     role="menu"
                   >
                     <button
@@ -295,69 +298,6 @@ export function TableBaseBody({
           </tr>
         );
       })}
-      {isTotalsVisible ? (
-        <tr className={`${styles.row} ${styles.totalRow}`} data-testid="transactions-total-row">
-          <td
-            className={`${styles.bodyCell} ${styles.checkboxCell} ${styles.stickyLeft} ${styles.stickyLeftNoShadow} ${styles.totalLabelCell}`}
-            aria-hidden="true"
-            style={{
-              minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
-              width: `${CHECKBOX_COLUMN_WIDTH}px`,
-            }}
-          />
-          {visibleColumns.map((column, index) => {
-            const definition = definitionMap.get(column.id);
-            const alignClass =
-              definition?.align === 'right'
-                ? styles.cellAlignRight
-                : definition?.align === 'center'
-                ? styles.cellAlignCenter
-                : '';
-            let content = null;
-            if (column.id === 'amount') {
-              const toneClass =
-                totals.amount === 0
-                  ? ''
-                  : totals.amount > 0
-                  ? styles.amountIncome
-                  : styles.amountExpense;
-              content = (
-                <span className={`${styles.amountValue} ${toneClass}`}>
-                  {formatAmountWithTrailing(Math.abs(totals.amount))}
-                </span>
-              );
-            } else if (column.id === 'finalPrice') {
-              content = formatAmountWithTrailing(totals.finalPrice);
-            } else if (column.id === 'totalBack') {
-              content = formatAmountWithTrailing(totals.totalBack);
-            } else if (index === 0) {
-              content = <span className={styles.totalLabel}>Selected totals</span>;
-            }
-
-            return (
-              <td
-                key={`total-${column.id}`}
-                className={`${styles.bodyCell} ${alignClass} ${styles.totalCell}`}
-                style={{
-                  minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
-                  width: `${column.width}px`,
-                }}
-              >
-                <div className={styles.cellText}>{content}</div>
-              </td>
-            );
-          })}
-          <td
-            className={`${styles.bodyCell} ${styles.stickyRight} ${styles.totalLabelCell}`}
-            aria-hidden="true"
-            style={{
-              left: `${CHECKBOX_COLUMN_WIDTH}px`,
-              minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
-              width: `${ACTIONS_COLUMN_WIDTH}px`,
-            }}
-          />
-        </tr>
-      ) : null}
     </tbody>
   );
 }

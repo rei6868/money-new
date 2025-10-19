@@ -16,6 +16,7 @@ export function TransactionsToolbar({
   filterCount,
   onAddTransaction,
   onCustomizeColumns,
+  isReorderMode = false,
   selectedCount = 0,
   selectionSummary = { amount: 0, finalPrice: 0, totalBack: 0 },
   onDeselectAll,
@@ -151,13 +152,14 @@ export function TransactionsToolbar({
 
         <button
           type="button"
-          className={styles.filterButton}
+          className={`${styles.filterButton} ${isReorderMode ? styles.filterButtonActive : ''}`}
           onClick={onCustomizeColumns}
           data-testid="transactions-customize-columns-trigger"
-          aria-label="Customize table columns"
+          aria-label={isReorderMode ? 'Finish customizing columns' : 'Customize table columns'}
+          aria-pressed={isReorderMode}
         >
           <FiSettings aria-hidden />
-          Customize columns
+          {isReorderMode ? 'Done customizing' : 'Customize columns'}
         </button>
 
         <button

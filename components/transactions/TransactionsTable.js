@@ -64,6 +64,7 @@ export function TransactionsTable(props) {
     selectionSummary,
     onOpenAdvanced,
     columnDefinitions,
+    allColumns,
     visibleColumns,
     pagination,
     sortState,
@@ -73,6 +74,11 @@ export function TransactionsTable(props) {
     onQuickFilterChange,
     onQuickFilterToggle,
     onQuickFilterSearch,
+    isColumnReorderMode = false,
+    onColumnVisibilityChange,
+    onColumnOrderChange,
+    onColumnReset,
+    onColumnReorderExit,
   } = props;
 
   const paginationRenderer = usePaginationRenderer(pagination);
@@ -86,6 +92,7 @@ export function TransactionsTable(props) {
       selectionSummary={selectionSummary}
       onOpenAdvanced={onOpenAdvanced}
       columnDefinitions={columnDefinitions}
+      allColumns={allColumns}
       visibleColumns={visibleColumns}
       pagination={paginationRenderer}
       sortState={sortState}
@@ -95,6 +102,11 @@ export function TransactionsTable(props) {
       onQuickFilterChange={onQuickFilterChange}
       onQuickFilterToggle={onQuickFilterToggle}
       onQuickFilterSearch={onQuickFilterSearch}
+      isColumnReorderMode={isColumnReorderMode}
+      onColumnVisibilityChange={onColumnVisibilityChange}
+      onColumnOrderChange={onColumnOrderChange}
+      onColumnReset={onColumnReset}
+      onColumnReorderExit={onColumnReorderExit}
     />
   );
 }
