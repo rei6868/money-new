@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FiXCircle } from 'react-icons/fi';
 
 import AppLayout from '../../components/AppLayout';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
 import { TransactionsToolbar } from '../../components/transactions/TransactionsToolbar';
 import { resolveColumnSortType } from '../../components/table/tableUtils';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
-import { formatAmountWithTrailing } from '../../lib/numberFormat';
 import styles from '../../styles/TransactionsHistory.module.css';
+import TransactionAdvancedModal from '../../components/transactions/TransactionAdvancedModal';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
 
@@ -597,127 +596,7 @@ export default function TransactionsHistoryPage() {
         )}
       </div>
 
-      {advancedPanel ? (
-        <div
-          className={styles.advancedOverlay}
-          data-testid="transactions-advanced-modal"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className={styles.advancedPanel}>
-            <div className={styles.advancedHeader}>
-              <h3 className={styles.advancedTitle}>
-                {advancedPanel.mode === 'create'
-                  ? 'Quick Create Transaction'
-                  : advancedPanel.mode === 'edit'
-                  ? `Edit ${advancedPanel.transaction?.id ?? ''}`
-                  : advancedPanel.mode === 'delete'
-                  ? `Delete ${advancedPanel.transaction?.id ?? ''}`
-                  : `Advanced options for ${advancedPanel.transaction?.id ?? ''}`}
-              </h3>
-              <button
-                type="button"
-                className={styles.iconButton}
-                onClick={handleCloseAdvanced}
-                data-testid="transactions-advanced-close"
-                aria-label="Close advanced options"
-              >
-                <FiXCircle aria-hidden />
-              </button>
-            </div>
-
-            {advancedPanel.mode === 'create' ? (
-              <div className={styles.modalBody}>
-                <div className={styles.modalField}>
-                  <p className={styles.modalLabel}>Status</p>
-                  <p className={styles.advancedValue}>
-                    Use this space to configure quick entry templates. Builder is coming soon.
-                  </p>
-                </div>
-                <div className={styles.modalField}>
-                  <p className={styles.modalLabel}>Next step</p>
-                  <p className={styles.advancedValue}>
-                    Connect to your preferred batch input to populate a draft transaction with preset
-                    Cashback and Debt parameters.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className={styles.modalBody}>
-                  <div className={styles.advancedSection}>
-                    <span className={styles.advancedLabel}>Owner</span>
-                    <span className={styles.advancedValue}>
-                      {advancedPanel.transaction?.owner ?? 'Unassigned'}
-                    </span>
-                  </div>
-                  <div className={styles.advancedSection}>
-                    <span className={styles.advancedLabel}>Account</span>
-                    <span className={styles.advancedValue}>
-                      {advancedPanel.transaction?.account ?? 'Not available'}
-                    </span>
-                  </div>
-                  <div className={styles.advancedSection}>
-                    <span className={styles.advancedLabel}>Notes</span>
-                    <span className={styles.advancedValue}>
-                      {advancedPanel.transaction?.notes ?? '—'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className={styles.metricsGrid}>
-                  <div className={styles.metricTile}>
-                    <span className={styles.metricLabel}>Amount</span>
-                    <span className={styles.metricValue}>
-                      {formatAmountWithTrailing(advancedPanel.transaction?.amount)}
-                    </span>
-                  </div>
-                  <div className={styles.metricTile}>
-                    <span className={styles.metricLabel}>Total Back</span>
-                    <span className={styles.metricValue}>
-                      {formatAmountWithTrailing(advancedPanel.transaction?.totalBack)}
-                    </span>
-                  </div>
-                  <div className={styles.metricTile}>
-                    <span className={styles.metricLabel}>Final Price</span>
-                    <span className={styles.metricValue}>
-                      {formatAmountWithTrailing(advancedPanel.transaction?.finalPrice)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className={styles.modalFooter}>
-                  <button
-                    type="button"
-                    className={styles.secondaryButton}
-                    onClick={handleCloseAdvanced}
-                    data-testid="transactions-advanced-dismiss"
-                  >
-                    Close
-                  </button>
-                  {advancedPanel.mode === 'delete' ? (
-                    <button
-                      type="button"
-                      className={`${styles.primaryButton} ${styles.wrap}`}
-                      data-testid="transactions-advanced-confirm-delete"
-                    >
-                      Confirm delete
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className={styles.primaryButton}
-                      data-testid="transactions-advanced-start-edit"
-                    >
-                      Launch editor
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      ) : null}
+      <TransactionAdvancedModal panelData={advancedPanel} onClose={handleCloseAdvanced} />
     </AppLayout>
   );
 }
