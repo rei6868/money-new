@@ -175,6 +175,21 @@ export default function TransactionsHistoryPage() {
     [orderedColumns],
   );
 
+  const toggleableColumns = useMemo(
+    () => orderedColumns.filter((column) => column.id !== 'notes'),
+    [orderedColumns],
+  );
+
+  const toggleableVisibleCount = useMemo(
+    () => toggleableColumns.filter((column) => column.visible !== false).length,
+    [toggleableColumns],
+  );
+
+  const allToggleableVisible =
+    toggleableColumns.length > 0 && toggleableVisibleCount === toggleableColumns.length;
+  const someToggleableVisible =
+    toggleableVisibleCount > 0 && toggleableVisibleCount < toggleableColumns.length;
+
   const filteredTransactions = useMemo(() => transactions, [transactions]);
 
   useEffect(() => {
@@ -390,8 +405,29 @@ export default function TransactionsHistoryPage() {
     );
   }, [defaultColumnState]);
 
+  const handleToggleAllColumnsVisibility = useCallback((visible) => {
+    setColumnState((prev) =>
+      prev.map((column) => {
+        if (column.id === 'notes') {
+          return column;
+        }
+        const isCurrentlyVisible = column.visible !== false;
+        if (isCurrentlyVisible === visible) {
+          return column;
+        }
+        return { ...column, visible: Boolean(visible) };
+      }),
+    );
+  }, []);
+
   const handleToggleReorderMode = useCallback(() => {
-    setIsReorderMode((prev) => !prev);
+    setIsReorderMode((prev) => {
+      const next = !prev;
+      if (next) {
+        setSelectedIds([]);
+      }
+      return next;
+    });
   }, []);
 
   const handleExitReorderMode = useCallback(() => {
@@ -423,6 +459,11 @@ export default function TransactionsHistoryPage() {
           onDeselectAll={handleDeselectAll}
           onToggleShowSelected={handleToggleShowSelected}
           isShowingSelectedOnly={showSelectedOnly}
+          onToggleAllColumns={handleToggleAllColumnsVisibility}
+          allToggleableVisible={allToggleableVisible}
+          someToggleableVisible={someToggleableVisible}
+          onResetColumns={handleResetColumns}
+          onDoneCustomize={handleExitReorderMode}
         />
 
         {isFetching || columnDefinitions.length === 0 ? (
@@ -456,8 +497,6 @@ export default function TransactionsHistoryPage() {
             isColumnReorderMode={isReorderMode}
             onColumnVisibilityChange={handleColumnVisibilityChange}
             onColumnOrderChange={handleColumnOrderChange}
-            onColumnReset={handleResetColumns}
-            onColumnReorderExit={handleExitReorderMode}
           />
         )}
       </div>
