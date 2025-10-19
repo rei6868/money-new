@@ -66,30 +66,39 @@ export function TableBase({
     [allColumns],
   );
 
-  const formattedTotals = useMemo(
-    () => {
-      if (!selectionSummary) {
-        return {};
+  const formattedTotals = useMemo(() => {
+    const normalizeValue = (value) => {
+      if (value === null || value === undefined) {
+        return null;
       }
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) {
+        return null;
+      }
+      return formatAmountWithTrailing(numeric);
+    };
 
-      const normalizeValue = (value) => {
-        if (value === null || value === undefined) {
-          return null;
-        }
-        const numeric = Number(value);
-        if (!Number.isFinite(numeric)) {
-          return null;
-        }
-        return formatAmountWithTrailing(numeric);
-      };
+    return {
+      amount: normalizeValue(selectionSummary?.amount),
+      totalBack: normalizeValue(selectionSummary?.totalBack),
+      finalPrice: normalizeValue(selectionSummary?.finalPrice),
+    };
+  }, [selectionSummary]);
 
-      return {
-        amount: normalizeValue(selectionSummary.amount),
-        totalBack: normalizeValue(selectionSummary.totalBack),
-        finalPrice: normalizeValue(selectionSummary.finalPrice),
-      };
+  const resolveTotalValue = useCallback(
+    (columnId) => {
+      switch (columnId) {
+        case 'amount':
+          return formattedTotals.amount;
+        case 'totalBack':
+          return formattedTotals.totalBack;
+        case 'finalPrice':
+          return formattedTotals.finalPrice;
+        default:
+          return null;
+      }
     },
-    [selectionSummary],
+    [formattedTotals],
   );
 
   const minTableWidth = useMemo(
@@ -275,6 +284,10 @@ export function TableBase({
   const handleSubmenuEnter = useCallback((submenuId) => () => {
     setOpenActionSubmenu(submenuId);
   }, []);
+
+  if (shouldShowTotals) {
+    console.log('Selection Summary in TableBase tfoot:', selectionSummary);
+  }
 
   return (
     <section
