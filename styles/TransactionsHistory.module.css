@@ -647,15 +647,6 @@
   align-items: flex-start;
 }
 
-.selectionSummaryInline {
-  font-size: calc(var(--transactions-font-scale, 1) * 0.76rem);
-  font-weight: 600;
-  color: var(--mf-text-muted);
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .customizeRow {
   background: rgba(15, 23, 42, 0.04);
 }
@@ -874,6 +865,48 @@
 
 .rowSelected {
   background: rgba(99, 102, 241, 0.14);
+}
+
+.totalRow {
+  position: sticky;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.06);
+  z-index: 100;
+}
+
+.totalRowCell {
+  background: rgba(15, 23, 42, 0.06);
+  font-weight: 700;
+  color: var(--mf-text-primary);
+  border-top: 1px solid rgba(148, 163, 184, 0.26);
+}
+
+.totalRowCell.stickyLeft,
+.totalRowCell.stickyRight {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.totalRowSelection {
+  font-size: calc(var(--transactions-font-scale, 1) * 0.78rem);
+  color: var(--mf-text-secondary);
+}
+
+.totalRowLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: calc(var(--transactions-font-scale, 1) * 0.82rem);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mf-text-primary);
+}
+
+.totalRowValue {
+  display: inline-block;
+}
+
+.totalRowAmount {
+  color: #7f1d1d;
 }
 
 .stickyLeft {
