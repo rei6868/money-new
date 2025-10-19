@@ -51,7 +51,7 @@ export function TableBase({
     transactions.length > 0 && transactions.every((txn) => selectionSet.has(txn.id));
   const isIndeterminate = selectionSet.size > 0 && !allSelected;
   const totalSelectionCount = selectionSummary?.count ?? selectionSet.size;
-  const shouldShowTotals = totalSelectionCount > 0;
+  const shouldShowTotals = selectedIds.length > 0;
 
   const displayColumns = useMemo(
     () => (isColumnReorderMode ? allColumns : visibleColumns),
@@ -66,30 +66,39 @@ export function TableBase({
     [allColumns],
   );
 
-  const formattedTotals = useMemo(
-    () => {
-      if (!selectionSummary) {
-        return {};
+  const formattedTotals = useMemo(() => {
+    const normalizeValue = (value) => {
+      if (value === null || value === undefined) {
+        return null;
       }
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) {
+        return null;
+      }
+      return formatAmountWithTrailing(numeric);
+    };
 
-      const normalizeValue = (value) => {
-        if (value === null || value === undefined) {
-          return null;
-        }
-        const numeric = Number(value);
-        if (!Number.isFinite(numeric)) {
-          return null;
-        }
-        return formatAmountWithTrailing(numeric);
-      };
+    return {
+      amount: normalizeValue(selectionSummary?.amount),
+      totalBack: normalizeValue(selectionSummary?.totalBack),
+      finalPrice: normalizeValue(selectionSummary?.finalPrice),
+    };
+  }, [selectionSummary]);
 
-      return {
-        amount: normalizeValue(selectionSummary.amount),
-        totalBack: normalizeValue(selectionSummary.totalBack),
-        finalPrice: normalizeValue(selectionSummary.finalPrice),
-      };
+  const resolveTotalValue = useCallback(
+    (columnId) => {
+      switch (columnId) {
+        case 'amount':
+          return formattedTotals.amount;
+        case 'totalBack':
+          return formattedTotals.totalBack;
+        case 'finalPrice':
+          return formattedTotals.finalPrice;
+        default:
+          return null;
+      }
     },
-    [selectionSummary],
+    [formattedTotals],
   );
 
   const minTableWidth = useMemo(
@@ -276,6 +285,10 @@ export function TableBase({
     setOpenActionSubmenu(submenuId);
   }, []);
 
+  if (shouldShowTotals) {
+    console.log('Selection Summary in TableBase tfoot:', selectionSummary);
+  }
+
   return (
     <section
       className={styles.tableCard}
@@ -351,7 +364,7 @@ export function TableBase({
                       : '';
                   const minWidth = Math.max(definition?.minWidth ?? 120, column.width);
                   const isHidden = hiddenColumnIds.has(column.id);
-                  const value = formattedTotals[column.id];
+                  const value = resolveTotalValue(column.id);
                   const cellClassName = `${styles.bodyCell} ${styles.totalRowCell} ${alignClass} ${
                     isHidden && isColumnReorderMode ? styles.bodyCellHidden : ''
                   }`.trim();
