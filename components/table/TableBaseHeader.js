@@ -16,7 +16,7 @@ function SortIcon({ direction, dataType }) {
     <span className={rootClass} aria-hidden>
       <span
         className={`${styles.sortIconGlyph} ${
-          iconType === 'number' ? styles.sortIconDigits : styles.sortIconLines
+          iconType === 'number' ? styles.sortIconDigits : styles.sortIconLetters
         }`.trim()}
       >
         {iconType === 'number' ? (
@@ -26,9 +26,8 @@ function SortIcon({ direction, dataType }) {
           </>
         ) : (
           <>
-            <span />
-            <span />
-            <span />
+            <span>A</span>
+            <span>Z</span>
           </>
         )}
       </span>
@@ -98,13 +97,6 @@ export function TableBaseHeader({
         const headerTitle = definition?.label ?? column.id;
         const filterTooltip = orderedValues.length ? orderedValues.join(', ') : headerTitle;
         const isHidden = column.visible === false;
-        const sortTooltip = isColumnReorderMode
-          ? 'Sorting is disabled while customizing columns'
-          : isSorted
-          ? sortDirection === 'desc'
-            ? 'Sort: Descending'
-            : 'Sort: Ascending'
-          : 'Sort: None';
         const availableOptions = meta ? quickFilterOptions[meta.optionsKey] ?? [] : [];
         const searchTerm = quickFilterSearch[column.id] ?? '';
         const dataType = definition?.dataType === 'number' ? 'number' : 'text';
@@ -124,7 +116,7 @@ export function TableBaseHeader({
         if (isFilterActive) {
           if (orderedValues.length === 1) {
             labelContent = (
-              <span className={styles.headerFilterValue} title={filterTooltip}>
+              <span className={styles.headerFilterValue}>
                 {orderedValues[0]}
               </span>
             );
@@ -132,7 +124,6 @@ export function TableBaseHeader({
             labelContent = (
               <span
                 className={`${styles.headerBadge} ${styles.headerBadgeOverflow}`}
-                title={filterTooltip}
                 data-testid={`transactions-quick-filter-${column.id}-count`}
               >
                 +{orderedValues.length}
@@ -181,7 +172,6 @@ export function TableBaseHeader({
                   data-testid={`transactions-quick-filter-${column.id}`}
                   aria-haspopup="listbox"
                   aria-expanded={openQuickFilter === column.id}
-                  title={filterTooltip}
                   aria-label={
                     isFilterActive
                       ? `${meta.label ?? headerTitle}: ${filterTooltip}`
@@ -195,7 +185,7 @@ export function TableBaseHeader({
                   {labelContent}
                 </button>
               ) : (
-                <span className={styles.headerStaticLabel} title={headerTitle}>
+                <span className={styles.headerStaticLabel}>
                   {headerTitle}
                 </span>
               )}
@@ -220,7 +210,6 @@ export function TableBaseHeader({
                   onClick={(event) => onSortToggle(column.id, event)}
                   data-testid={`transactions-sort-${column.id}`}
                   aria-label={`Sort by ${headerTitle}`}
-                  title={sortTooltip}
                   disabled={isSortDisabled}
                 >
                   <SortIcon

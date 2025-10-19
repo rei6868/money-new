@@ -13,6 +13,7 @@ import {
 import styles from '../../styles/TransactionsHistory.module.css';
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
 import {
+  ACTIONS_COLUMN_WIDTH,
   CHECKBOX_COLUMN_WIDTH,
   STICKY_COLUMN_BUFFER,
   computeMinWidth,
@@ -62,6 +63,7 @@ const QUICK_FILTER_META = {
 };
 
 const ACTION_SUBMENU_WIDTH = 220;
+const CUSTOMIZE_COLUMN_MIN_WIDTH = 160;
 
 export function TableBase({
   transactions,
@@ -310,6 +312,22 @@ export function TableBase({
     () => visibleColumns.map((column) => column.id),
     [visibleColumns],
   );
+
+  const customizeGridTemplateColumns = useMemo(() => {
+    if (!isColumnReorderMode) {
+      return null;
+    }
+    const resolvedColumns = [
+      CHECKBOX_COLUMN_WIDTH,
+      ...displayColumns.map((column) => {
+        const definition = definitionMap.get(column.id);
+        const preferredWidth = Math.max(column.width ?? 0, definition?.minWidth ?? 0);
+        return Math.max(preferredWidth, CUSTOMIZE_COLUMN_MIN_WIDTH);
+      }),
+      ACTIONS_COLUMN_WIDTH,
+    ];
+    return resolvedColumns.map((width) => `${width}px`).join(' ');
+  }, [isColumnReorderMode, displayColumns, definitionMap]);
 
   const handleColumnDragStart = useCallback(
     (columnId) => (event) => {
@@ -578,7 +596,7 @@ export function TableBase({
                   width: `${STICKY_COLUMN_BUFFER - CHECKBOX_COLUMN_WIDTH}px`,
                 }}
               >
-                <span className={styles.actionsHeaderLabel} title="Actions">
+                <span className={styles.actionsHeaderLabel}>
                   Actions
                 </span>
               </th>
@@ -587,7 +605,7 @@ export function TableBase({
             <tr className={styles.customizeRow}>
               <th colSpan={displayColumns.length + 2} className={styles.customizeCell}>
                 <div className={styles.customizeControls}>
-                  <div className={styles.customizeToolbar}>
+                  <div className={styles.customizeToolbarRow}>
                     <label className={styles.customizeSelectAll}>
                       <input
                         ref={columnSelectAllRef}
@@ -622,18 +640,28 @@ export function TableBase({
                     className={styles.customizeToggleGrid}
                     role="group"
                     aria-label="Toggle column visibility"
+                    style={
+                      customizeGridTemplateColumns
+                        ? { gridTemplateColumns: customizeGridTemplateColumns }
+                        : undefined
+                    }
                   >
-                    {allColumns.map((column) => {
+                    <div className={styles.customizeToggleSpacer} aria-hidden="true" />
+                    {displayColumns.map((column) => {
                       const definition = definitionMap.get(column.id);
                       const label = definition?.label ?? column.id;
                       const isVisible = column.visible !== false;
                       const visibleIndex = visibleColumnIds.indexOf(column.id);
-                      const canToggle = !(isVisible && visibleColumnCount <= 1);
+                      const isToggleable = column.id !== 'notes';
+                      const canToggle = isToggleable && !(isVisible && visibleColumnCount <= 1);
                       const canMoveLeft = isVisible && visibleIndex > 0;
                       const canMoveRight =
                         isVisible && visibleIndex > -1 && visibleIndex < visibleColumnIds.length - 1;
 
                       const handleVisibilityChange = (event) => {
+                        if (!isToggleable) {
+                          return;
+                        }
                         onColumnVisibilityChange?.(column.id, event.target.checked);
                       };
 
@@ -679,6 +707,7 @@ export function TableBase({
                         </div>
                       );
                     })}
+                    <div className={styles.customizeToggleSpacer} aria-hidden="true" />
                   </div>
                 </div>
               </th>
