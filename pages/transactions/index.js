@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiXCircle } from 'react-icons/fi';
 
 import AppLayout from '../../components/AppLayout';
-import { TableCustomizeModal, TableFilterModal } from '../../components/table';
+import { TableFilterModal } from '../../components/table';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
 import { TransactionsToolbar } from '../../components/transactions/TransactionsToolbar';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
@@ -36,7 +36,7 @@ export default function TransactionsHistoryPage() {
   const [columnState, setColumnState] = useState([]);
   const [defaultColumnState, setDefaultColumnState] = useState([]);
   const [sortState, setSortState] = useState([]);
-  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+  const [isReorderMode, setIsReorderMode] = useState(false);
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1] ?? PAGE_SIZE_OPTIONS[0]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -200,19 +200,36 @@ export default function TransactionsHistoryPage() {
           return prev.filter((id) => available.has(id));
         });
         setFilterOptions((prev) => {
-          const merged = {
-            ...prev,
-            ...(data.filters ?? {}),
+          const optionBuckets = data?.filters?.options ?? {};
+          const nextFromDataset = {
+            people: Array.isArray(optionBuckets.owners) ? optionBuckets.owners : [],
+            categories: Array.isArray(optionBuckets.categories) ? optionBuckets.categories : [],
+            years: Array.isArray(optionBuckets.years) ? optionBuckets.years : [],
+            months: Array.isArray(optionBuckets.months) ? optionBuckets.months : [],
+            types: Array.isArray(optionBuckets.types) ? optionBuckets.types : [],
+            debtTags: Array.isArray(optionBuckets.debtTags) ? optionBuckets.debtTags : [],
+            accounts: Array.isArray(optionBuckets.accounts) ? optionBuckets.accounts : [],
           };
-          const accountSet = new Set(Array.isArray(merged.accounts) ? merged.accounts : []);
+          const mergeList = (incoming, fallback = []) =>
+            Array.isArray(incoming) ? incoming : Array.isArray(fallback) ? fallback : [];
+          const accountSet = new Set([
+            ...mergeList(nextFromDataset.accounts, prev.accounts),
+          ]);
           rows.forEach((row) => {
-            if (row.account) {
+            if (row.account && typeof row.account === 'string') {
               accountSet.add(row.account);
             }
           });
           return {
-            ...merged,
-            accounts: Array.from(accountSet).sort((a, b) => a.localeCompare(b)),
+            people: mergeList(nextFromDataset.people, prev.people),
+            categories: mergeList(nextFromDataset.categories, prev.categories),
+            years: mergeList(nextFromDataset.years, prev.years),
+            months: mergeList(nextFromDataset.months, prev.months),
+            types: mergeList(nextFromDataset.types, prev.types),
+            debtTags: mergeList(nextFromDataset.debtTags, prev.debtTags),
+            accounts: Array.from(accountSet).sort((a, b) =>
+              a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }),
+            ),
           };
         });
         if (Array.isArray(data.sort)) {
@@ -584,40 +601,54 @@ export default function TransactionsHistoryPage() {
     setAdvancedPanel(null);
   };
 
-  const handleApplyColumns = (columns) => {
-    setColumnState(
-      columns.map((column, index) => {
-        const definition = definitionLookup.get(column.id) ?? {};
-        const minWidth = definition.minWidth ?? 120;
-        const defaultVisible = definition.defaultVisible !== false;
-        const normalizedWidth = Math.max(
-          Number(column.width) || definition.defaultWidth || minWidth,
-          minWidth,
-        );
-
-        return {
-          id: column.id,
-          width: normalizedWidth,
-          visible: column.visible ?? defaultVisible,
-          order: index,
-          format: column.format ?? definition.defaultFormat,
-        };
-      }),
-    );
-    setIsCustomizeOpen(false);
-  };
-
-  const handleResetColumns = () => {
-    if (defaultColumnState.length > 0) {
-      setColumnState(
-        defaultColumnState.map((column, index) => ({
-          ...column,
-          order: column.order ?? index,
-        })),
+  const handleColumnVisibilityChange = useCallback(
+    (columnId, visible) => {
+      setColumnState((prev) =>
+        prev.map((column) =>
+          column.id === columnId ? { ...column, visible: Boolean(visible) } : column,
+        ),
       );
+    },
+    [],
+  );
+
+  const handleColumnOrderChange = useCallback((orderedVisibleIds) => {
+    setColumnState((prev) => {
+      if (!Array.isArray(orderedVisibleIds) || orderedVisibleIds.length === 0) {
+        return prev;
+      }
+
+      const visibleLookup = new Map(orderedVisibleIds.map((id, index) => [id, index]));
+      const detached = prev.slice();
+      const visibleColumns = detached.filter((column) => visibleLookup.has(column.id));
+      const hiddenColumns = detached.filter((column) => !visibleLookup.has(column.id));
+
+      visibleColumns.sort((a, b) => (visibleLookup.get(a.id) ?? 0) - (visibleLookup.get(b.id) ?? 0));
+
+      const merged = [...visibleColumns, ...hiddenColumns];
+      return merged.map((column, index) => ({ ...column, order: index }));
+    });
+  }, []);
+
+  const handleResetColumns = useCallback(() => {
+    if (defaultColumnState.length === 0) {
+      return;
     }
-    setIsCustomizeOpen(false);
-  };
+    setColumnState(
+      defaultColumnState.map((column, index) => ({
+        ...column,
+        order: column.order ?? index,
+      })),
+    );
+  }, [defaultColumnState]);
+
+  const handleToggleReorderMode = useCallback(() => {
+    setIsReorderMode((prev) => !prev);
+  }, []);
+
+  const handleExitReorderMode = useCallback(() => {
+    setIsReorderMode(false);
+  }, []);
 
   const handleSortStateChange = useCallback((columnId, options = {}) => {
     setSortState((prev) => {
@@ -667,7 +698,8 @@ export default function TransactionsHistoryPage() {
           onFilterClick={handleOpenFilters}
           filterCount={filterCount}
           onAddTransaction={handleAddTransaction}
-          onCustomizeColumns={() => setIsCustomizeOpen(true)}
+          onCustomizeColumns={handleToggleReorderMode}
+          isReorderMode={isReorderMode}
           selectedCount={selectedIds.length}
           selectionSummary={selectionSummary}
           onDeselectAll={handleDeselectAll}
@@ -688,6 +720,7 @@ export default function TransactionsHistoryPage() {
             selectionSummary={selectionSummary}
             onOpenAdvanced={handleAdvanced}
             columnDefinitions={columnDefinitions}
+            allColumns={orderedColumns}
             visibleColumns={visibleColumns}
             pagination={{
               pageSize,
@@ -709,6 +742,11 @@ export default function TransactionsHistoryPage() {
             onQuickFilterChange={handleQuickFilterChange}
             onQuickFilterToggle={handleQuickFilterToggle}
             onQuickFilterSearch={handleSearchOptions}
+            isColumnReorderMode={isReorderMode}
+            onColumnVisibilityChange={handleColumnVisibilityChange}
+            onColumnOrderChange={handleColumnOrderChange}
+            onColumnReset={handleResetColumns}
+            onColumnReorderExit={handleExitReorderMode}
           />
         )}
 
@@ -724,15 +762,6 @@ export default function TransactionsHistoryPage() {
         onApply={handleFilterApply}
         options={filterOptions}
         onSearchOptions={handleSearchOptions}
-      />
-
-      <TableCustomizeModal
-        isOpen={isCustomizeOpen}
-        columns={orderedColumns}
-        columnDefinitions={columnDefinitions}
-        onClose={() => setIsCustomizeOpen(false)}
-        onApply={handleApplyColumns}
-        onReset={handleResetColumns}
       />
 
       {advancedPanel ? (

@@ -4,14 +4,14 @@ import { loadTransactionDataset } from '../../../lib/api/transactions/transactio
 import { buildFilterOptions } from '../../../lib/api/transactions/transactions.filter';
 import { getTransactionMeta } from '../../../lib/api/transactions/transactions.meta';
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
 
-  const dataset = loadTransactionDataset();
+  const dataset = await loadTransactionDataset();
   const options = buildFilterOptions(dataset);
   const meta = getTransactionMeta();
 

@@ -5,8 +5,8 @@ import { loadTransactionDataset, recalculateRewardFields } from '../lib/api/tran
 import { type TransactionsTableRequest } from '../lib/api/transactions/transactions.types';
 
 describe('transaction dataset helpers', () => {
-  it('converts enriched transactions into table-safe records', () => {
-    const dataset = loadTransactionDataset();
+  it('converts enriched transactions into table-safe records', async () => {
+    const dataset = await loadTransactionDataset();
     expect(dataset.length).toBeGreaterThan(0);
     dataset.forEach((record) => {
       expect(typeof record.id).toBe('string');
@@ -16,8 +16,8 @@ describe('transaction dataset helpers', () => {
     });
   });
 
-  it('recalculates reward fields deterministically', () => {
-    const [record] = loadTransactionDataset();
+  it('recalculates reward fields deterministically', async () => {
+    const [record] = await loadTransactionDataset();
     const updated = recalculateRewardFields({ ...record, amount: 100, percentBack: 5, fixedBack: 2 });
     expect(updated.totalBack).toBe(7);
     expect(updated.finalPrice).toBe(93);
@@ -29,8 +29,8 @@ describe('transactions table module', () => {
     pagination: { page: 1, pageSize: 50 },
   };
 
-  it('filters transactions by search term and type', () => {
-    const response = getTransactionsTable(
+  it('filters transactions by search term and type', async () => {
+    const response = await getTransactionsTable(
       {
         ...baseRequest,
         searchTerm: 'cashback',
@@ -47,8 +47,8 @@ describe('transactions table module', () => {
     expect(response.execution.durationMs).toBeLessThan(500);
   });
 
-  it('supports multi-select filtering and sorting', () => {
-    const response = getTransactionsTable(
+  it('supports multi-select filtering and sorting', async () => {
+    const response = await getTransactionsTable(
       {
         ...baseRequest,
         filters: {
@@ -74,8 +74,8 @@ describe('transactions table module', () => {
     expect(amounts).toEqual(sorted.slice(0, amounts.length));
   });
 
-  it('applies quick filter overrides like high value purchases', () => {
-    const response = getTransactionsTable(
+  it('applies quick filter overrides like high value purchases', async () => {
+    const response = await getTransactionsTable(
       {
         ...baseRequest,
         quickFilterId: 'high-value',
@@ -89,8 +89,8 @@ describe('transactions table module', () => {
     });
   });
 
-  it('restores previous state using restore token', () => {
-    const initial = getTransactionsTable(
+  it('restores previous state using restore token', async () => {
+    const initial = await getTransactionsTable(
       {
         ...baseRequest,
         searchTerm: 'Cycle',
@@ -106,7 +106,7 @@ describe('transactions table module', () => {
       pagination: initial.pagination,
       quickFilterId: initial.quickFilterId,
     });
-    const restored = getTransactionsTable(
+    const restored = await getTransactionsTable(
       {
         pagination: { page: 1, pageSize: initial.pagination.pageSize },
       },
@@ -119,10 +119,10 @@ describe('transactions table module', () => {
 });
 
 describe('transaction actions', () => {
-  it('calculates selection summary via syncSelection action', () => {
-    const table = getTransactionsTable({ pagination: { page: 1, pageSize: 5 } }, null);
+  it('calculates selection summary via syncSelection action', async () => {
+    const table = await getTransactionsTable({ pagination: { page: 1, pageSize: 5 } }, null);
     const ids = table.rows.slice(0, 3).map((row) => row.id);
-    const response = executeTransactionAction({
+    const response = await executeTransactionAction({
       action: 'syncSelection',
       payload: { ids },
     });
@@ -131,10 +131,10 @@ describe('transaction actions', () => {
     expect(response.summary?.amount).toBeGreaterThan(0);
   });
 
-  it('supports quick edit simulation', () => {
-    const table = getTransactionsTable({ pagination: { page: 1, pageSize: 1 } }, null);
+  it('supports quick edit simulation', async () => {
+    const table = await getTransactionsTable({ pagination: { page: 1, pageSize: 1 } }, null);
     const row = table.rows[0];
-    const response = executeTransactionAction({
+    const response = await executeTransactionAction({
       action: 'quickEdit',
       payload: {
         id: row.id,

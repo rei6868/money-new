@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FiCreditCard, FiFilter, FiTag, FiUser } from 'react-icons/fi';
+import {
+  FiArrowLeft,
+  FiArrowRight,
+  FiCreditCard,
+  FiFilter,
+  FiRefreshCw,
+  FiTag,
+  FiUser,
+  FiX,
+} from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
@@ -52,40 +61,7 @@ const QUICK_FILTER_META = {
   },
 };
 
-function InlineSelectionSummary({
-  selectedCount,
-  selectionSummary,
-  onDeselectAll,
-  onToggleShowSelected,
-  isShowingSelectedOnly,
-}) {
-  if (selectedCount <= 0) {
-    return null;
-  }
-  return (
-    <div className={styles.selectionQuickActions} data-testid="transactions-selection-inline">
-      <span className={styles.selectionQuickSummary}>
-        {selectedCount} selected · Amount {formatAmountWithTrailing(selectionSummary.amount)}
-      </span>
-      <button
-        type="button"
-        className={styles.secondaryButton}
-        onClick={onDeselectAll}
-        data-testid="transactions-quick-deselect"
-      >
-        De-select
-      </button>
-      <button
-        type="button"
-        className={styles.secondaryButton}
-        onClick={onToggleShowSelected}
-        data-testid="transactions-quick-toggle"
-      >
-        {isShowingSelectedOnly ? 'Show all rows' : 'Show selected rows'}
-      </button>
-    </div>
-  );
-}
+const ACTION_SUBMENU_WIDTH = 220;
 
 export function TableBase({
   transactions,
@@ -106,15 +82,23 @@ export function TableBase({
   onQuickFilterSearch,
   toolbarSlot,
   tableTitle = 'Transactions history table',
-  isShowingSelectedOnly = false,
+  allColumns = [],
+  isColumnReorderMode = false,
+  onColumnVisibilityChange,
+  onColumnOrderChange,
+  onColumnReset,
+  onColumnReorderExit,
 }) {
   const [openQuickFilter, setOpenQuickFilter] = useState(null);
   const [quickFilterSearch, setQuickFilterSearch] = useState({});
   const [openActionId, setOpenActionId] = useState(null);
   const [openActionSubmenu, setOpenActionSubmenu] = useState(null);
+  const [isSubmenuFlipped, setIsSubmenuFlipped] = useState(false);
+  const [activeDropTarget, setActiveDropTarget] = useState(null);
   const previousQuickFilterRef = useRef(null);
   const actionMenuCloseTimer = useRef(null);
   const headerCheckboxRef = useRef(null);
+  const dragSourceRef = useRef(null);
 
   const definitionMap = useDefinitionMap(columnDefinitions);
   const quickFilterRegistry = useQuickFilterRegistry();
@@ -187,6 +171,39 @@ export function TableBase({
     };
   }, []);
 
+  useEffect(() => {
+    if (!openActionId) {
+      setIsSubmenuFlipped(false);
+      return undefined;
+    }
+
+    const menuNode = actionRegistry.getMenu(openActionId);
+    if (!menuNode) {
+      setIsSubmenuFlipped(false);
+      return undefined;
+    }
+
+    const update = () => {
+      const rect = menuNode.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const shouldFlip = rect.left + rect.width + ACTION_SUBMENU_WIDTH > viewportWidth - 16;
+      setIsSubmenuFlipped(shouldFlip);
+    };
+
+    update();
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('resize', update);
+    };
+  }, [openActionId, actionRegistry]);
+
+  useEffect(() => {
+    if (!isColumnReorderMode) {
+      dragSourceRef.current = null;
+      setActiveDropTarget(null);
+    }
+  }, [isColumnReorderMode]);
+
   const handleQuickFilterToggle = useCallback(
     (columnId) => {
       setOpenQuickFilter((current) => {
@@ -256,6 +273,116 @@ export function TableBase({
     return map;
   }, [quickFilters, quickFilterRegistry]);
 
+  const visibleColumnIds = useMemo(
+    () => visibleColumns.map((column) => column.id),
+    [visibleColumns],
+  );
+
+  const handleColumnDragStart = useCallback(
+    (columnId) => (event) => {
+      if (!isColumnReorderMode) {
+        return;
+      }
+      dragSourceRef.current = columnId;
+      setActiveDropTarget(columnId);
+      if (event?.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        try {
+          event.dataTransfer.setData('text/plain', columnId);
+        } catch (error) {
+          // Ignore failures in older browsers that disallow setData on plain text.
+        }
+      }
+    },
+    [isColumnReorderMode],
+  );
+
+  const handleColumnDragEnter = useCallback(
+    (columnId) => (event) => {
+      if (!isColumnReorderMode || dragSourceRef.current === null) {
+        return;
+      }
+      event?.preventDefault?.();
+      if (columnId !== activeDropTarget) {
+        setActiveDropTarget(columnId);
+      }
+    },
+    [isColumnReorderMode, activeDropTarget],
+  );
+
+  const handleColumnDragOver = useCallback(
+    (event) => {
+      if (!isColumnReorderMode || dragSourceRef.current === null) {
+        return;
+      }
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'move';
+      }
+    },
+    [isColumnReorderMode],
+  );
+
+  const handleColumnDrop = useCallback(
+    (columnId) => (event) => {
+      if (!isColumnReorderMode) {
+        return;
+      }
+      event.preventDefault();
+      const sourceId = dragSourceRef.current;
+      dragSourceRef.current = null;
+      setActiveDropTarget(null);
+      if (!sourceId || sourceId === columnId) {
+        return;
+      }
+      const order = visibleColumnIds;
+      const sourceIndex = order.indexOf(sourceId);
+      const targetIndex = order.indexOf(columnId);
+      if (sourceIndex === -1 || targetIndex === -1) {
+        return;
+      }
+      const nextOrder = [...order];
+      nextOrder.splice(sourceIndex, 1);
+      nextOrder.splice(targetIndex, 0, sourceId);
+      onColumnOrderChange?.(nextOrder);
+    },
+    [isColumnReorderMode, visibleColumnIds, onColumnOrderChange],
+  );
+
+  const handleColumnDragEnd = useCallback(() => {
+    dragSourceRef.current = null;
+    setActiveDropTarget(null);
+  }, []);
+
+  const handleColumnNudge = useCallback(
+    (columnId, direction) => {
+      const order = [...visibleColumnIds];
+      const index = order.indexOf(columnId);
+      if (index === -1) {
+        return;
+      }
+      const nextIndex =
+        direction === 'left' ? Math.max(index - 1, 0) : Math.min(index + 1, order.length - 1);
+      if (nextIndex === index) {
+        return;
+      }
+      order.splice(index, 1);
+      order.splice(nextIndex, 0, columnId);
+      onColumnOrderChange?.(order);
+    },
+    [visibleColumnIds, onColumnOrderChange],
+  );
+
+  const visibleColumnCount = useMemo(
+    () => allColumns.filter((column) => column.visible).length,
+    [allColumns],
+  );
+
+  const selectedCount = selectionSet.size;
+  const selectionLabel = selectedCount
+    ? `${selectedCount} selected · Amount ${formatAmountWithTrailing(selectionSummary.amount)}`
+    : null;
+
   const handleActionTriggerEnter = useCallback((transactionId) => {
     if (actionMenuCloseTimer.current) {
       clearTimeout(actionMenuCloseTimer.current);
@@ -306,8 +433,6 @@ export function TableBase({
   const handleSubmenuEnter = useCallback((submenuId) => () => {
     setOpenActionSubmenu(submenuId);
   }, []);
-
-  const isTotalRowVisible = selectionSet.size > 0;
   return (
     <section className={styles.tableCard} aria-label={tableTitle}>
       {toolbarSlot}
@@ -323,14 +448,24 @@ export function TableBase({
                   width: `${CHECKBOX_COLUMN_WIDTH}px`,
                 }}
               >
-                <input
-                  ref={headerCheckboxRef}
-                  type="checkbox"
-                  aria-label="Select all rows"
-                  checked={allSelected}
-                  onChange={(event) => onSelectAll?.(event.target.checked)}
-                  data-testid="transaction-select-all"
-                />
+                <div className={styles.headerCheckboxInner}>
+                  <input
+                    ref={headerCheckboxRef}
+                    type="checkbox"
+                    aria-label="Select all rows"
+                    checked={allSelected}
+                    onChange={(event) => onSelectAll?.(event.target.checked)}
+                    data-testid="transaction-select-all"
+                  />
+                  {selectionLabel ? (
+                    <div
+                      className={styles.selectionSummaryInline}
+                      data-testid="transactions-selection-summary"
+                    >
+                      {selectionLabel}
+                    </div>
+                  ) : null}
+                </div>
               </th>
               <TableBaseHeader
                 columns={visibleColumns}
@@ -354,6 +489,13 @@ export function TableBase({
                 onQuickFilterSearch={handleQuickFilterSearch}
                 registerQuickFilterAnchor={quickFilterRegistry.registerAnchor}
                 registerQuickFilterContent={quickFilterRegistry.registerContent}
+                isColumnReorderMode={isColumnReorderMode}
+                activeDropTarget={activeDropTarget}
+                onColumnDragStart={handleColumnDragStart}
+                onColumnDragEnter={handleColumnDragEnter}
+                onColumnDragOver={handleColumnDragOver}
+                onColumnDrop={handleColumnDrop}
+                onColumnDragEnd={handleColumnDragEnd}
               />
               <th
                 scope="col"
@@ -364,9 +506,100 @@ export function TableBase({
                   width: `${STICKY_COLUMN_BUFFER - CHECKBOX_COLUMN_WIDTH}px`,
                 }}
               >
-                Actions
+                <span className={styles.actionsHeaderLabel} title="Actions">
+                  Actions
+                </span>
               </th>
             </tr>
+          {isColumnReorderMode ? (
+            <tr className={styles.customizeRow}>
+              <th colSpan={visibleColumns.length + 2} className={styles.customizeCell}>
+                <div className={styles.customizeControls}>
+                  <div className={styles.customizeActions}>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() => onColumnReset?.()}
+                      data-testid="transactions-columns-reset"
+                    >
+                      <FiRefreshCw aria-hidden />
+                      Reset
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.primaryButton}
+                      onClick={() => onColumnReorderExit?.()}
+                      data-testid="transactions-columns-done"
+                    >
+                      Done
+                    </button>
+                  </div>
+                  <div
+                    className={styles.customizeToggleGrid}
+                    role="group"
+                    aria-label="Toggle column visibility"
+                  >
+                    {allColumns.map((column) => {
+                      const definition = definitionMap.get(column.id);
+                      const label = definition?.label ?? column.id;
+                      const isVisible = column.visible !== false;
+                      const visibleIndex = visibleColumnIds.indexOf(column.id);
+                      const canToggle = !(isVisible && visibleColumnCount <= 1);
+                      const canMoveLeft = isVisible && visibleIndex > 0;
+                      const canMoveRight =
+                        isVisible && visibleIndex > -1 && visibleIndex < visibleColumnIds.length - 1;
+
+                      const handleVisibilityChange = (event) => {
+                        onColumnVisibilityChange?.(column.id, event.target.checked);
+                      };
+
+                      return (
+                        <div
+                          key={`customize-${column.id}`}
+                          className={`${styles.customizeToggle} ${
+                            isVisible ? styles.customizeToggleVisible : styles.customizeToggleHidden
+                          }`}
+                        >
+                          <label className={styles.customizeToggleLabel}>
+                            <input
+                              type="checkbox"
+                              checked={isVisible}
+                              onChange={handleVisibilityChange}
+                              disabled={!canToggle}
+                              data-testid={`transactions-columns-toggle-${column.id}`}
+                            />
+                            <span>{label}</span>
+                          </label>
+                          <div className={styles.customizeToggleActions}>
+                            <button
+                              type="button"
+                              className={styles.customizeNudgeButton}
+                              onClick={() => handleColumnNudge(column.id, 'left')}
+                              disabled={!canMoveLeft}
+                              aria-label={`Move ${label} column left`}
+                              title={canMoveLeft ? 'Move left' : undefined}
+                            >
+                              <FiArrowLeft aria-hidden />
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.customizeNudgeButton}
+                              onClick={() => handleColumnNudge(column.id, 'right')}
+                              disabled={!canMoveRight}
+                              aria-label={`Move ${label} column right`}
+                              title={canMoveRight ? 'Move right' : undefined}
+                            >
+                              <FiArrowRight aria-hidden />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </th>
+            </tr>
+          ) : null}
           </thead>
           <TableBaseBody
             transactions={transactions}
@@ -384,19 +617,11 @@ export function TableBase({
             onAction={handleAction}
             onSubmenuEnter={handleSubmenuEnter}
             registerActionMenu={actionRegistry.registerMenu}
-            totals={selectionSummary}
-            isTotalsVisible={isTotalRowVisible}
+            isSubmenuFlipped={isSubmenuFlipped}
           />
         </table>
       </div>
       {pagination ? <div className={styles.paginationBar}>{pagination.render()}</div> : null}
-      <InlineSelectionSummary
-        selectedCount={selectionSet.size}
-        selectionSummary={selectionSummary}
-        onDeselectAll={() => onSelectAll?.(false)}
-        onToggleShowSelected={() => onOpenAdvanced?.({ mode: 'toggle-selected' })}
-        isShowingSelectedOnly={isShowingSelectedOnly}
-      />
     </section>
   );
 }
