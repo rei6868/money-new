@@ -125,8 +125,6 @@ export function TransactionsTable(props) {
     isColumnReorderMode = false,
     onColumnVisibilityChange,
     onColumnOrderChange,
-    onColumnReset,
-    onColumnReorderExit,
   } = props;
 
   const [fontScale, setFontScale] = useState(FONT_SCALE_DEFAULT);
@@ -172,8 +170,6 @@ export function TransactionsTable(props) {
       isColumnReorderMode={isColumnReorderMode}
       onColumnVisibilityChange={onColumnVisibilityChange}
       onColumnOrderChange={onColumnOrderChange}
-      onColumnReset={onColumnReset}
-      onColumnReorderExit={onColumnReorderExit}
       fontScale={fontScale}
     />
   );
