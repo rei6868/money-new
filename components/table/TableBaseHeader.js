@@ -243,15 +243,14 @@ export function TableBaseHeader({
         {columns.map((column) => renderHeaderCell(column))}
         <th
           scope="col"
+          aria-label="Actions"
           className={`${styles.headerCell} ${styles.actionsHeader} ${styles.stickyRight}`}
           style={{
             left: `${CHECKBOX_COLUMN_WIDTH}px`,
             minWidth: `${STICKY_COLUMN_BUFFER - CHECKBOX_COLUMN_WIDTH}px`,
             width: `${STICKY_COLUMN_BUFFER - CHECKBOX_COLUMN_WIDTH}px`,
           }}
-        >
-          <span className={styles.actionsHeaderLabel}>Actions</span>
-        </th>
+        />
       </tr>
       {isColumnReorderMode ? (
         <tr className={styles.customizeHeaderRow}>
