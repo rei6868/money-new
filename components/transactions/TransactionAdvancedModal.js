@@ -1,12 +1,43 @@
+import { useEffect } from 'react';
 import { FiXCircle } from 'react-icons/fi';
 
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
 import styles from '../../styles/TransactionsHistory.module.css';
 
 export function TransactionAdvancedModal({ panelData, onClose }) {
+  const mode = panelData?.mode ?? null;
+  const transaction = panelData?.transaction ?? null;
+  const transactionId = transaction?.id ?? '';
+  const isCreateMode = mode === 'create';
+  const isDeleteMode = mode === 'delete';
+
+  useEffect(() => {
+    if (!panelData) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onClose?.();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [panelData, onClose]);
+
   if (!panelData) {
     return null;
   }
+
+  const modalTitle =
+    mode === 'create'
+      ? 'Quick Create Transaction'
+      : mode === 'edit'
+      ? `Edit ${transactionId}`
+      : mode === 'delete'
+      ? `Delete ${transactionId}`
+      : `Advanced options for ${transactionId}`;
 
   return (
     <div
@@ -17,15 +48,7 @@ export function TransactionAdvancedModal({ panelData, onClose }) {
     >
       <div className={styles.advancedPanel}>
         <div className={styles.advancedHeader}>
-          <h3 className={styles.advancedTitle}>
-            {panelData.mode === 'create'
-              ? 'Quick Create Transaction'
-              : panelData.mode === 'edit'
-              ? `Edit ${panelData.transaction?.id ?? ''}`
-              : panelData.mode === 'delete'
-              ? `Delete ${panelData.transaction?.id ?? ''}`
-              : `Advanced options for ${panelData.transaction?.id ?? ''}`}
-          </h3>
+          <h3 className={styles.advancedTitle}>{modalTitle}</h3>
           <button
             type="button"
             className={styles.iconButton}
@@ -37,7 +60,7 @@ export function TransactionAdvancedModal({ panelData, onClose }) {
           </button>
         </div>
 
-        {panelData.mode === 'create' ? (
+        {isCreateMode ? (
           <div className={styles.modalBody}>
             <div className={styles.modalField}>
               <p className={styles.modalLabel}>Status</p>
@@ -58,19 +81,15 @@ export function TransactionAdvancedModal({ panelData, onClose }) {
             <div className={styles.modalBody}>
               <div className={styles.advancedSection}>
                 <span className={styles.advancedLabel}>Owner</span>
-                <span className={styles.advancedValue}>
-                  {panelData.transaction?.owner ?? 'Unassigned'}
-                </span>
+                <span className={styles.advancedValue}>{transaction?.owner ?? 'Unassigned'}</span>
               </div>
               <div className={styles.advancedSection}>
                 <span className={styles.advancedLabel}>Account</span>
-                <span className={styles.advancedValue}>
-                  {panelData.transaction?.account ?? 'Not available'}
-                </span>
+                <span className={styles.advancedValue}>{transaction?.account ?? 'Not available'}</span>
               </div>
               <div className={styles.advancedSection}>
                 <span className={styles.advancedLabel}>Notes</span>
-                <span className={styles.advancedValue}>{panelData.transaction?.notes ?? '—'}</span>
+                <span className={styles.advancedValue}>{transaction?.notes ?? '—'}</span>
               </div>
             </div>
 
@@ -78,19 +97,19 @@ export function TransactionAdvancedModal({ panelData, onClose }) {
               <div className={styles.metricTile}>
                 <span className={styles.metricLabel}>Amount</span>
                 <span className={styles.metricValue}>
-                  {formatAmountWithTrailing(panelData.transaction?.amount)}
+                  {formatAmountWithTrailing(transaction?.amount)}
                 </span>
               </div>
               <div className={styles.metricTile}>
                 <span className={styles.metricLabel}>Total Back</span>
                 <span className={styles.metricValue}>
-                  {formatAmountWithTrailing(panelData.transaction?.totalBack)}
+                  {formatAmountWithTrailing(transaction?.totalBack)}
                 </span>
               </div>
               <div className={styles.metricTile}>
                 <span className={styles.metricLabel}>Final Price</span>
                 <span className={styles.metricValue}>
-                  {formatAmountWithTrailing(panelData.transaction?.finalPrice)}
+                  {formatAmountWithTrailing(transaction?.finalPrice)}
                 </span>
               </div>
             </div>
@@ -104,7 +123,7 @@ export function TransactionAdvancedModal({ panelData, onClose }) {
               >
                 Close
               </button>
-              {panelData.mode === 'delete' ? (
+              {isDeleteMode ? (
                 <button
                   type="button"
                   className={`${styles.primaryButton} ${styles.wrap}`}
