@@ -2230,7 +2230,7 @@
   inset: 0;
   background: rgba(15, 23, 42, 0.32);
   backdrop-filter: blur(2px);
-  z-index: 55;
+  z-index: 500;
   display: grid;
   place-items: center;
   padding: 1.5rem;
@@ -2247,6 +2247,17 @@
   gap: 1.25rem;
   padding: 1.25rem 1.4rem 1.5rem;
   animation: fadeUp 0.24s ease;
+}
+
+.advancedTextarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.advancedError {
+  margin-top: 0.5rem;
+  color: #dc2626;
+  font-size: 0.85rem;
 }
 
 .advancedHeader {

@@ -453,6 +453,34 @@ export default function TransactionsHistoryPage() {
     setAdvancedPanel(payload);
   };
 
+  const handleQuickEditSave = useCallback((transactionId, updates) => {
+    if (!transactionId) {
+      return;
+    }
+
+    setTransactions((prev) => {
+      if (!Array.isArray(prev) || prev.length === 0) {
+        return prev;
+      }
+
+      let didUpdate = false;
+      const next = prev.map((txn) => {
+        if (txn.id !== transactionId) {
+          return txn;
+        }
+
+        if (updates && typeof updates === 'object') {
+          didUpdate = true;
+          return { ...txn, ...updates };
+        }
+
+        return txn;
+      });
+
+      return didUpdate ? next : prev;
+    });
+  }, []);
+
   const handleCloseAdvanced = () => {
     setAdvancedPanel(null);
   };
@@ -596,7 +624,11 @@ export default function TransactionsHistoryPage() {
         )}
       </div>
 
-      <TransactionAdvancedModal panelData={advancedPanel} onClose={handleCloseAdvanced} />
+      <TransactionAdvancedModal
+        panelData={advancedPanel}
+        onClose={handleCloseAdvanced}
+        onQuickEditSave={handleQuickEditSave}
+      />
     </AppLayout>
   );
 }
