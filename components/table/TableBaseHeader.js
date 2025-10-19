@@ -1,11 +1,43 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import styles from '../../styles/TransactionsHistory.module.css';
+import { Tooltip } from '../ui/Tooltip';
 import {
   ACTIONS_COLUMN_WIDTH,
   CHECKBOX_COLUMN_WIDTH,
   STICKY_COLUMN_BUFFER,
+  resolveColumnSortType,
 } from './tableUtils';
+
+function SortIcon({ direction, dataType }) {
+  const isActive = direction === 'asc' || direction === 'desc';
+  const iconClassName = `${styles.sortIcon} ${isActive ? styles.sortIconActive : ''}`.trim();
+  const arrowClassName = `${styles.sortIconArrow} ${
+    direction === 'desc' ? styles.sortIconArrowDesc : ''
+  } ${direction ? '' : styles.sortIconArrowIdle}`.trim();
+
+  const glyphClassName =
+    dataType === 'number' ? styles.sortIconDigits : styles.sortIconLetters;
+
+  return (
+    <span className={iconClassName} aria-hidden="true">
+      <span className={glyphClassName}>
+        {dataType === 'number' ? (
+          <>
+            <span>0</span>
+            <span>9</span>
+          </>
+        ) : (
+          <>
+            <span>a</span>
+            <span>z</span>
+          </>
+        )}
+      </span>
+      <span className={arrowClassName} />
+    </span>
+  );
+}
 
 export function TableBaseHeader({
   columns,
@@ -23,6 +55,8 @@ export function TableBaseHeader({
   headerCheckboxRef,
   visibleColumnIds = [],
   onColumnVisibilityChange,
+  sortState,
+  onSortChange,
 }) {
   const headerRowRef = useRef(null);
   const [mainHeaderHeight, setMainHeaderHeight] = useState(0);
@@ -63,6 +97,28 @@ export function TableBaseHeader({
       isHidden && isColumnReorderMode ? styles.headerCellHidden : ''
     }`.trim();
     const isDraggable = isColumnReorderMode && column.visible !== false;
+    const isSorted = sortState?.columnId === column.id && sortState.direction;
+    const sortDirection = isSorted ? sortState.direction : null;
+    const sortType = resolveColumnSortType(column.id, definition);
+    const iconType = sortType === 'number' || sortType === 'date' ? 'number' : 'string';
+    const tooltipContent = isSorted
+      ? sortDirection === 'asc'
+        ? 'Sorted Ascending'
+        : 'Sorted Descending'
+      : `Sort by ${headerTitle}`;
+    const ariaSort = sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : 'none';
+    const sortButtonClassName = `${styles.headerSortButton} ${
+      sortDirection ? styles.headerSortActive : ''
+    }`.trim();
+
+    const handleSortClick = () => {
+      if (isColumnReorderMode) {
+        return;
+      }
+      const nextDirection =
+        sortDirection === 'asc' ? 'desc' : sortDirection === 'desc' ? null : 'asc';
+      onSortChange?.(column.id, nextDirection);
+    };
 
     return (
       <th
@@ -81,9 +137,23 @@ export function TableBaseHeader({
         onDragOver={isColumnReorderMode ? onColumnDragOver : undefined}
         onDragEnd={isColumnReorderMode ? onColumnDragEnd : undefined}
         onDrop={isColumnReorderMode && onColumnDrop ? onColumnDrop(column.id) : undefined}
+        aria-sort={ariaSort}
       >
         <div className={styles.headerShell}>
-          <span className={styles.headerStaticLabel}>{headerTitle}</span>
+          <span className={styles.headerStaticLabel}>
+            <span className={styles.headerLabelText}>{headerTitle}</span>
+          </span>
+          <Tooltip content={tooltipContent}>
+            <button
+              type="button"
+              className={sortButtonClassName}
+              onClick={handleSortClick}
+              disabled={isColumnReorderMode}
+              aria-label={tooltipContent}
+            >
+              <SortIcon direction={sortDirection ?? undefined} dataType={iconType} />
+            </button>
+          </Tooltip>
         </div>
       </th>
     );

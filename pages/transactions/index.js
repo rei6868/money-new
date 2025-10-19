@@ -4,6 +4,7 @@ import { FiXCircle } from 'react-icons/fi';
 import AppLayout from '../../components/AppLayout';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
 import { TransactionsToolbar } from '../../components/transactions/TransactionsToolbar';
+import { resolveColumnSortType } from '../../components/table/tableUtils';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
 import styles from '../../styles/TransactionsHistory.module.css';
@@ -32,6 +33,7 @@ export default function TransactionsHistoryPage() {
     finalPrice: 0,
     totalBack: 0,
   });
+  const [sortState, setSortState] = useState({ columnId: null, direction: null });
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -190,15 +192,80 @@ export default function TransactionsHistoryPage() {
   const someToggleableVisible =
     toggleableVisibleCount > 0 && toggleableVisibleCount < toggleableColumns.length;
 
-  const filteredTransactions = useMemo(() => transactions, [transactions]);
+  const sortedTransactions = useMemo(() => {
+    if (!Array.isArray(transactions) || transactions.length <= 1) {
+      return transactions;
+    }
+
+    if (!sortState?.columnId || !sortState.direction) {
+      return transactions;
+    }
+
+    const definition = definitionLookup.get(sortState.columnId);
+    const sortType = resolveColumnSortType(sortState.columnId, definition);
+    const multiplier = sortState.direction === 'asc' ? 1 : -1;
+
+    const toComparable = (row) => {
+      const rawValue = row?.[sortState.columnId];
+      if (rawValue === null || rawValue === undefined || rawValue === '') {
+        return null;
+      }
+
+      if (sortType === 'number') {
+        const numeric = Number(rawValue);
+        return Number.isFinite(numeric) ? numeric : null;
+      }
+
+      if (sortType === 'date') {
+        const timestamp = Date.parse(rawValue);
+        return Number.isNaN(timestamp) ? null : timestamp;
+      }
+
+      return String(rawValue).toLowerCase();
+    };
+
+    const sorted = transactions.slice();
+    sorted.sort((a, b) => {
+      const aValue = toComparable(a);
+      const bValue = toComparable(b);
+
+      if (aValue === null && bValue === null) {
+        return 0;
+      }
+      if (aValue === null) {
+        return 1;
+      }
+      if (bValue === null) {
+        return -1;
+      }
+
+      let result = 0;
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        if (aValue === bValue) {
+          result = 0;
+        } else {
+          result = aValue < bValue ? -1 : 1;
+        }
+      } else {
+        result = String(aValue).localeCompare(String(bValue), undefined, {
+          sensitivity: 'base',
+          numeric: sortType === 'number' || sortType === 'date',
+        });
+      }
+
+      return result * multiplier;
+    });
+
+    return sorted;
+  }, [transactions, sortState, definitionLookup]);
 
   useEffect(() => {
-    const filteredIds = new Set(filteredTransactions.map((txn) => txn.id));
+    const filteredIds = new Set(transactions.map((txn) => txn.id));
     setSelectedIds((prev) => {
       const next = prev.filter((id) => filteredIds.has(id));
       return next.length === prev.length ? prev : next;
     });
-  }, [filteredTransactions]);
+  }, [transactions]);
 
   useEffect(() => {
     if (selectedIds.length === 0 && showSelectedOnly) {
@@ -209,16 +276,17 @@ export default function TransactionsHistoryPage() {
   const selectedLookup = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   const effectiveTransactions = useMemo(() => {
+    const base = Array.isArray(sortedTransactions) ? sortedTransactions : [];
     if (!showSelectedOnly) {
-      return filteredTransactions;
+      return base;
     }
 
-    return filteredTransactions.filter((txn) => selectedLookup.has(txn.id));
-  }, [filteredTransactions, showSelectedOnly, selectedLookup]);
+    return base.filter((txn) => selectedLookup.has(txn.id));
+  }, [sortedTransactions, showSelectedOnly, selectedLookup]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [pageSize, filteredTransactions, showSelectedOnly]);
+  }, [pageSize, sortedTransactions, showSelectedOnly, sortState]);
 
   const totalPages = Math.max(1, Math.ceil(effectiveTransactions.length / pageSize));
 
@@ -278,6 +346,31 @@ export default function TransactionsHistoryPage() {
     };
   }, [selectedIds]);
 
+  const handleSortStateChange = useCallback(
+    (columnId, direction) => {
+      if (isReorderMode) {
+        return;
+      }
+
+      if (!columnId || !direction) {
+        setSortState((prev) =>
+          prev.columnId === null && prev.direction === null
+            ? prev
+            : { columnId: null, direction: null },
+        );
+        return;
+      }
+
+      setSortState((prev) => {
+        if (prev.columnId === columnId && prev.direction === direction) {
+          return prev;
+        }
+        return { columnId, direction };
+      });
+    },
+    [isReorderMode],
+  );
+
   const handleSelectRow = (id, checked) => {
     setSelectedIds((prev) => {
       if (checked) {
@@ -296,7 +389,8 @@ export default function TransactionsHistoryPage() {
       return;
     }
 
-    setSelectedIds(filteredTransactions.map((txn) => txn.id));
+    const targetRows = showSelectedOnly ? effectiveTransactions : sortedTransactions;
+    setSelectedIds(targetRows.map((txn) => txn.id));
   };
 
   const handleDeselectAll = () => {
@@ -497,6 +591,8 @@ export default function TransactionsHistoryPage() {
             isColumnReorderMode={isReorderMode}
             onColumnVisibilityChange={handleColumnVisibilityChange}
             onColumnOrderChange={handleColumnOrderChange}
+            sortState={sortState}
+            onSortChange={handleSortStateChange}
           />
         )}
       </div>

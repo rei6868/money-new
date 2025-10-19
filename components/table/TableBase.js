@@ -20,7 +20,7 @@ export function TableBase({
   selectedIds,
   onSelectRow,
   onSelectAll,
-  selectionSummary = { count: 0, amount: 0, finalPrice: 0, totalBack: 0 },
+  selectionSummary = null,
   onOpenAdvanced,
   columnDefinitions = [],
   visibleColumns,
@@ -32,6 +32,8 @@ export function TableBase({
   onColumnVisibilityChange,
   onColumnOrderChange,
   fontScale = 1,
+  sortState,
+  onSortChange,
 }) {
   const [openActionId, setOpenActionId] = useState(null);
   const [openActionSubmenu, setOpenActionSubmenu] = useState(null);
@@ -48,8 +50,8 @@ export function TableBase({
   const allSelected =
     transactions.length > 0 && transactions.every((txn) => selectionSet.has(txn.id));
   const isIndeterminate = selectionSet.size > 0 && !allSelected;
-  const shouldShowTotals = selectionSet.size > 1;
   const totalSelectionCount = selectionSummary?.count ?? selectionSet.size;
+  const shouldShowTotals = totalSelectionCount > 0;
 
   const displayColumns = useMemo(
     () => (isColumnReorderMode ? allColumns : visibleColumns),
@@ -64,23 +66,29 @@ export function TableBase({
     [allColumns],
   );
 
-  const totalLabelColumnId = useMemo(() => {
-    if (!displayColumns || displayColumns.length === 0) {
-      return null;
-    }
-    const shopColumn = displayColumns.find((column) => column.id === 'shop');
-    if (shopColumn) {
-      return shopColumn.id;
-    }
-    return displayColumns[0]?.id ?? null;
-  }, [displayColumns]);
-
   const formattedTotals = useMemo(
-    () => ({
-      amount: formatAmountWithTrailing(selectionSummary?.amount ?? 0),
-      totalBack: formatAmountWithTrailing(selectionSummary?.totalBack ?? 0),
-      finalPrice: formatAmountWithTrailing(selectionSummary?.finalPrice ?? 0),
-    }),
+    () => {
+      if (!selectionSummary) {
+        return {};
+      }
+
+      const normalizeValue = (value) => {
+        if (value === null || value === undefined) {
+          return null;
+        }
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) {
+          return null;
+        }
+        return formatAmountWithTrailing(numeric);
+      };
+
+      return {
+        amount: normalizeValue(selectionSummary.amount),
+        totalBack: normalizeValue(selectionSummary.totalBack),
+        finalPrice: normalizeValue(selectionSummary.finalPrice),
+      };
+    },
     [selectionSummary],
   );
 
@@ -293,6 +301,8 @@ export function TableBase({
             headerCheckboxRef={headerCheckboxRef}
             visibleColumnIds={visibleColumnIds}
             onColumnVisibilityChange={onColumnVisibilityChange}
+            sortState={sortState}
+            onSortChange={onSortChange}
           />
           <TableBaseBody
             transactions={transactions}
@@ -323,8 +333,13 @@ export function TableBase({
                     minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
                     width: `${CHECKBOX_COLUMN_WIDTH}px`,
                   }}
+                  title={
+                    totalSelectionCount > 0
+                      ? `${totalSelectionCount} selected`
+                      : undefined
+                  }
                 >
-                  <span className={styles.totalRowSelection}>{totalSelectionCount} selected</span>
+                  <span className={styles.totalRowLeadLabel}>TOTAL</span>
                 </td>
                 {displayColumns.map((column) => {
                   const definition = definitionMap.get(column.id);
@@ -337,7 +352,6 @@ export function TableBase({
                   const minWidth = Math.max(definition?.minWidth ?? 120, column.width);
                   const isHidden = hiddenColumnIds.has(column.id);
                   const value = formattedTotals[column.id];
-                  const isLabelCell = column.id === totalLabelColumnId;
                   const cellClassName = `${styles.bodyCell} ${styles.totalRowCell} ${alignClass} ${
                     isHidden && isColumnReorderMode ? styles.bodyCellHidden : ''
                   }`.trim();
@@ -352,9 +366,7 @@ export function TableBase({
                       }}
                       aria-hidden={isHidden && isColumnReorderMode ? 'true' : undefined}
                     >
-                      {isLabelCell ? (
-                        <span className={styles.totalRowLabel}>Total</span>
-                      ) : value !== undefined ? (
+                      {value ? (
                         <span
                           className={
                             column.id === 'amount'
