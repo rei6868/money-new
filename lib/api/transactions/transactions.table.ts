@@ -89,12 +89,12 @@ interface SortReferences {
     percentBack: any;
     fixedBack: any;
     totalBack: any;
-    cycleTag: any;
+    cashbackCycleTag: any;
   };
   debtSummary: {
-    cycleTag: any;
+    debtCycleTag: any;
     movementLabel: any;
-    notes: any;
+    debtNotes: any;
   };
 }
 
@@ -262,8 +262,8 @@ function buildSearchConditions(
     people: typeof people;
     shops: typeof shops;
     categories: typeof categories;
-    cashbackSummary: { cycleTag: any };
-    debtSummary: { cycleTag: any; movementLabel: any; notes: any };
+    cashbackSummary: { cashbackCycleTag: any };
+    debtSummary: { debtCycleTag: any; movementLabel: any; debtNotes: any };
   },
 ) {
   const normalized = searchTerm.trim();
@@ -283,10 +283,10 @@ function buildSearchConditions(
     ilike(refs.transactions.linkedTxnId, pattern),
   ];
 
-  conditions.push(ilike(refs.cashbackSummary.cycleTag, pattern));
-  conditions.push(ilike(refs.debtSummary.cycleTag, pattern));
+  conditions.push(ilike(refs.cashbackSummary.cashbackCycleTag, pattern));
+  conditions.push(ilike(refs.debtSummary.debtCycleTag, pattern));
   conditions.push(ilike(refs.debtSummary.movementLabel, pattern));
-  conditions.push(ilike(refs.debtSummary.notes, pattern));
+  conditions.push(ilike(refs.debtSummary.debtNotes, pattern));
 
   return conditions;
 }
@@ -314,9 +314,9 @@ function resolveSortExpression(columnId: string, refs: SortReferences) {
     case 'finalPrice':
       return sql`(${refs.transactions.amount})::numeric - coalesce(${refs.cashbackSummary.totalBack}, 0)`;
     case 'debtTag':
-      return sql`coalesce(${refs.debtSummary.movementLabel}, ${refs.debtSummary.notes}, '')`;
+      return sql`coalesce(${refs.debtSummary.movementLabel}, ${refs.debtSummary.debtNotes}, '')`;
     case 'cycleTag':
-      return sql`coalesce(${refs.debtSummary.cycleTag}, ${refs.cashbackSummary.cycleTag}, '')`;
+      return sql`coalesce(${refs.debtSummary.debtCycleTag}, ${refs.cashbackSummary.cashbackCycleTag}, '')`;
     case 'category':
       return refs.categories.name;
     case 'linkedTxn':
@@ -447,20 +447,35 @@ export async function getTransactionsTable(
   try {
     const accountOwner = alias(people, 'account_owner');
 
+    const cashbackPercentBack = sql<number>`coalesce(max(CASE WHEN ${cashbackMovements.cashbackType} = 'percent' THEN ${cashbackMovements.cashbackValue}::numeric END), 0)`.as(
+      'percentBack',
+    );
+    const cashbackFixedBack = sql<number>`coalesce(sum(CASE WHEN ${cashbackMovements.cashbackType} = 'fixed' THEN ${cashbackMovements.cashbackValue}::numeric END), 0)`.as(
+      'fixedBack',
+    );
+    const cashbackTotalBack = sql<number>`coalesce(sum(${cashbackMovements.cashbackAmount}::numeric), 0)`.as('totalBack');
+    const cashbackCycleTag = sql<string>`max(${cashbackMovements.cycleTag})`.as('cashbackCycleTag');
+
     const cashbackSummary = db
       .$with('cashback_summary')
       .as(
         db
           .select({
             transactionId: cashbackMovements.transactionId,
-            percentBack: sql`coalesce(max(CASE WHEN ${cashbackMovements.cashbackType} = 'percent' THEN ${cashbackMovements.cashbackValue}::numeric END), 0)`,
-            fixedBack: sql`coalesce(sum(CASE WHEN ${cashbackMovements.cashbackType} = 'fixed' THEN ${cashbackMovements.cashbackValue}::numeric END), 0)`,
-            totalBack: sql`coalesce(sum(${cashbackMovements.cashbackAmount}::numeric), 0)`,
-            cycleTag: sql`max(${cashbackMovements.cycleTag})`,
+            percentBack: cashbackPercentBack,
+            fixedBack: cashbackFixedBack,
+            totalBack: cashbackTotalBack,
+            cashbackCycleTag,
           })
           .from(cashbackMovements)
           .groupBy(cashbackMovements.transactionId),
       );
+
+    const debtCycleTag = sql<string>`max(${debtMovements.cycleTag})`.as('debtCycleTag');
+    const debtNotes = sql<string>`max(${debtMovements.notes})`.as('debtNotes');
+    const debtMovementLabel = sql<string>`max(trim(concat_ws(' ', initcap(replace(${debtMovements.movementType}::text, '_', ' ')), ${debtMovements.cycleTag})))`.as(
+      'movementLabel',
+    );
 
     const debtSummary = db
       .$with('debt_summary')
@@ -468,9 +483,9 @@ export async function getTransactionsTable(
         db
           .select({
             transactionId: debtMovements.transactionId,
-            cycleTag: sql`max(${debtMovements.cycleTag})`,
-            notes: sql`max(${debtMovements.notes})`,
-            movementLabel: sql`max(trim(concat_ws(' ', initcap(replace(${debtMovements.movementType}::text, '_', ' ')), ${debtMovements.cycleTag})))`,
+            debtCycleTag,
+            debtNotes,
+            movementLabel: debtMovementLabel,
           })
           .from(debtMovements)
           .groupBy(debtMovements.transactionId),
@@ -555,10 +570,10 @@ export async function getTransactionsTable(
           percentBack: cashbackSummary.percentBack,
           fixedBack: cashbackSummary.fixedBack,
           totalBack: cashbackSummary.totalBack,
-          cashbackCycle: cashbackSummary.cycleTag,
-          debtCycle: debtSummary.cycleTag,
+          cashbackCycle: cashbackSummary.cashbackCycleTag,
+          debtCycle: debtSummary.debtCycleTag,
           debtLabel: debtSummary.movementLabel,
-          debtNotes: debtSummary.notes,
+          debtNotes: debtSummary.debtNotes,
         })
         .from(transactions)
         .leftJoin(accounts, eq(transactions.accountId, accounts.accountId))

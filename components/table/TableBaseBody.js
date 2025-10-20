@@ -3,7 +3,7 @@ import { FiChevronRight, FiEdit2, FiFilter, FiMoreHorizontal, FiTrash2 } from 'r
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { formatAmount, formatPercent } from '../../lib/numberFormat';
-import { ACTIONS_COLUMN_WIDTH, CHECKBOX_COLUMN_WIDTH } from './tableUtils';
+import { ACTIONS_COLUMN_WIDTH, CHECKBOX_COLUMN_WIDTH, resolveColumnSizing } from './tableUtils';
 import { TableActionMenuPortal } from './TableActions';
 import { TableTooltip } from './TableTooltip';
 
@@ -226,7 +226,7 @@ export function TableBaseBody({
                     : definition?.align === 'center'
                     ? styles.cellAlignCenter
                     : '';
-                const minWidth = Math.max(definition?.minWidth ?? 120, column.width);
+                const { minWidth, width } = resolveColumnSizing(column, definition);
                 const isHidden = hiddenColumnIds.has(column.id);
                 const cellClassName = `${styles.bodyCell} ${alignClass} ${
                   isHidden && isColumnReorderMode ? styles.bodyCellHidden : ''
@@ -237,7 +237,7 @@ export function TableBaseBody({
                     className={cellClassName}
                     style={{
                       minWidth: `${minWidth}px`,
-                      width: `${column.width}px`,
+                      width: `${width}px`,
                     }}
                     data-testid={`transactions-cell-${column.id}-${txn.id}`}
                     aria-hidden={isHidden && isColumnReorderMode ? 'true' : undefined}

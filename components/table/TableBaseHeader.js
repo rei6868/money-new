@@ -6,6 +6,7 @@ import {
   ACTIONS_COLUMN_WIDTH,
   CHECKBOX_COLUMN_WIDTH,
   STICKY_COLUMN_BUFFER,
+  resolveColumnSizing,
   resolveColumnSortType,
 } from './tableUtils';
 
@@ -111,6 +112,8 @@ export function TableBaseHeader({
       sortDirection ? styles.headerSortActive : ''
     }`.trim();
 
+    const { minWidth, width } = resolveColumnSizing(column, definition);
+
     const handleSortClick = () => {
       if (isColumnReorderMode) {
         return;
@@ -126,8 +129,8 @@ export function TableBaseHeader({
         scope="col"
         className={headerClassName}
         style={{
-          minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
-          width: `${column.width}px`,
+          minWidth: `${minWidth}px`,
+          width: `${width}px`,
         }}
         draggable={isDraggable}
         onDragStart={isDraggable && onColumnDragStart ? onColumnDragStart(column.id) : undefined}
@@ -172,6 +175,8 @@ export function TableBaseHeader({
       isVisible ? styles.columnToggleVisible : styles.columnToggleHidden
     }`;
 
+    const { minWidth, width } = resolveColumnSizing(column, definition);
+
     const handleToggleChange = (event) => {
       if (!isInteractive) {
         event.preventDefault();
@@ -186,8 +191,8 @@ export function TableBaseHeader({
         scope="col"
         className={baseClass}
         style={{
-          minWidth: `${Math.max(definition?.minWidth ?? 120, column.width)}px`,
-          width: `${column.width}px`,
+          minWidth: `${minWidth}px`,
+          width: `${width}px`,
         }}
       >
         <div className={styles.columnToggleContent}>
