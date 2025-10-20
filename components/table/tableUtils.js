@@ -5,6 +5,25 @@ export const ACTIONS_COLUMN_WIDTH = 80;
 export const STICKY_COLUMN_BUFFER = CHECKBOX_COLUMN_WIDTH + ACTIONS_COLUMN_WIDTH;
 export const ACTION_MENU_MIN_WIDTH = 224;
 
+function normalizeNumericWidth(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+}
+
+export function resolveColumnSizing(column, definition) {
+  const minDefinitionWidth = normalizeNumericWidth(definition?.minWidth) ?? 120;
+  const defaultWidth =
+    normalizeNumericWidth(definition?.defaultWidth) ?? minDefinitionWidth;
+  const requestedWidth = normalizeNumericWidth(column?.width);
+
+  const width = Math.max(requestedWidth ?? defaultWidth, minDefinitionWidth);
+
+  return {
+    width,
+    minWidth: width,
+  };
+}
+
 export function computeMinWidth(columns, definitionMap) {
   if (!Array.isArray(columns) || columns.length === 0) {
     return 0;
@@ -12,7 +31,7 @@ export function computeMinWidth(columns, definitionMap) {
 
   return columns.reduce((total, column) => {
     const definition = definitionMap.get(column.id);
-    const minWidth = column.width || definition?.minWidth || 120;
+    const { minWidth } = resolveColumnSizing(column, definition);
     return total + minWidth;
   }, 0);
 }
