@@ -157,6 +157,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const currentBalance = toNumericString(payload.currentBalance) ?? openingBalance;
+    const rawOwnerId = typeof payload.ownerId === "string" ? payload.ownerId : ownerId;
 
     const newAccount: NewAccount = {
       accountId: generateAccountId(),
@@ -175,12 +176,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       newAccount.imgUrl = imgUrl;
     }
 
+    let normalizedParent: string | undefined;
     if (payload.parentAccountId !== undefined) {
-      const normalizedParent = normalizeString(payload.parentAccountId);
+      normalizedParent = normalizeString(payload.parentAccountId);
       if (normalizedParent) {
         newAccount.parentAccountId = normalizedParent;
       }
     }
+    const rawParentAccountId =
+      typeof payload.parentAccountId === "string" ? payload.parentAccountId : normalizedParent;
 
     if (payload.assetRef !== undefined) {
       const normalizedAsset = normalizeString(payload.assetRef);
@@ -201,6 +205,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
+      const ownerExists = await db
+        .select({ id: people.personId })
+        .from(people)
+        .where(eq(people.personId, ownerId))
+        .limit(1);
+      if (ownerExists.length === 0) {
+        respondJson(res, 400, {
+          error: "Invalid ownerId",
+          message: `Person with ID '${rawOwnerId ?? ownerId}' not found.`,
+        });
+        return;
+      }
+
+      if (normalizedParent) {
+        const parentExists = await db
+          .select({ id: accounts.accountId })
+          .from(accounts)
+          .where(eq(accounts.accountId, normalizedParent))
+          .limit(1);
+        if (parentExists.length === 0) {
+          respondJson(res, 400, {
+            error: "Invalid parentAccountId",
+            message: `Parent account with ID '${rawParentAccountId ?? normalizedParent}' not found.`,
+          });
+          return;
+        }
+      }
+
       await db.insert(accounts).values(newAccount);
       const created = await selectAccountById(db, newAccount.accountId);
       if (!created) {
@@ -209,9 +241,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       respondJson(res, 201, created);
     } catch (error) {
-      console.error("Failed to create account", error);
-      const details = error instanceof Error ? error.message : "Unknown error";
-      respondJson(res, 400, { error: "Failed to create account", details });
+      console.error("Error creating account:", error);
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as { code?: string }).code === "23503"
+      ) {
+        const constraint = (error as { constraint?: string }).constraint;
+        if (constraint === "accounts_owner_id_fkey") {
+          respondJson(res, 400, {
+            error: "Invalid ownerId",
+            message: `Person with ID '${rawOwnerId ?? ownerId}' not found.`,
+          });
+          return;
+        }
+        if (constraint === "accounts_parent_account_id_fkey") {
+          respondJson(res, 400, {
+            error: "Invalid parentAccountId",
+            message: `Parent account with ID '${rawParentAccountId ?? normalizedParent}' not found.`,
+          });
+          return;
+        }
+      }
+
+      respondJson(res, 500, { error: "Failed to create account", details: "Internal server error" });
     }
     return;
   }
