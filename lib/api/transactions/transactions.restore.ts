@@ -3,12 +3,42 @@ import { Buffer } from 'node:buffer';
 import { getTransactionMeta } from './transactions.meta';
 import {
   type TransactionRestorePayload,
+  type TransactionSortRequest,
   type TransactionSortState,
   type TransactionTableState,
   type TransactionsTableRequest,
 } from './transactions.types';
 
 const RESTORE_VERSION = 1;
+
+const SORT_DIRECTIONS = new Set<TransactionSortState['direction']>(['asc', 'desc']);
+
+function getAvailableColumnIds(): Set<string> {
+  const meta = getTransactionMeta();
+  return new Set(meta.availableColumns.map((column) => column.id));
+}
+
+function getDefaultSort(): TransactionSortState {
+  const meta = getTransactionMeta();
+  const preferredColumn = meta.availableColumns.find((column) => column.id === 'date');
+  const fallbackColumn = preferredColumn ?? meta.availableColumns[0];
+  const columnId = fallbackColumn?.id ?? 'date';
+  return { columnId, direction: 'desc' };
+}
+
+function sanitizeSort(sort: TransactionSortRequest | Partial<TransactionSortState> | null | undefined): TransactionSortState {
+  const availableColumns = getAvailableColumnIds();
+  const defaults = getDefaultSort();
+
+  const requestedColumnId = typeof sort?.columnId === 'string' && availableColumns.has(sort.columnId)
+    ? sort.columnId
+    : defaults.columnId;
+  const requestedDirection = sort?.direction && SORT_DIRECTIONS.has(sort.direction)
+    ? sort.direction
+    : defaults.direction;
+
+  return { columnId: requestedColumnId, direction: requestedDirection };
+}
 
 function sanitizePagination(page?: number, pageSize?: number): { page: number; pageSize: number } {
   const meta = getTransactionMeta();
@@ -22,18 +52,12 @@ function sanitizePagination(page?: number, pageSize?: number): { page: number; p
   };
 }
 
-function sanitizeSort(sort?: Partial<TransactionSortState> | null): TransactionSortState {
-  const columnId = typeof sort?.columnId === 'string' && sort.columnId.trim() ? sort.columnId : null;
-  const direction = sort?.direction === 'asc' || sort?.direction === 'desc' ? sort.direction : null;
-  return { columnId, direction };
-}
-
 export function getDefaultTableState(): TransactionTableState {
   const meta = getTransactionMeta();
   return {
     searchTerm: '',
     pagination: { page: 1, pageSize: meta.pagination.defaultPageSize },
-    sort: { columnId: null, direction: null },
+    sort: getDefaultSort(),
   };
 }
 
@@ -43,7 +67,7 @@ function sanitizeState(state: Partial<TransactionTableState> | undefined): Trans
   return {
     searchTerm: typeof state?.searchTerm === 'string' ? state.searchTerm : defaults.searchTerm,
     pagination,
-    sort: sanitizeSort(state?.sort ?? defaults.sort),
+    sort: sanitizeSort(state?.sort),
   };
 }
 
@@ -77,14 +101,10 @@ export function mergeStateWithRequest(
   const requestedPage = Number(request.pagination?.page ?? base.pagination.page);
   const requestedPageSize = Number(request.pagination?.pageSize ?? base.pagination.pageSize);
   const pagination = sanitizePagination(requestedPage, requestedPageSize);
-  const sort = sanitizeSort({
-    columnId: (request.sortBy ?? base.sort.columnId) ?? null,
-    direction: (request.sortDir ?? base.sort.direction) ?? null,
-  });
   return {
     searchTerm: typeof request.searchTerm === 'string' ? request.searchTerm : base.searchTerm,
     pagination,
-    sort,
+    sort: sanitizeSort(request.sort ?? base.sort),
   };
 }
 

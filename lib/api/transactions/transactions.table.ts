@@ -40,25 +40,9 @@ const SEARCH_FIELDS = [
   'linkedTxn',
 ];
 
-const SORTABLE_COLUMN_IDS = new Set([
-  'date',
-  'type',
-  'account',
-  'shop',
-  'notes',
-  'amount',
-  'percentBack',
-  'fixedBack',
-  'totalBack',
-  'finalPrice',
-  'debtTag',
-  'cycleTag',
-  'category',
-  'linkedTxn',
-  'owner',
-  'id',
-]);
-
+const SORTABLE_COLUMN_IDS = new Set(getTransactionMeta().availableColumns.map((column) => column.id));
+const NUMERIC_COLUMN_IDS = new Set(['amount', 'percentBack', 'fixedBack', 'totalBack', 'finalPrice']);
+const DATE_COLUMN_IDS = new Set(['date']);
 const DEFAULT_SORT: Required<TransactionSortState> = { columnId: 'date', direction: 'desc' };
 
 type NumericLike = string | number | null | undefined;
@@ -97,7 +81,7 @@ interface TotalsRow {
 interface SortReferences {
   transactions: typeof transactions;
   accounts: typeof accounts;
-  accountOwner: typeof people;
+  accountOwner: any;
   people: typeof people;
   shops: typeof shops;
   categories: typeof categories;
@@ -154,7 +138,7 @@ function toTitleCase(value: string | null | undefined): string {
     return '';
   }
   return value
-    .split(/[_\s-]+/g)
+    .split(/[_\\s-]+/g)
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(' ');
@@ -176,9 +160,6 @@ function determineSortState(sort: TransactionSortState | null | undefined): { co
   }
   return { columnId, direction };
 }
-
-const NUMERIC_COLUMN_IDS = new Set(['amount', 'percentBack', 'fixedBack', 'totalBack', 'finalPrice']);
-const DATE_COLUMN_IDS = new Set(['date']);
 
 function toComparableValue(row: TransactionRecord, columnId: string) {
   const rawValue = row?.[columnId as keyof TransactionRecord];
@@ -277,7 +258,7 @@ function buildSearchConditions(
   refs: {
     transactions: typeof transactions;
     accounts: typeof accounts;
-    accountOwner: typeof people;
+    accountOwner: any;
     people: typeof people;
     shops: typeof shops;
     categories: typeof categories;
@@ -442,15 +423,9 @@ export async function getTransactionsTable(
   const t0 = performance.now();
   const meta = getTransactionMeta();
   const defaultState = getDefaultTableState();
-  const normalizedRequest: TransactionsTableRequest = {
-    searchTerm: request?.searchTerm,
-    pagination: request?.pagination,
-    sortBy: request?.sortBy,
-    sortDir: request?.sortDir,
-  };
   const state = restoreToken
-    ? mergeStateWithRestore(restoreToken, normalizedRequest)
-    : mergeStateWithRequest(normalizedRequest, defaultState);
+    ? mergeStateWithRestore(restoreToken, request)
+    : mergeStateWithRequest(request, defaultState);
   const searchTerm = state.searchTerm ?? '';
   const sortState = determineSortState(state.sort);
 
@@ -518,7 +493,7 @@ export async function getTransactionsTable(
 
     const totalsSelect = withDb
       .select({
-        totalRows: sql<number>`count(*)`,
+        totalRows: sql<number>`count(*)`, 
         amountSum: sql<number>`coalesce(sum((${transactions.amount})::numeric), 0)`,
         totalBackSum: sql<number>`coalesce(sum(coalesce(${cashbackSummary.totalBack}, 0)), 0)`,
         finalPriceSum: sql<number>`coalesce(sum(((${transactions.amount})::numeric) - coalesce(${cashbackSummary.totalBack}, 0)), 0)`

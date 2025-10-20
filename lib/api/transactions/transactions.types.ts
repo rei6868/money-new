@@ -25,6 +25,18 @@ export interface TransactionRecord {
   amountDirection: 'credit' | 'debit';
 }
 
+export type SortDirection = 'asc' | 'desc';
+
+export interface TransactionSortState {
+  columnId: string;
+  direction: SortDirection;
+}
+
+export interface TransactionSortRequest {
+  columnId?: string | null;
+  direction?: SortDirection | null;
+}
+
 export interface PaginationParams {
   page: number;
   pageSize: number;
@@ -109,15 +121,7 @@ export interface TransactionTableResponse {
 export interface TransactionsTableRequest {
   searchTerm?: string;
   pagination?: Partial<PaginationParams>;
-  sortBy?: string | null;
-  sortDir?: SortDirection | null;
-}
-
-export type SortDirection = 'asc' | 'desc';
-
-export interface TransactionSortState {
-  columnId: string | null;
-  direction: SortDirection | null;
+  sort?: TransactionSortRequest;
 }
 
 export interface TransactionActionRequest {
