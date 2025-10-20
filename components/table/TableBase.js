@@ -7,6 +7,7 @@ import {
   CHECKBOX_COLUMN_WIDTH,
   STICKY_COLUMN_BUFFER,
   computeMinWidth,
+  resolveColumnSizing,
   useDefinitionMap,
 } from './tableUtils';
 import { useActionMenuRegistry } from './TableActions';
@@ -105,6 +106,11 @@ export function TableBase({
     () => computeMinWidth(displayColumns, definitionMap),
     [displayColumns, definitionMap],
   );
+
+  const tableMinWidth = Math.max(minTableWidth + STICKY_COLUMN_BUFFER, 0);
+  // Enforce table wrapper overflow-x: auto with table-layout: fixed while ensuring the table must have
+  // min-width greater than container on overflow. This guarantees horizontal scroll inside table container
+  // only and keeps sticky header, fixed checkbox & actions column aligned with no page-level horizontal scrolling.
 
   useEffect(() => {
     if (headerCheckboxRef.current) {
@@ -293,7 +299,7 @@ export function TableBase({
     >
       {toolbarSlot}
       <div className={styles.tableScroll} data-testid="transactions-table-container">
-        <table className={styles.table} style={{ minWidth: `${minTableWidth + STICKY_COLUMN_BUFFER}px` }}>
+        <table className={styles.table} style={{ '--table-min-width': `${tableMinWidth}px` }}>
           <TableBaseHeader
             columns={displayColumns}
             definitionMap={definitionMap}
@@ -358,7 +364,7 @@ export function TableBase({
                       : definition?.align === 'center'
                       ? styles.cellAlignCenter
                       : '';
-                  const minWidth = Math.max(definition?.minWidth ?? 120, column.width);
+                  const { minWidth, width } = resolveColumnSizing(column, definition);
                   const isHidden = hiddenColumnIds.has(column.id);
                   const value = resolveTotalValue(column.id);
                   const cellClassName = `${styles.bodyCell} ${styles.totalRowCell} ${alignClass} ${
@@ -371,7 +377,7 @@ export function TableBase({
                       className={cellClassName}
                       style={{
                         minWidth: `${minWidth}px`,
-                        width: `${column.width}px`,
+                        width: `${width}px`,
                       }}
                       aria-hidden={isHidden && isColumnReorderMode ? 'true' : undefined}
                     >

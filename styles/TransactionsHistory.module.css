@@ -321,11 +321,12 @@
   max-width: 100%;
   scrollbar-gutter: stable both-edges;
   overscroll-behavior: contain;
-  /* horizontal scroll inside table wrapper/container, never at app/page level */
+  /* horizontal scroll inside table container; table wrapper overflow-x: auto by design */
 }
 
 .table {
   width: 100%;
+  min-width: max(100%, var(--table-min-width, 0px));
   table-layout: fixed;
   max-width: none;
   border-collapse: separate;
@@ -333,6 +334,7 @@
   background: transparent;
   white-space: nowrap;
   font-size: calc(var(--transactions-font-scale, 1) * 0.95rem);
+  /* table must have min-width greater than container on overflow for no page-level horizontal scrolling */
 }
 
 .table th,
