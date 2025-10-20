@@ -1,77 +1,94 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 
 import AppLayout from '../components/AppLayout';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 
+function formatCurrency(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return value ?? 'N/A';
+  }
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format(numeric);
+}
+
 export default function AccountsPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useRequireAuth();
+  const { isAuthenticated, isLoading } = useRequireAuth();
   const [accounts, setAccounts] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [fetchError, setFetchError] = useState(null);
+  const [isFetching, setIsFetching] = useState(false);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated) {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const loadAccounts = useCallback(async () => {
+    if (!isMountedRef.current) {
       return;
     }
 
-    let cancelled = false;
+    setIsFetching(true);
+    setFetchError(null);
 
-    const fetchAccounts = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch('/api/accounts');
-        if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`);
+    try {
+      const response = await fetch('/api/accounts');
+      if (!response.ok) {
+        let details = '';
+        try {
+          const body = await response.json();
+          details = body?.error || body?.details || response.statusText;
+        } catch {
+          details = response.statusText;
         }
-
-        const payload = await response.json();
-        const accountsList = Array.isArray(payload) ? payload : payload?.accounts;
-        if (!cancelled) {
-          setAccounts(Array.isArray(accountsList) ? accountsList : []);
-          if (!Array.isArray(accountsList)) {
-            console.warn('Unexpected response shape when fetching accounts', payload);
-          }
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error('Failed to load accounts', err);
-          setError('Unable to load accounts right now.');
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
+        throw new Error(details || 'Failed to fetch accounts');
       }
-    };
 
-    fetchAccounts();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [authLoading, isAuthenticated]);
-
-  const handleAddNew = () => {
-    router.push('/accounts/new').catch((err) => {
-      console.error('Failed to navigate to create account page', err);
-    });
-  };
-
-  const rows = useMemo(() => accounts ?? [], [accounts]);
-
-  const formatBalance = (value) => {
-    const numeric = Number(value);
-    if (Number.isFinite(numeric)) {
-      return numeric.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const data = await response.json();
+      const rows = Array.isArray(data?.accounts) ? data.accounts : [];
+      if (isMountedRef.current) {
+        setAccounts(rows);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to fetch accounts';
+      if (isMountedRef.current) {
+        setFetchError(message);
+        setAccounts([]);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsFetching(false);
+      }
     }
-    return value ?? '-';
-  };
+  }, []);
 
-  if (authLoading || !isAuthenticated) {
+  useEffect(() => {
+    if (isLoading || !isAuthenticated) {
+      return;
+    }
+    void loadAccounts();
+  }, [isAuthenticated, isLoading, loadAccounts]);
+
+  const handleAddAccount = useCallback(() => {
+    router.push('/accounts/new').catch((error) => {
+      console.error('Failed to navigate to /accounts/new', error);
+    });
+  }, [router]);
+
+  const handleRetry = useCallback(() => {
+    void loadAccounts();
+  }, [loadAccounts]);
+
+  const hasAccounts = accounts.length > 0;
+
+  if (isLoading || !isAuthenticated) {
     return null;
   }
 
@@ -80,64 +97,60 @@ export default function AccountsPage() {
       title="Accounts"
       subtitle="Manage connected bank and credit accounts from this workspace."
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-        <button type="button" onClick={handleAddNew} style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}>
-          Add New Account
-        </button>
-      </div>
+      <div className="accounts-page">
+        <div className="accounts-actions">
+          <button type="button" onClick={handleAddAccount}>
+            Add New Account
+          </button>
+        </div>
 
-      {isLoading && <p>Loading accounts...</p>}
-      {error && !isLoading && <p style={{ color: 'red' }}>{error}</p>}
-
-      {!isLoading && !error && (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Account Name</th>
-              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Type</th>
-              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Owner</th>
-              <th style={{ textAlign: 'right', borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Current Balance</th>
-              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Status</th>
-              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={6} style={{ padding: '0.75rem' }}>
-                  No accounts found yet.
-                </td>
-              </tr>
-            ) : (
-              rows.map((account) => (
-                <tr key={account.accountId} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '0.75rem' }}>{account.accountName}</td>
-                  <td style={{ padding: '0.75rem', textTransform: 'capitalize' }}>{account.accountType}</td>
-                  <td style={{ padding: '0.75rem' }}>{account.ownerName || account.ownerId}</td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>{formatBalance(account.currentBalance)}</td>
-                  <td style={{ padding: '0.75rem', textTransform: 'capitalize' }}>{account.status}</td>
-                  <td style={{ padding: '0.75rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => console.log('Edit account', account.accountId)}
-                      style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', cursor: 'pointer' }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => console.log('Delete account', account.accountId)}
-                      style={{ padding: '0.25rem 0.5rem', cursor: 'pointer' }}
-                    >
-                      Delete
-                    </button>
-                  </td>
+        {isFetching ? (
+          <p>Loading accounts...</p>
+        ) : fetchError ? (
+          <div role="alert">
+            <p>Unable to load accounts: {fetchError}</p>
+            <button type="button" onClick={handleRetry}>
+              Retry
+            </button>
+          </div>
+        ) : hasAccounts ? (
+          <div className="accounts-table-wrapper">
+            <table className="accounts-table">
+              <thead>
+                <tr>
+                  <th scope="col">Account Name</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">Owner</th>
+                  <th scope="col">Current Balance</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Actions</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      )}
+              </thead>
+              <tbody>
+                {accounts.map((account) => (
+                  <tr key={account.accountId}>
+                    <td>{account.accountName}</td>
+                    <td>{account.accountType}</td>
+                    <td>{account.ownerName ?? '--'}</td>
+                    <td>{formatCurrency(account.currentBalance)}</td>
+                    <td>{account.status}</td>
+                    <td>
+                      <button type="button" disabled>
+                        Edit
+                      </button>
+                      <button type="button" disabled>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p>No accounts found. Try adding a new account to get started.</p>
+        )}
+      </div>
     </AppLayout>
   );
 }

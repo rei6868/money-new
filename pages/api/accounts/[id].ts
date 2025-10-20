@@ -5,23 +5,10 @@ import { getDb } from "../../../lib/db/client";
 import { accounts, type NewAccount } from "../../../src/db/schema/accounts";
 import { people } from "../../../src/db/schema/people";
 
-type AccountDetails = {
-  accountId: string;
-  accountName: string;
-  accountType: string;
-  ownerId: string;
-  openingBalance: string;
-  currentBalance: string;
-  status: string;
-  imgUrl: string | null;
-  notes: string | null;
-  parentAccountId: string | null;
-  assetRef: string | null;
-  totalIn: string;
-  totalOut: string;
-  createdAt: Date;
-  updatedAt: Date;
-  ownerName?: string | null;
+type DbClient = NonNullable<ReturnType<typeof getDb>>;
+
+type AccountWithOwner = typeof accounts.$inferSelect & {
+  ownerName: string | null;
 };
 
 const respondJson = (res: NextApiResponse, status: number, payload: unknown): void => {
@@ -42,37 +29,6 @@ const normalizeString = (value: unknown): string | undefined => {
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
-};
-
-const normalizeNullableString = (value: unknown): string | null | undefined => {
-  if (value === undefined) {
-    return undefined;
-  }
-  if (value === null) {
-    return null;
-  }
-  return normalizeString(value) ?? null;
-};
-
-const normalizeNumeric = (value: unknown): string | undefined => {
-  if (value === null || value === undefined) {
-    return undefined;
-  }
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value.toString() : undefined;
-  }
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return undefined;
-    }
-    const parsed = Number(trimmed);
-    if (!Number.isFinite(parsed)) {
-      return undefined;
-    }
-    return trimmed;
-  }
-  return undefined;
 };
 
 const parseRequestBody = (raw: unknown): Record<string, unknown> | null => {
@@ -97,47 +53,33 @@ const parseRequestBody = (raw: unknown): Record<string, unknown> | null => {
   return null;
 };
 
-const fetchSingleAccount = async (
-  db: NonNullable<ReturnType<typeof getDb>>,
-  accountId: string,
-): Promise<AccountDetails | null> => {
-  const rows = await db
-    .select({
-      accountId: accounts.accountId,
-      accountName: accounts.accountName,
-      accountType: accounts.accountType,
-      ownerId: accounts.ownerId,
-      openingBalance: accounts.openingBalance,
-      currentBalance: accounts.currentBalance,
-      status: accounts.status,
-      imgUrl: accounts.imgUrl,
-      notes: accounts.notes,
-      parentAccountId: accounts.parentAccountId,
-      assetRef: accounts.assetRef,
-      totalIn: accounts.totalIn,
-      totalOut: accounts.totalOut,
-      createdAt: accounts.createdAt,
-      updatedAt: accounts.updatedAt,
-      ownerName: people.fullName,
-    })
+const accountSelection = {
+  accountId: accounts.accountId,
+  accountName: accounts.accountName,
+  imgUrl: accounts.imgUrl,
+  accountType: accounts.accountType,
+  ownerId: accounts.ownerId,
+  parentAccountId: accounts.parentAccountId,
+  assetRef: accounts.assetRef,
+  openingBalance: accounts.openingBalance,
+  currentBalance: accounts.currentBalance,
+  status: accounts.status,
+  totalIn: accounts.totalIn,
+  totalOut: accounts.totalOut,
+  createdAt: accounts.createdAt,
+  updatedAt: accounts.updatedAt,
+  notes: accounts.notes,
+  ownerName: people.fullName,
+};
+
+const selectAccountById = async (db: DbClient, accountId: string): Promise<AccountWithOwner | null> => {
+  const [account] = await db
+    .select(accountSelection)
     .from(accounts)
     .leftJoin(people, eq(accounts.ownerId, people.personId))
     .where(eq(accounts.accountId, accountId))
     .limit(1);
-
-  const [row] = rows;
-  if (!row) {
-    return null;
-  }
-
-  return {
-    ...row,
-    imgUrl: row.imgUrl ?? null,
-    notes: row.notes ?? null,
-    parentAccountId: row.parentAccountId ?? null,
-    assetRef: row.assetRef ?? null,
-    ownerName: row.ownerName ?? null,
-  };
+  return account ?? null;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -153,145 +95,156 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  try {
-    if (req.method === "GET") {
-      const account = await fetchSingleAccount(db, accountId);
+  if (req.method === "GET") {
+    try {
+      const account = await selectAccountById(db, accountId);
       if (!account) {
         respondJson(res, 404, { error: "Account not found" });
         return;
       }
       respondJson(res, 200, account);
+    } catch (error) {
+      console.error(`Failed to fetch account ${accountId}`, error);
+      const details = error instanceof Error ? error.message : "Unknown error";
+      respondJson(res, 500, { error: "Failed to fetch account", details });
+    }
+    return;
+  }
+
+  if (req.method === "PUT" || req.method === "PATCH") {
+    const parsedBody = parseRequestBody(req.body);
+    if (parsedBody === null) {
+      respondJson(res, 400, { error: "Validation failed", details: "Invalid JSON payload" });
       return;
     }
 
-    if (req.method === "PUT" || req.method === "PATCH") {
-      const parsedBody = parseRequestBody(req.body);
-      if (parsedBody === null) {
-        respondJson(res, 400, { error: "Validation failed", details: "Invalid JSON payload" });
+    const forbiddenFields = ["openingBalance", "totalIn", "totalOut", "currentBalance"];
+    const attemptedForbidden = forbiddenFields.filter((field) => field in parsedBody);
+    if (attemptedForbidden.length > 0) {
+      respondJson(res, 400, {
+        error: "Validation failed",
+        details: `Fields ${attemptedForbidden.join(", ")} cannot be updated via this endpoint`,
+      });
+      return;
+    }
+
+    const updates: Partial<NewAccount> = {};
+    const { accountName, accountType, ownerId, status, parentAccountId, assetRef, imgUrl, notes } =
+      parsedBody;
+
+    const normalizedAccountName = normalizeString(accountName);
+    if (normalizedAccountName) {
+      updates.accountName = normalizedAccountName;
+    }
+
+    const normalizedAccountType = normalizeString(accountType);
+    if (accountType !== undefined) {
+      if (!normalizedAccountType) {
+        respondJson(res, 400, { error: "Validation failed", details: "accountType must be a non-empty string" });
         return;
       }
+      updates.accountType = normalizedAccountType;
+    }
 
-      if (Object.prototype.hasOwnProperty.call(parsedBody, "openingBalance")) {
-        respondJson(res, 400, { error: "Validation failed", details: "openingBalance cannot be updated" });
+    const normalizedOwnerId = normalizeString(ownerId);
+    if (ownerId !== undefined) {
+      if (!normalizedOwnerId) {
+        respondJson(res, 400, { error: "Validation failed", details: "ownerId must be a non-empty string" });
         return;
       }
+      updates.ownerId = normalizedOwnerId;
+    }
 
-      const updates: Partial<NewAccount> & { updatedAt?: Date } = {};
-
-      const accountName = normalizeString(parsedBody.accountName);
-      if (accountName) {
-        updates.accountName = accountName;
-      }
-
-      if (parsedBody.accountType !== undefined) {
-        const accountType = normalizeString(parsedBody.accountType);
-        if (!accountType) {
-          respondJson(res, 400, { error: "Validation failed", details: "accountType must be a non-empty string" });
-          return;
-        }
-        updates.accountType = accountType;
-      }
-
-      if (parsedBody.ownerId !== undefined) {
-        const ownerId = normalizeString(parsedBody.ownerId);
-        if (!ownerId) {
-          respondJson(res, 400, { error: "Validation failed", details: "ownerId must be a non-empty string" });
-          return;
-        }
-
-        const [owner] = await db
-          .select({ personId: people.personId })
-          .from(people)
-          .where(eq(people.personId, ownerId))
-          .limit(1);
-        if (!owner) {
-          respondJson(res, 400, { error: "Validation failed", details: "ownerId does not reference a valid person" });
-          return;
-        }
-
-        updates.ownerId = ownerId;
-      }
-
-      if (parsedBody.currentBalance !== undefined) {
-        const currentBalance = normalizeNumeric(parsedBody.currentBalance);
-        if (!currentBalance) {
-          respondJson(res, 400, {
-            error: "Validation failed",
-            details: "currentBalance must be a valid numeric value",
-          });
-          return;
-        }
-        updates.currentBalance = currentBalance;
-      }
-
-      if (parsedBody.status !== undefined) {
-        const status = normalizeString(parsedBody.status);
-        if (!status) {
-          respondJson(res, 400, { error: "Validation failed", details: "status must be a non-empty string" });
-          return;
-        }
-        updates.status = status;
-      }
-
-      const imgUrl = normalizeNullableString(parsedBody.imgUrl);
-      if (imgUrl !== undefined) {
-        updates.imgUrl = imgUrl;
-      }
-
-      const notes = normalizeNullableString(parsedBody.notes);
-      if (notes !== undefined) {
-        updates.notes = notes;
-      }
-
-      const parentAccountId = normalizeNullableString(parsedBody.parentAccountId);
-      if (parentAccountId !== undefined) {
-        updates.parentAccountId = parentAccountId;
-      }
-
-      const assetRef = normalizeNullableString(parsedBody.assetRef);
-      if (assetRef !== undefined) {
-        updates.assetRef = assetRef;
-      }
-
-      if (Object.keys(updates).length === 0) {
-        respondJson(res, 400, { error: "No updates provided" });
+    const normalizedStatus = normalizeString(status);
+    if (status !== undefined) {
+      if (!normalizedStatus) {
+        respondJson(res, 400, { error: "Validation failed", details: "status must be a non-empty string" });
         return;
       }
+      updates.status = normalizedStatus;
+    }
 
-      updates.updatedAt = new Date();
+    if (parentAccountId !== undefined) {
+      const normalizedParent = normalizeString(parentAccountId);
+      updates.parentAccountId = normalizedParent ?? null;
+    }
 
-      const [updated] = await db.update(accounts).set(updates).where(eq(accounts.accountId, accountId)).returning();
+    if (assetRef !== undefined) {
+      const normalizedAssetRef = normalizeString(assetRef);
+      updates.assetRef = normalizedAssetRef ?? null;
+    }
+
+    if (imgUrl !== undefined) {
+      const normalizedImg = normalizeString(imgUrl);
+      updates.imgUrl = normalizedImg ?? null;
+    }
+
+    if (notes !== undefined) {
+      if (typeof notes === "string") {
+        const trimmedNotes = notes.trim();
+        updates.notes = trimmedNotes.length > 0 ? trimmedNotes : null;
+      } else if (notes === null) {
+        updates.notes = null;
+      } else {
+        respondJson(res, 400, { error: "Validation failed", details: "notes must be a string or null" });
+        return;
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      respondJson(res, 400, { error: "No updates provided" });
+      return;
+    }
+
+    updates.updatedAt = new Date();
+
+    try {
+      const [updated] = await db
+        .update(accounts)
+        .set(updates)
+        .where(eq(accounts.accountId, accountId))
+        .returning({ accountId: accounts.accountId });
+
       if (!updated) {
         respondJson(res, 404, { error: "Account not found" });
         return;
       }
 
-      const account = await fetchSingleAccount(db, accountId);
+      const account = await selectAccountById(db, accountId);
       if (!account) {
-        respondJson(res, 404, { error: "Account not found" });
+        respondJson(res, 200, { accountId });
         return;
       }
-
       respondJson(res, 200, account);
-      return;
+    } catch (error) {
+      console.error(`Failed to update account ${accountId}`, error);
+      const details = error instanceof Error ? error.message : "Unknown error";
+      respondJson(res, 400, { error: "Failed to update account", details });
     }
+    return;
+  }
 
-    if (req.method === "DELETE") {
-      const deleted = await db.delete(accounts).where(eq(accounts.accountId, accountId)).returning({ accountId: accounts.accountId });
+  if (req.method === "DELETE") {
+    try {
+      const deleted = await db
+        .delete(accounts)
+        .where(eq(accounts.accountId, accountId))
+        .returning({ accountId: accounts.accountId });
+
       if (deleted.length === 0) {
         respondJson(res, 404, { error: "Account not found" });
         return;
       }
+
       res.status(204).end();
-      return;
+    } catch (error) {
+      console.error(`Failed to delete account ${accountId}`, error);
+      const details = error instanceof Error ? error.message : "Unknown error";
+      respondJson(res, 400, { error: "Failed to delete account", details });
     }
-  } catch (error) {
-    console.error(`Failed to handle ${req.method} /api/accounts/${accountId}`, error);
-    respondJson(res, 500, { error: "Failed to process request" });
     return;
   }
 
   res.setHeader("Allow", ["GET", "PUT", "PATCH", "DELETE"]);
   respondJson(res, 405, { error: "Method not allowed" });
 }
-

@@ -6,27 +6,10 @@ import { getDb } from "../../../lib/db/client";
 import { accounts, type NewAccount } from "../../../src/db/schema/accounts";
 import { people } from "../../../src/db/schema/people";
 
-type AccountListItem = {
-  accountId: string;
-  accountName: string;
-  accountType: string;
-  ownerId: string;
-  openingBalance: string;
-  currentBalance: string;
-  status: string;
-  imgUrl: string | null;
-  notes: string | null;
-  parentAccountId: string | null;
-  assetRef: string | null;
-  totalIn: string;
-  totalOut: string;
-  createdAt: Date;
-  updatedAt: Date;
-  ownerName?: string | null;
-};
+type DbClient = NonNullable<ReturnType<typeof getDb>>;
 
-type AccountsListResponse = {
-  accounts: AccountListItem[];
+type AccountWithOwner = typeof accounts.$inferSelect & {
+  ownerName: string | null;
 };
 
 const respondJson = (res: NextApiResponse, status: number, payload: unknown): void => {
@@ -34,11 +17,11 @@ const respondJson = (res: NextApiResponse, status: number, payload: unknown): vo
   res.status(status).json(payload);
 };
 
-const generateAccountId = (): string => {
-  if (typeof randomUUID === "function") {
-    return randomUUID();
+const toSingle = (value: unknown): string | undefined => {
+  if (Array.isArray(value)) {
+    return value[0];
   }
-  return `acct_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  return typeof value === "string" ? value : undefined;
 };
 
 const normalizeString = (value: unknown): string | undefined => {
@@ -49,35 +32,25 @@ const normalizeString = (value: unknown): string | undefined => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const normalizeNullableString = (value: unknown): string | null | undefined => {
-  if (value === null) {
-    return null;
-  }
-  if (value === undefined) {
-    return undefined;
-  }
-  return normalizeString(value) ?? null;
-};
-
-const normalizeNumeric = (value: unknown): string | undefined => {
-  if (value === null || value === undefined) {
-    return undefined;
-  }
+const toNumericString = (value: unknown): string | null => {
   if (typeof value === "number") {
-    return Number.isFinite(value) ? value.toString() : undefined;
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+    return value.toString();
   }
   if (typeof value === "string") {
     const trimmed = value.trim();
     if (!trimmed) {
-      return undefined;
+      return null;
     }
-    const parsed = Number(trimmed);
-    if (!Number.isFinite(parsed)) {
-      return undefined;
+    const numeric = Number(trimmed);
+    if (!Number.isFinite(numeric)) {
+      return null;
     }
     return trimmed;
   }
-  return undefined;
+  return null;
 };
 
 const parseRequestBody = (raw: unknown): Record<string, unknown> | null => {
@@ -102,37 +75,44 @@ const parseRequestBody = (raw: unknown): Record<string, unknown> | null => {
   return null;
 };
 
-const fetchAccountsWithOwner = async (db: NonNullable<ReturnType<typeof getDb>>): Promise<AccountListItem[]> => {
-  const rows = await db
-    .select({
-      accountId: accounts.accountId,
-      accountName: accounts.accountName,
-      accountType: accounts.accountType,
-      ownerId: accounts.ownerId,
-      openingBalance: accounts.openingBalance,
-      currentBalance: accounts.currentBalance,
-      status: accounts.status,
-      imgUrl: accounts.imgUrl,
-      notes: accounts.notes,
-      parentAccountId: accounts.parentAccountId,
-      assetRef: accounts.assetRef,
-      totalIn: accounts.totalIn,
-      totalOut: accounts.totalOut,
-      createdAt: accounts.createdAt,
-      updatedAt: accounts.updatedAt,
-      ownerName: people.fullName,
-    })
-    .from(accounts)
-    .leftJoin(people, eq(accounts.ownerId, people.personId));
+const generateAccountId = (): string => {
+  if (typeof randomUUID === "function") {
+    return randomUUID();
+  }
+  return `account_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+};
 
-  return rows.map((row) => ({
-    ...row,
-    imgUrl: row.imgUrl ?? null,
-    notes: row.notes ?? null,
-    parentAccountId: row.parentAccountId ?? null,
-    assetRef: row.assetRef ?? null,
-    ownerName: row.ownerName ?? null,
-  }));
+const accountSelection = {
+  accountId: accounts.accountId,
+  accountName: accounts.accountName,
+  imgUrl: accounts.imgUrl,
+  accountType: accounts.accountType,
+  ownerId: accounts.ownerId,
+  parentAccountId: accounts.parentAccountId,
+  assetRef: accounts.assetRef,
+  openingBalance: accounts.openingBalance,
+  currentBalance: accounts.currentBalance,
+  status: accounts.status,
+  totalIn: accounts.totalIn,
+  totalOut: accounts.totalOut,
+  createdAt: accounts.createdAt,
+  updatedAt: accounts.updatedAt,
+  notes: accounts.notes,
+  ownerName: people.fullName,
+};
+
+const selectAccountsWithOwner = async (db: DbClient): Promise<AccountWithOwner[]> => {
+  return db.select(accountSelection).from(accounts).leftJoin(people, eq(accounts.ownerId, people.personId));
+};
+
+const selectAccountById = async (db: DbClient, accountId: string): Promise<AccountWithOwner | null> => {
+  const [account] = await db
+    .select(accountSelection)
+    .from(accounts)
+    .leftJoin(people, eq(accounts.ownerId, people.personId))
+    .where(eq(accounts.accountId, accountId))
+    .limit(1);
+  return account ?? null;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -144,9 +124,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "GET") {
     try {
-      const accountsWithOwners = await fetchAccountsWithOwner(db);
-      const payload: AccountsListResponse = { accounts: accountsWithOwners };
-      respondJson(res, 200, payload);
+      const accountsWithOwner = await selectAccountsWithOwner(db);
+      respondJson(res, 200, { accounts: accountsWithOwner });
     } catch (error) {
       console.error("Failed to fetch accounts", error);
       const details = error instanceof Error ? error.message : "Unknown error";
@@ -156,100 +135,83 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === "POST") {
+    const parsedBody = parseRequestBody(req.body);
+    if (parsedBody === null) {
+      respondJson(res, 400, { error: "Validation failed", details: "Invalid JSON payload" });
+      return;
+    }
+
+    const payload = parsedBody as Partial<NewAccount> & Record<string, unknown>;
+    const accountName = normalizeString(payload.accountName);
+    const accountType = normalizeString(payload.accountType);
+    const ownerId = normalizeString(payload.ownerId);
+    const status = normalizeString(payload.status);
+    const openingBalance = toNumericString(payload.openingBalance);
+
+    if (!accountName || !accountType || !ownerId || !status || openingBalance === null) {
+      respondJson(res, 400, {
+        error: "Validation failed",
+        details: "accountName, accountType, ownerId, openingBalance, and status are required",
+      });
+      return;
+    }
+
+    const currentBalance = toNumericString(payload.currentBalance) ?? openingBalance;
+
+    const newAccount: NewAccount = {
+      accountId: generateAccountId(),
+      accountName,
+      accountType,
+      ownerId,
+      openingBalance,
+      currentBalance,
+      status,
+      totalIn: "0",
+      totalOut: "0",
+    };
+
+    const imgUrl = normalizeString(payload.imgUrl);
+    if (imgUrl) {
+      newAccount.imgUrl = imgUrl;
+    }
+
+    if (payload.parentAccountId !== undefined) {
+      const normalizedParent = normalizeString(payload.parentAccountId);
+      if (normalizedParent) {
+        newAccount.parentAccountId = normalizedParent;
+      }
+    }
+
+    if (payload.assetRef !== undefined) {
+      const normalizedAsset = normalizeString(payload.assetRef);
+      if (normalizedAsset) {
+        newAccount.assetRef = normalizedAsset;
+      }
+    }
+
+    if (payload.notes !== undefined) {
+      if (typeof payload.notes === "string") {
+        const trimmedNotes = payload.notes.trim();
+        if (trimmedNotes.length > 0) {
+          newAccount.notes = trimmedNotes;
+        }
+      } else if (payload.notes === null) {
+        newAccount.notes = null;
+      }
+    }
+
     try {
-      const parsedBody = parseRequestBody(req.body);
-      if (parsedBody === null) {
-        respondJson(res, 400, { error: "Validation failed", details: "Invalid JSON payload" });
-        return;
-      }
-
-      const payload = parsedBody;
-
-      const accountName = normalizeString(payload.accountName);
-      const accountType = normalizeString(payload.accountType);
-      const ownerId = normalizeString(payload.ownerId);
-      const openingBalance = normalizeNumeric(payload.openingBalance);
-      const currentBalance = normalizeNumeric(payload.currentBalance);
-      const status = normalizeString(payload.status);
-
-      if (!accountName || !accountType || !ownerId || !openingBalance || !currentBalance || !status) {
-        respondJson(res, 400, {
-          error: "Validation failed",
-          details: "accountName, accountType, ownerId, openingBalance, currentBalance, and status are required",
-        });
-        return;
-      }
-
-      const [owner] = await db
-        .select({ personId: people.personId, fullName: people.fullName })
-        .from(people)
-        .where(eq(people.personId, ownerId))
-        .limit(1);
-      if (!owner) {
-        respondJson(res, 400, { error: "Validation failed", details: "ownerId does not reference a valid person" });
-        return;
-      }
-
-      const newAccount: NewAccount = {
-        accountId: generateAccountId(),
-        accountName,
-        accountType,
-        ownerId,
-        openingBalance,
-        currentBalance,
-        status,
-      };
-
-      const imgUrl = normalizeNullableString(payload.imgUrl);
-      if (imgUrl !== undefined) {
-        newAccount.imgUrl = imgUrl;
-      }
-
-      const notes = normalizeNullableString(payload.notes);
-      if (notes !== undefined) {
-        newAccount.notes = notes;
-      }
-
-      const parentAccountId = normalizeNullableString(payload.parentAccountId);
-      if (parentAccountId !== undefined) {
-        newAccount.parentAccountId = parentAccountId;
-      }
-
-      const assetRef = normalizeNullableString(payload.assetRef);
-      if (assetRef !== undefined) {
-        newAccount.assetRef = assetRef;
-      }
-
-      const [created] = await db.insert(accounts).values(newAccount).returning();
+      await db.insert(accounts).values(newAccount);
+      const created = await selectAccountById(db, newAccount.accountId);
       if (!created) {
-        respondJson(res, 500, { error: "Failed to create account", details: "Insert returned no rows" });
+        respondJson(res, 201, newAccount);
         return;
       }
-
-      const response: AccountListItem = {
-        accountId: created.accountId,
-        accountName: created.accountName,
-        accountType: created.accountType,
-        ownerId: created.ownerId,
-        openingBalance: created.openingBalance,
-        currentBalance: created.currentBalance,
-        status: created.status,
-        imgUrl: created.imgUrl ?? null,
-        notes: created.notes ?? null,
-        parentAccountId: created.parentAccountId ?? null,
-        assetRef: created.assetRef ?? null,
-        totalIn: created.totalIn,
-        totalOut: created.totalOut,
-        createdAt: created.createdAt,
-        updatedAt: created.updatedAt,
-        ownerName: owner.fullName,
-      };
-
-      respondJson(res, 201, response);
+      respondJson(res, 201, created);
     } catch (error) {
       console.error("Failed to create account", error);
       const details = error instanceof Error ? error.message : "Unknown error";
-      respondJson(res, 500, { error: "Failed to create account", details });
+      respondJson(res, 400, { error: "Failed to create account", details });
     }
     return;
   }
