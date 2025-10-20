@@ -32,6 +32,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const searchTerm = toSingle(req.query.search) ?? '';
   const page = toNumber(req.query.page, 1);
   const pageSize = toNumber(req.query.pageSize, 25);
+  const sortColumn = toSingle(req.query.sortColumn);
+  const sortDirectionRaw = toSingle(req.query.sortDirection);
+  const sortDirection = sortDirectionRaw === 'asc' || sortDirectionRaw === 'desc' ? sortDirectionRaw : undefined;
   const restoreToken =
     toSingle(req.query.restoreToken) ?? toSingle(req.headers['x-transaction-restore'] as string | string[] | undefined) ?? null;
 
@@ -39,6 +42,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     searchTerm,
     pagination: { page, pageSize },
   };
+
+  if (sortColumn || sortDirection) {
+    request.sort = {
+      columnId: sortColumn ?? undefined,
+      direction: sortDirection,
+    };
+  }
 
   const response = await getTransactionsTable(request, restoreToken);
   res.status(200).json(response);

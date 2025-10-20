@@ -26,6 +26,17 @@ function toTransactionsRequest(value: unknown): TransactionsTableRequest {
       pageSize: Number.isFinite(pageSize) ? pageSize : undefined,
     } as TransactionsTableRequest['pagination'];
   }
+  if (payload.sort && typeof payload.sort === 'object') {
+    const sort = payload.sort as Record<string, unknown>;
+    const columnId = typeof sort.columnId === 'string' ? sort.columnId : undefined;
+    const direction = sort.direction === 'asc' || sort.direction === 'desc' ? sort.direction : undefined;
+    if (columnId !== undefined || direction !== undefined) {
+      request.sort = {
+        columnId,
+        direction,
+      };
+    }
+  }
   return request;
 }
 

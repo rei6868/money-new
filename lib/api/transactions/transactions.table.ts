@@ -27,6 +27,18 @@ const SEARCH_FIELDS = [
   'linkedTxn',
 ];
 
+const NUMERIC_SORT_COLUMNS = new Set<keyof TransactionRecord>([
+  'amount',
+  'percentBack',
+  'fixedBack',
+  'totalBack',
+  'finalPrice',
+]);
+
+const DATE_SORT_COLUMNS = new Set<string>(['date', 'occurredOn', 'displayDate']);
+
+const SORTABLE_COLUMN_IDS = new Set(getTransactionMeta().availableColumns.map((column) => column.id));
+
 function applySearch(rows: TransactionRecord[], searchTerm: string): TransactionRecord[] {
   if (!searchTerm) {
     return rows;
@@ -38,6 +50,74 @@ function applySearch(rows: TransactionRecord[], searchTerm: string): Transaction
   return rows.filter((row) =>
     SEARCH_FIELDS.some((field) => String(row[field as keyof TransactionRecord] ?? '').toLowerCase().includes(normalized)),
   );
+}
+
+function toComparableValue(row: TransactionRecord, columnId: string): string | number | null {
+  if (columnId === 'date') {
+    return Number.isFinite(row.sortDate) ? row.sortDate : null;
+  }
+
+  const value = row[columnId as keyof TransactionRecord];
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  if (NUMERIC_SORT_COLUMNS.has(columnId as keyof TransactionRecord)) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  }
+
+  if (DATE_SORT_COLUMNS.has(columnId)) {
+    const timestamp = Date.parse(String(value));
+    return Number.isNaN(timestamp) ? null : timestamp;
+  }
+
+  return String(value).toLowerCase();
+}
+
+function sortRows(
+  rows: TransactionRecord[],
+  columnId: string,
+  direction: 'asc' | 'desc',
+): TransactionRecord[] {
+  if (!Array.isArray(rows) || rows.length <= 1) {
+    return rows;
+  }
+
+  if (!SORTABLE_COLUMN_IDS.has(columnId)) {
+    return rows;
+  }
+
+  const multiplier = direction === 'asc' ? 1 : -1;
+  const sorted = rows.slice();
+  sorted.sort((a, b) => {
+    const aValue = toComparableValue(a, columnId);
+    const bValue = toComparableValue(b, columnId);
+
+    if (aValue === null && bValue === null) {
+      return 0;
+    }
+    if (aValue === null) {
+      return 1;
+    }
+    if (bValue === null) {
+      return -1;
+    }
+
+    let comparison = 0;
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      comparison = aValue === bValue ? 0 : aValue < bValue ? -1 : 1;
+    } else {
+      comparison = String(aValue).localeCompare(String(bValue), undefined, {
+        sensitivity: 'base',
+        numeric: true,
+      });
+    }
+
+    return comparison * multiplier;
+  });
+
+  return sorted;
 }
 
 function paginateRows(
@@ -84,17 +164,20 @@ export async function getTransactionsTable(
   const normalizedRequest: TransactionsTableRequest = {
     searchTerm: request?.searchTerm,
     pagination: request?.pagination,
+    sort: request?.sort,
   };
   const state = restoreToken
     ? mergeStateWithRestore(restoreToken, normalizedRequest)
     : mergeStateWithRequest(normalizedRequest, defaultState);
   const searchTerm = state.searchTerm ?? '';
   const searchedRows = applySearch(dataset, searchTerm);
-  const { rows, pagination } = paginateRows(searchedRows, state.pagination.page, state.pagination.pageSize);
+  const sortedRows = sortRows(searchedRows, state.sort.columnId, state.sort.direction);
+  const { rows, pagination } = paginateRows(sortedRows, state.pagination.page, state.pagination.pageSize);
   const totals = calculateTotals(searchedRows);
   const restore = createRestorePayload({
     searchTerm,
     pagination,
+    sort: state.sort,
   });
   const execution = { durationMs: Number((performance.now() - t0).toFixed(2)) };
   return {
