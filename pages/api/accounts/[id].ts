@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { eq } from "drizzle-orm";
 
 import { getDb } from "../../../lib/db/client";
-import { accounts, type NewAccount } from "../../../src/db/schema/accounts";
+import { accounts, accountStatusEnum, type NewAccount } from "../../../src/db/schema/accounts";
 import { people } from "../../../src/db/schema/people";
 
 type DbClient = NonNullable<ReturnType<typeof getDb>>;
@@ -159,6 +159,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (status !== undefined) {
       if (!normalizedStatus) {
         respondJson(res, 400, { error: "Validation failed", details: "status must be a non-empty string" });
+        return;
+      }
+      const allowedStatuses = accountStatusEnum.enumValues;
+      if (!allowedStatuses.includes(normalizedStatus)) {
+        respondJson(res, 400, {
+          error: "Invalid status value",
+          details: `Status must be one of: ${allowedStatuses.join(", ")}`,
+        });
         return;
       }
       updates.status = normalizedStatus;
