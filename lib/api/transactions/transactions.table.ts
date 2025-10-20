@@ -447,20 +447,35 @@ export async function getTransactionsTable(
   try {
     const accountOwner = alias(people, 'account_owner');
 
+    const cashbackPercentBack = sql<number>`coalesce(max(CASE WHEN ${cashbackMovements.cashbackType} = 'percent' THEN ${cashbackMovements.cashbackValue}::numeric END), 0)`.as(
+      'percentBack',
+    );
+    const cashbackFixedBack = sql<number>`coalesce(sum(CASE WHEN ${cashbackMovements.cashbackType} = 'fixed' THEN ${cashbackMovements.cashbackValue}::numeric END), 0)`.as(
+      'fixedBack',
+    );
+    const cashbackTotalBack = sql<number>`coalesce(sum(${cashbackMovements.cashbackAmount}::numeric), 0)`.as('totalBack');
+    const cashbackCycleTag = sql<string>`max(${cashbackMovements.cycleTag})`.as('cycleTag');
+
     const cashbackSummary = db
       .$with('cashback_summary')
       .as(
         db
           .select({
             transactionId: cashbackMovements.transactionId,
-            percentBack: sql`coalesce(max(CASE WHEN ${cashbackMovements.cashbackType} = 'percent' THEN ${cashbackMovements.cashbackValue}::numeric END), 0)`,
-            fixedBack: sql`coalesce(sum(CASE WHEN ${cashbackMovements.cashbackType} = 'fixed' THEN ${cashbackMovements.cashbackValue}::numeric END), 0)`,
-            totalBack: sql`coalesce(sum(${cashbackMovements.cashbackAmount}::numeric), 0)`,
-            cycleTag: sql`max(${cashbackMovements.cycleTag})`,
+            percentBack: cashbackPercentBack,
+            fixedBack: cashbackFixedBack,
+            totalBack: cashbackTotalBack,
+            cycleTag: cashbackCycleTag,
           })
           .from(cashbackMovements)
           .groupBy(cashbackMovements.transactionId),
       );
+
+    const debtCycleTag = sql<string>`max(${debtMovements.cycleTag})`.as('cycleTag');
+    const debtNotes = sql<string>`max(${debtMovements.notes})`.as('notes');
+    const debtMovementLabel = sql<string>`max(trim(concat_ws(' ', initcap(replace(${debtMovements.movementType}::text, '_', ' ')), ${debtMovements.cycleTag})))`.as(
+      'movementLabel',
+    );
 
     const debtSummary = db
       .$with('debt_summary')
@@ -468,9 +483,9 @@ export async function getTransactionsTable(
         db
           .select({
             transactionId: debtMovements.transactionId,
-            cycleTag: sql`max(${debtMovements.cycleTag})`,
-            notes: sql`max(${debtMovements.notes})`,
-            movementLabel: sql`max(trim(concat_ws(' ', initcap(replace(${debtMovements.movementType}::text, '_', ' ')), ${debtMovements.cycleTag})))`,
+            cycleTag: debtCycleTag,
+            notes: debtNotes,
+            movementLabel: debtMovementLabel,
           })
           .from(debtMovements)
           .groupBy(debtMovements.transactionId),
