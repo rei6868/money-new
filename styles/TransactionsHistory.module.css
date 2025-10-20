@@ -314,9 +314,8 @@
 .tableScroll {
   position: relative;
   overflow-x: auto;
-  overflow-y: auto;
+  overflow-y: visible;
   border-radius: 22px 22px 0 0;
-  max-height: clamp(420px, 60vh, 720px);
   width: 100%;
   max-width: 100%;
   scrollbar-gutter: stable both-edges;
@@ -1007,11 +1006,14 @@
   background: rgba(99, 102, 241, 0.14);
 }
 
+.table tfoot {
+  position: static;
+  inset: auto;
+  z-index: auto;
+}
+
 .totalRow {
-  position: sticky;
-  bottom: 0;
   background-color: #f3f4fa;
-  z-index: 120;
 }
 
 .totalRowCell {
@@ -1024,6 +1026,13 @@
 .totalRowCell.stickyLeft,
 .totalRowCell.stickyRight {
   background-color: #f3f4fa;
+  position: static;
+  left: auto;
+  right: auto;
+  top: auto;
+  bottom: auto;
+  box-shadow: none;
+  z-index: auto;
 }
 
 .totalRowLeadLabel {
@@ -1052,7 +1061,7 @@
   left: 0;
   z-index: 110;
   background: var(--mf-sidebar-bg);
-  box-shadow: 8px 0 18px rgba(15, 23, 42, 0.08);
+  box-shadow: inset -1px 0 0 rgba(148, 163, 184, 0.32);
 }
 
 .stickyLeftNoShadow {
@@ -2365,10 +2374,6 @@
   .toolbarCard {
     padding: 1rem 1.15rem;
     border-radius: 20px;
-  }
-
-  .tableScroll {
-    max-height: clamp(360px, 58vh, 680px);
   }
 
   .primaryButton {
