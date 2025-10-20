@@ -89,12 +89,12 @@ interface SortReferences {
     percentBack: any;
     fixedBack: any;
     totalBack: any;
-    cycleTag: any;
+    cashbackCycleTag: any;
   };
   debtSummary: {
-    cycleTag: any;
+    debtCycleTag: any;
     movementLabel: any;
-    notes: any;
+    debtNotes: any;
   };
 }
 
@@ -262,8 +262,8 @@ function buildSearchConditions(
     people: typeof people;
     shops: typeof shops;
     categories: typeof categories;
-    cashbackSummary: { cycleTag: any };
-    debtSummary: { cycleTag: any; movementLabel: any; notes: any };
+    cashbackSummary: { cashbackCycleTag: any };
+    debtSummary: { debtCycleTag: any; movementLabel: any; debtNotes: any };
   },
 ) {
   const normalized = searchTerm.trim();
@@ -283,10 +283,10 @@ function buildSearchConditions(
     ilike(refs.transactions.linkedTxnId, pattern),
   ];
 
-  conditions.push(ilike(refs.cashbackSummary.cycleTag, pattern));
-  conditions.push(ilike(refs.debtSummary.cycleTag, pattern));
+  conditions.push(ilike(refs.cashbackSummary.cashbackCycleTag, pattern));
+  conditions.push(ilike(refs.debtSummary.debtCycleTag, pattern));
   conditions.push(ilike(refs.debtSummary.movementLabel, pattern));
-  conditions.push(ilike(refs.debtSummary.notes, pattern));
+  conditions.push(ilike(refs.debtSummary.debtNotes, pattern));
 
   return conditions;
 }
@@ -314,9 +314,9 @@ function resolveSortExpression(columnId: string, refs: SortReferences) {
     case 'finalPrice':
       return sql`(${refs.transactions.amount})::numeric - coalesce(${refs.cashbackSummary.totalBack}, 0)`;
     case 'debtTag':
-      return sql`coalesce(${refs.debtSummary.movementLabel}, ${refs.debtSummary.notes}, '')`;
+      return sql`coalesce(${refs.debtSummary.movementLabel}, ${refs.debtSummary.debtNotes}, '')`;
     case 'cycleTag':
-      return sql`coalesce(${refs.debtSummary.cycleTag}, ${refs.cashbackSummary.cycleTag}, '')`;
+      return sql`coalesce(${refs.debtSummary.debtCycleTag}, ${refs.cashbackSummary.cashbackCycleTag}, '')`;
     case 'category':
       return refs.categories.name;
     case 'linkedTxn':
@@ -454,7 +454,7 @@ export async function getTransactionsTable(
       'fixedBack',
     );
     const cashbackTotalBack = sql<number>`coalesce(sum(${cashbackMovements.cashbackAmount}::numeric), 0)`.as('totalBack');
-    const cashbackCycleTag = sql<string>`max(${cashbackMovements.cycleTag})`.as('cycleTag');
+    const cashbackCycleTag = sql<string>`max(${cashbackMovements.cycleTag})`.as('cashbackCycleTag');
 
     const cashbackSummary = db
       .$with('cashback_summary')
@@ -465,14 +465,14 @@ export async function getTransactionsTable(
             percentBack: cashbackPercentBack,
             fixedBack: cashbackFixedBack,
             totalBack: cashbackTotalBack,
-            cycleTag: cashbackCycleTag,
+            cashbackCycleTag,
           })
           .from(cashbackMovements)
           .groupBy(cashbackMovements.transactionId),
       );
 
-    const debtCycleTag = sql<string>`max(${debtMovements.cycleTag})`.as('cycleTag');
-    const debtNotes = sql<string>`max(${debtMovements.notes})`.as('notes');
+    const debtCycleTag = sql<string>`max(${debtMovements.cycleTag})`.as('debtCycleTag');
+    const debtNotes = sql<string>`max(${debtMovements.notes})`.as('debtNotes');
     const debtMovementLabel = sql<string>`max(trim(concat_ws(' ', initcap(replace(${debtMovements.movementType}::text, '_', ' ')), ${debtMovements.cycleTag})))`.as(
       'movementLabel',
     );
@@ -483,8 +483,8 @@ export async function getTransactionsTable(
         db
           .select({
             transactionId: debtMovements.transactionId,
-            cycleTag: debtCycleTag,
-            notes: debtNotes,
+            debtCycleTag,
+            debtNotes,
             movementLabel: debtMovementLabel,
           })
           .from(debtMovements)
@@ -570,10 +570,10 @@ export async function getTransactionsTable(
           percentBack: cashbackSummary.percentBack,
           fixedBack: cashbackSummary.fixedBack,
           totalBack: cashbackSummary.totalBack,
-          cashbackCycle: cashbackSummary.cycleTag,
-          debtCycle: debtSummary.cycleTag,
+          cashbackCycle: cashbackSummary.cashbackCycleTag,
+          debtCycle: debtSummary.debtCycleTag,
           debtLabel: debtSummary.movementLabel,
-          debtNotes: debtSummary.notes,
+          debtNotes: debtSummary.debtNotes,
         })
         .from(transactions)
         .leftJoin(accounts, eq(transactions.accountId, accounts.accountId))
