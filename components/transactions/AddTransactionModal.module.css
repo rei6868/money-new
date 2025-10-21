@@ -7,7 +7,7 @@
   align-items: center;
   justify-content: center;
   padding: 2rem 1.5rem;
-  z-index: 120;
+  z-index: 1300;
 }
 
 .modal {
@@ -19,6 +19,18 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 1310;
+}
+
+.modalBody {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+  overflow-y: auto;
+  padding: 1.4rem 2rem 1.6rem;
+  max-height: calc(80vh - 150px);
 }
 
 .header {
@@ -66,7 +78,7 @@
 
 .tabList {
   margin: 0;
-  padding: 0 2rem;
+  padding: 0;
   list-style: none;
   display: flex;
   gap: 0.75rem;
@@ -102,7 +114,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1.2rem;
-  padding: 1.6rem 2rem;
+  align-items: flex-start;
 }
 
 .field {
@@ -153,6 +165,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  padding: 0.2rem 0.75rem;
 }
 
 .dropdownField {
@@ -160,7 +173,7 @@
 }
 
 .notesField {
-  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .notesActions {
@@ -192,7 +205,7 @@
   padding: 0.75rem 0.9rem;
   font-size: 0.95rem;
   resize: vertical;
-  min-height: 110px;
+  min-height: 56px;
   background: rgba(148, 163, 184, 0.12);
   color: var(--mf-text-primary);
   transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
@@ -206,15 +219,14 @@
 }
 
 .tabPanel {
-  padding: 0 2rem 1.6rem;
-  overflow-y: auto;
+  padding: 0;
 }
 
 .tabContent {
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
-  padding-top: 1.2rem;
+  padding-top: 1.1rem;
 }
 
 .tabGrid {
@@ -403,16 +415,9 @@
     padding: 1.4rem 1.4rem 1rem;
   }
 
-  .tabList {
-    padding: 0 1.4rem;
-  }
-
-  .commonFields {
-    padding: 1.4rem;
-  }
-
-  .tabPanel {
-    padding: 0 1.4rem 1.4rem;
+  .modalBody {
+    padding: 1rem 1.4rem 1.4rem;
+    gap: 1.4rem;
   }
 
   .actions {
