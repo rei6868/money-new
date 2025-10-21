@@ -48,17 +48,58 @@ export default function ReusableDropdown({
   openOnMount = false,
   onOpenChange,
   searchPlaceholder = 'Search...',
+  onAddNew,
+  addNewLabel = '+ New',
+  ariaLabel,
+  hasError = false,
+  filterTabs = [],
 }) {
   const normalizedValue = value === undefined || value === null ? '' : String(value);
   const normalizedOptions = useMemo(
     () => options.map((option, index) => normalizeOption(option, index)).filter(Boolean),
     [options],
   );
+  const normalizedFilterTabs = useMemo(() => {
+    if (!Array.isArray(filterTabs)) {
+      return [];
+    }
+
+    return filterTabs
+      .map((tab, index) => {
+        if (typeof tab === 'string' || typeof tab === 'number') {
+          const label = String(tab);
+          const valueKey = label.trim().toLowerCase().replace(/\s+/g, '-');
+          return {
+            key: `filter-${valueKey || index}`,
+            value: valueKey || `filter-${index}`,
+            label,
+          };
+        }
+
+        if (tab && typeof tab === 'object') {
+          const label = tab.label !== undefined ? String(tab.label) : '';
+          const rawValue = tab.value !== undefined ? tab.value : label;
+          const value = String(rawValue ?? `filter-${index}`);
+          return {
+            key: tab.key ?? `filter-${value}-${index}`,
+            value,
+            label,
+          };
+        }
+
+        return null;
+      })
+      .filter(Boolean);
+  }, [filterTabs]);
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [openDirection, setOpenDirection] = useState('down');
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
   const searchInputRef = useRef(null);
+  const [activeFilterTab, setActiveFilterTab] = useState(() =>
+    normalizedFilterTabs.length > 0 ? normalizedFilterTabs[0].value : null,
+  );
 
   const selectedOption = useMemo(
     () => normalizedOptions.find((option) => option.value === normalizedValue) ?? null,
@@ -81,6 +122,7 @@ export default function ReusableDropdown({
       setIsOpen(false);
       setSearchTerm('');
       onOpenChange?.(false);
+      setOpenDirection('down');
       if (focusTrigger) {
         requestAnimationFrame(() => {
           triggerRef.current?.focus();
@@ -94,6 +136,7 @@ export default function ReusableDropdown({
     if (disabled) {
       return;
     }
+    setOpenDirection('down');
     setIsOpen((prev) => {
       const next = !prev;
       if (next) {
@@ -145,6 +188,20 @@ export default function ReusableDropdown({
   }, [isOpen, closeDropdown]);
 
   useEffect(() => {
+    if (normalizedFilterTabs.length === 0) {
+      setActiveFilterTab(null);
+      return;
+    }
+
+    setActiveFilterTab((previous) => {
+      if (previous && normalizedFilterTabs.some((tab) => tab.value === previous)) {
+        return previous;
+      }
+      return normalizedFilterTabs[0].value;
+    });
+  }, [normalizedFilterTabs]);
+
+  useEffect(() => {
     if (!isOpen) {
       return;
     }
@@ -152,6 +209,48 @@ export default function ReusableDropdown({
       searchInputRef.current?.focus();
     });
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const updateMenuDirection = () => {
+      const triggerEl = triggerRef.current;
+      const menuEl = menuRef.current;
+
+      if (!triggerEl || !menuEl) {
+        return;
+      }
+
+      const triggerRect = triggerEl.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - triggerRect.bottom;
+      const spaceAbove = triggerRect.top;
+      const menuHeight = menuEl.offsetHeight;
+
+      const shouldOpenUpward = menuHeight > spaceBelow && spaceAbove > spaceBelow;
+      const nextDirection = shouldOpenUpward ? 'up' : 'down';
+
+      setOpenDirection((previous) => (previous === nextDirection ? previous : nextDirection));
+    };
+
+    const rafId = requestAnimationFrame(updateMenuDirection);
+    const handleScroll = () => updateMenuDirection();
+
+    window.addEventListener('resize', updateMenuDirection);
+    document.addEventListener('scroll', handleScroll, true);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', updateMenuDirection);
+      document.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [isOpen, filteredOptions.length]);
 
   const handleSelect = (option) => {
     if (!option) {
@@ -171,16 +270,25 @@ export default function ReusableDropdown({
   };
 
   const handleNewClick = useCallback(() => {
-    // eslint-disable-next-line no-console
-    console.log('Add New clicked');
-  }, []);
+    if (disabled) {
+      return;
+    }
+    onAddNew?.();
+    closeDropdown();
+  }, [closeDropdown, disabled, onAddNew]);
 
   const dropdownId = id ?? `reusable-dropdown-${Math.random().toString(36).slice(2)}`;
   const triggerTestId = testIdPrefix ? `${testIdPrefix}-trigger` : undefined;
   const searchTestId = testIdPrefix ? `${testIdPrefix}-search` : undefined;
+  const triggerAriaLabel = ariaLabel ?? (label ? undefined : placeholder);
+  const filterTabsAriaLabel = label ? `${label} filters` : 'Filter options';
 
   return (
-    <div className={`${styles.dropdown} ${className}`} data-disabled={disabled ? 'true' : undefined}>
+    <div
+      className={`${styles.dropdown} ${className}`}
+      data-disabled={disabled ? 'true' : undefined}
+      data-error={hasError ? 'true' : undefined}
+    >
       {label ? (
         <label className={styles.label} htmlFor={`${dropdownId}-search`}>
           {label}
@@ -195,6 +303,7 @@ export default function ReusableDropdown({
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-label={triggerAriaLabel}
         data-placeholder={selectedOption ? 'false' : 'true'}
         data-testid={triggerTestId}
       >
@@ -218,7 +327,12 @@ export default function ReusableDropdown({
       </button>
 
       {isOpen ? (
-        <div className={styles.menu} ref={menuRef} role="listbox">
+        <div
+          className={styles.menu}
+          ref={menuRef}
+          role="listbox"
+          data-direction={openDirection}
+        >
           <div className={styles.searchWrapper}>
             <input
               ref={searchInputRef}
@@ -231,33 +345,59 @@ export default function ReusableDropdown({
               data-testid={searchTestId}
             />
           </div>
-          <ul className={styles.optionsList}>
-            {filteredOptions.length === 0 ? (
-              <li className={styles.emptyState}>No matches found</li>
-            ) : (
-              filteredOptions.map((option) => (
-                <li key={option.key}>
-                  <button
-                    type="button"
-                    className={styles.optionButton}
-                    onClick={() => handleSelect(option)}
-                    data-selected={option.value === normalizedValue ? 'true' : 'false'}
-                    role="option"
-                    aria-selected={option.value === normalizedValue}
-                    data-testid={
-                      testIdPrefix ? `${testIdPrefix}-option-${option.value}` : undefined
-                    }
-                  >
-                    {option.label}
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-          <div className={styles.menuActions}>
-            <button type="button" className={styles.newButton} onClick={handleNewClick}>
-              + New
-            </button>
+          {normalizedFilterTabs.length > 0 ? (
+            <div className={styles.filterTabs} role="tablist" aria-label={filterTabsAriaLabel}>
+              {normalizedFilterTabs.map((tab) => (
+                <button
+                  type="button"
+                  key={tab.key}
+                  className={`${styles.filterTabButton} ${
+                    activeFilterTab === tab.value ? styles.filterTabButtonActive : ''
+                  }`}
+                  onClick={() => setActiveFilterTab(tab.value)}
+                  role="tab"
+                  aria-selected={activeFilterTab === tab.value}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <div className={styles.optionsScrollArea}>
+            <ul className={styles.optionsList}>
+              {filteredOptions.length === 0 ? (
+                <li className={styles.emptyState}>No matches found</li>
+              ) : (
+                filteredOptions.map((option) => (
+                  <li key={option.key}>
+                    <button
+                      type="button"
+                      className={styles.optionButton}
+                      onClick={() => handleSelect(option)}
+                      data-selected={option.value === normalizedValue ? 'true' : 'false'}
+                      role="option"
+                      aria-selected={option.value === normalizedValue}
+                      data-testid={
+                        testIdPrefix ? `${testIdPrefix}-option-${option.value}` : undefined
+                      }
+                    >
+                      {option.label}
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+            {onAddNew ? (
+              <div className={styles.newActionFooter}>
+                <button
+                  type="button"
+                  className={`${styles.newButton} ${styles.stickyNewButton}`}
+                  onClick={handleNewClick}
+                >
+                  {addNewLabel}
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
