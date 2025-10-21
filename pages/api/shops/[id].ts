@@ -124,7 +124,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         return;
       }
-      updates.shopType = normalizedType;
+      updates.shopType = normalizedType as (typeof shopTypeEnum.enumValues)[number];
     }
 
     if (payload.status !== undefined) {
@@ -136,7 +136,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         return;
       }
-      updates.status = normalizedStatus;
+      updates.status = normalizedStatus as (typeof shopStatusEnum.enumValues)[number];
     }
 
     if (payload.imgUrl !== undefined) {

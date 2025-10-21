@@ -139,7 +139,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         return;
       }
-      updates.kind = kind;
+      updates.kind = kind as (typeof categoryKindEnum.enumValues)[number];
     }
 
     if (payload.description !== undefined) {
@@ -248,4 +248,3 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader("Allow", ["GET", "PUT", "PATCH", "DELETE"]);
   respondJson(res, 405, { error: "Method not allowed" });
 }
-

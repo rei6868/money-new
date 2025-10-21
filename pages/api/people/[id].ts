@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { eq } from 'drizzle-orm';
 
 import { getDb } from '../../../lib/db/client';
-import { people, type NewPerson } from '../../../src/db/schema/people';
+import { people, personStatusEnum, type NewPerson } from '../../../src/db/schema/people';
 
 const toSingle = (value: string | string[] | undefined): string | undefined => {
   if (Array.isArray(value)) {
@@ -43,7 +43,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         updates.fullName = fullName.trim();
       }
       if (typeof status === 'string' && status.trim().length > 0) {
-        updates.status = status.trim();
+        const normalizedStatus = status.trim();
+        if (!(personStatusEnum.enumValues as readonly string[]).includes(normalizedStatus)) {
+          res.status(400).json({
+            error: 'Validation failed',
+            details: `status must be one of: ${personStatusEnum.enumValues.join(', ')}`,
+          });
+          return;
+        }
+        updates.status = normalizedStatus as NewPerson['status'];
       }
       if (contactInfo !== undefined) {
         updates.contactInfo = contactInfo;

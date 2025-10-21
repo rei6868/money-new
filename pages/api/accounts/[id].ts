@@ -162,7 +162,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return;
       }
       const allowedStatuses = accountStatusEnum.enumValues;
-      if (!allowedStatuses.includes(normalizedStatus)) {
+      if (!(allowedStatuses as string[]).includes(normalizedStatus)) {
         respondJson(res, 400, {
           error: "Invalid status value",
           details: `Status must be one of: ${allowedStatuses.join(", ")}`,

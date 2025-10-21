@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { randomUUID } from 'crypto';
 
 import { getDb } from '../../../lib/db/client';
-import { people, type NewPerson } from '../../../src/db/schema/people';
+import { people, personStatusEnum, type NewPerson } from '../../../src/db/schema/people';
 
 type PeopleListResponse = {
   people: Array<typeof people.$inferSelect>;
@@ -82,10 +82,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const fullName = normalizeString(payload.fullName);
       const status = normalizeString(payload.status);
-      if (!fullName || !status) {
+      const allowedStatuses = personStatusEnum.enumValues;
+      const normalizedStatus =
+        status && (allowedStatuses as readonly string[]).includes(status)
+          ? (status as (typeof allowedStatuses)[number])
+          : undefined;
+      if (!fullName || !normalizedStatus) {
         respondJson(res, 400, {
           error: 'Validation failed',
-          details: 'fullName and status are required',
+          details: `fullName and status are required. status must be one of: ${allowedStatuses.join(', ')}`,
         });
         return;
       }
@@ -93,10 +98,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const newPerson: NewPerson = {
         personId: generatePersonId(),
         fullName,
-        status,
+        status: normalizedStatus,
       };
 
-      const optionalFields: Array<keyof NewPerson> = ['contactInfo', 'groupId', 'imgUrl', 'note'];
+      const optionalFields: Array<'contactInfo' | 'groupId' | 'imgUrl' | 'note'> = [
+        'contactInfo',
+        'groupId',
+        'imgUrl',
+        'note',
+      ];
       for (const field of optionalFields) {
         const value = payload[field];
         if (value !== undefined && value !== null && value !== '') {

@@ -94,13 +94,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const payload = parsedBody as Partial<NewShop>;
 
     const shopName = normalizeString(payload.shopName);
-    const shopType = normalizeEnumValue(payload.shopType, shopTypeEnum.enumValues);
-    const status = normalizeEnumValue(payload.status, shopStatusEnum.enumValues);
+    const shopType = normalizeEnumValue(payload.shopType, shopTypeEnum.enumValues) as
+      | (typeof shopTypeEnum.enumValues)[number]
+      | null;
+    const status = normalizeEnumValue(payload.status, shopStatusEnum.enumValues) as
+      | (typeof shopStatusEnum.enumValues)[number]
+      | null;
 
     if (!shopName || !shopType || !status) {
       respondJson(res, 400, {
         error: "Validation failed",
-        details: "shopName, shopType, and status are required",
+        details: `shopName, shopType, and status are required. shopType must be one of: ${shopTypeEnum.enumValues.join(
+          ", "
+        )}. status must be one of: ${shopStatusEnum.enumValues.join(", ")}`,
       });
       return;
     }

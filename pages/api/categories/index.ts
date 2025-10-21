@@ -105,7 +105,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const payload = parsedBody as Partial<NewCategory>;
 
     const name = normalizeString(payload.name);
-    const kind = normalizeEnumValue(payload.kind, categoryKindEnum.enumValues);
+    const kind = normalizeEnumValue(payload.kind, categoryKindEnum.enumValues) as
+      | (typeof categoryKindEnum.enumValues)[number]
+      | null;
     let parentCategoryId: string | null | undefined;
 
     if (payload.parentCategoryId !== undefined) {
@@ -195,4 +197,3 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader("Allow", ["GET", "POST"]);
   respondJson(res, 405, { error: "Method not allowed" });
 }
-
