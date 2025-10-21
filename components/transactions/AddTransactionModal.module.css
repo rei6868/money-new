@@ -199,6 +199,8 @@
 
 .dropdownField {
   width: 100%;
+  flex: 1 1 240px;
+  min-width: 0;
 }
 
 .formGrid {
@@ -215,18 +217,23 @@
 }
 
 .debtTopRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 1.2rem;
   align-items: center;
 }
 
+.debtTopRow > * {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
 .debtTypeGroup {
-  display: grid;
-  grid-template-columns: auto 1fr;
+  display: flex;
   align-items: center;
   gap: 0.75rem;
   width: 100%;
+  min-width: 0;
 }
 
 .debtTypeToggle {
@@ -234,15 +241,17 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
-  min-height: 44px;
-  width: 100%;
-  padding: 0.2rem 0.25rem;
+  min-height: 40px;
+  width: auto;
+  padding: 0.15rem 0.25rem;
   border-radius: 999px;
   border: 1px solid rgba(248, 113, 113, 0.45);
   background: linear-gradient(135deg, rgba(248, 113, 113, 0.12) 0%, rgba(239, 68, 68, 0.18) 100%);
   cursor: pointer;
-  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.14);
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.12);
   transition: background 0.2s ease, border 0.2s ease, box-shadow 0.2s ease;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .debtTypeToggleDebt {
@@ -285,18 +294,18 @@
 
 .debtTypeThumb {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: calc(50% - 6px);
-  height: calc(100% - 6px);
+  top: 2px;
+  left: 2px;
+  width: calc(50% - 4px);
+  height: calc(100% - 4px);
   border-radius: 999px;
   background: #ffffff;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.14);
   transition: transform 0.2s ease;
 }
 
 .debtTypeToggleRepay .debtTypeThumb {
-  transform: translateX(calc(100% + 6px));
+  transform: translateX(calc(100% + 4px));
 }
 
 .debtMetaRow {
@@ -311,10 +320,10 @@
 }
 
 .debtTagColumn {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
   gap: 0.6rem;
+  min-width: 0;
 }
 
 .debtTagHeader {
@@ -350,8 +359,8 @@
 }
 
 .switchTrack {
-  width: 52px;
-  height: 28px;
+  width: 48px;
+  height: 24px;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.28);
   position: relative;
@@ -360,10 +369,10 @@
 
 .switchThumb {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 22px;
-  height: 22px;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: #ffffff;
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.2);
@@ -440,7 +449,7 @@
   padding: 0.65rem 0.85rem;
   font-size: 0.95rem;
   resize: vertical;
-  min-height: 52px;
+  min-height: 48px;
   line-height: 1.4;
   background: rgba(148, 163, 184, 0.12);
   color: var(--mf-text-primary);
@@ -594,9 +603,24 @@
     grid-template-columns: 1fr;
   }
 
+  .debtTopRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .debtTopRow > * {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
   .debtTypeGroup {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 0.5rem;
+  }
+
+  .debtTypeToggle {
+    width: 100%;
   }
 
   .debtTypeLabel {

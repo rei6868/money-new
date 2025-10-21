@@ -229,11 +229,29 @@ export default function ReusableDropdown({
 
       const triggerRect = triggerEl.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
-      const spaceBelow = viewportHeight - triggerRect.bottom;
-      const spaceAbove = triggerRect.top;
+      const scrollContainer = triggerEl.closest('[data-dropdown-viewport="true"]');
+      const containerRect = scrollContainer?.getBoundingClientRect();
+
+      const rawSpaceBelowViewport = viewportHeight - triggerRect.bottom;
+      const rawSpaceAboveViewport = triggerRect.top;
+
+      const spaceBelowWithinContainer =
+        containerRect != null ? containerRect.bottom - triggerRect.bottom : rawSpaceBelowViewport;
+      const spaceAboveWithinContainer =
+        containerRect != null ? triggerRect.top - containerRect.top : rawSpaceAboveViewport;
+
+      const availableSpaceBelow = Math.max(
+        0,
+        Math.min(rawSpaceBelowViewport, spaceBelowWithinContainer),
+      );
+      const availableSpaceAbove = Math.max(
+        0,
+        Math.min(rawSpaceAboveViewport, spaceAboveWithinContainer),
+      );
+
       const menuHeight = menuEl.offsetHeight;
 
-      const shouldOpenUpward = menuHeight > spaceBelow && spaceAbove > spaceBelow;
+      const shouldOpenUpward = menuHeight > availableSpaceBelow && availableSpaceAbove > availableSpaceBelow;
       const nextDirection = shouldOpenUpward ? 'up' : 'down';
 
       setOpenDirection((previous) => (previous === nextDirection ? previous : nextDirection));

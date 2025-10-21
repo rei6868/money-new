@@ -374,7 +374,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
           value={formValues.notes}
           onChange={handleNotesChange}
           placeholder="Add a note or short description"
-          rows={2}
+          rows={1}
         />
       </div>
     );
@@ -416,145 +416,183 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
           aria-labelledby={titleId}
           aria-describedby={descriptionId}
         >
-        <header className={styles.header}>
-          <div>
-            <h2 className={styles.title} id={titleId}>
-              Add New Transaction
-            </h2>
-            <p className={styles.subtitle} id={descriptionId}>
-              Capture every inflow, expense, or transfer without leaving the history screen.
-            </p>
-          </div>
-          <button type="button" className={styles.closeButton} onClick={requestClose} aria-label="Close">
-            <FiX aria-hidden />
-          </button>
-        </header>
+          <header className={styles.header}>
+            <div>
+              <h2 className={styles.title} id={titleId}>
+                Add New Transaction
+              </h2>
+              <p className={styles.subtitle} id={descriptionId}>
+                Capture every inflow, expense, or transfer without leaving the history screen.
+              </p>
+            </div>
+            <button
+              type="button"
+              className={styles.closeButton}
+              onClick={requestClose}
+              aria-label="Close"
+            >
+              <FiX aria-hidden />
+            </button>
+          </header>
 
-        <div className={styles.modalBody}>
-          <ul className={styles.tabList} role="tablist">
-            {TABS.map((tab) => {
-              const tabId = `add-transaction-tab-${tab.id}`;
-              const panelId = `add-transaction-panel-${tab.id}`;
-              const isActive = tab.id === activeTab;
-              const tone = TAB_ACCENTS[tab.id] ?? 'neutral';
-              const buttonClasses = [styles.tabButton];
-              if (isActive) {
-                buttonClasses.push(styles.tabButtonActive);
-                if (tone === 'negative') {
-                  buttonClasses.push(styles.tabButtonActiveNegative);
-                } else if (tone === 'positive') {
-                  buttonClasses.push(styles.tabButtonActivePositive);
-                } else {
-                  buttonClasses.push(styles.tabButtonActiveNeutral);
+          <div className={styles.modalBody} data-dropdown-viewport="true">
+            <ul className={styles.tabList} role="tablist">
+              {TABS.map((tab) => {
+                const tabId = `add-transaction-tab-${tab.id}`;
+                const panelId = `add-transaction-panel-${tab.id}`;
+                const isActive = tab.id === activeTab;
+                const tone = TAB_ACCENTS[tab.id] ?? 'neutral';
+                const buttonClasses = [styles.tabButton];
+                if (isActive) {
+                  buttonClasses.push(styles.tabButtonActive);
+                  if (tone === 'negative') {
+                    buttonClasses.push(styles.tabButtonActiveNegative);
+                  } else if (tone === 'positive') {
+                    buttonClasses.push(styles.tabButtonActivePositive);
+                  } else {
+                    buttonClasses.push(styles.tabButtonActiveNeutral);
+                  }
                 }
-              }
-              return (
-                <li key={tab.id}>
-                  <button
-                    type="button"
-                    className={buttonClasses.join(' ')}
-                    onClick={() => handleTabChange(tab.id)}
-                    role="tab"
-                    id={tabId}
-                    aria-selected={isActive}
-                    aria-controls={panelId}
-                  >
-                    {tab.label}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-
-          <section
-            className={styles.tabPanel}
-            id={`add-transaction-panel-${activeTab}`}
-            role="tabpanel"
-            aria-labelledby={`add-transaction-tab-${activeTab}`}
-          >
-            {activeTab === 'debt' ? (
-              <div className={styles.debtSection}>
-                <div className={styles.debtTopRow}>
-                  <div className={styles.debtTypeGroup}>
-                    <span
-                      id={debtTypeLabelId}
-                      className={`${styles.fieldLabel} ${styles.debtTypeLabel}`}
-                    >
-                      Debt Type
-                    </span>
+                return (
+                  <li key={tab.id}>
                     <button
                       type="button"
-                      className={`${styles.debtTypeToggle} ${
-                        isRepayMode ? styles.debtTypeToggleRepay : styles.debtTypeToggleDebt
-                      }`}
-                      onClick={() => updateField('debtType', isRepayMode ? 'debt' : 'repay')}
-                      role="switch"
-                      aria-checked={isRepayMode}
-                      aria-labelledby={debtTypeLabelId}
+                      className={buttonClasses.join(' ')}
+                      onClick={() => handleTabChange(tab.id)}
+                      role="tab"
+                      id={tabId}
+                      aria-selected={isActive}
+                      aria-controls={panelId}
                     >
-                      <span
-                        className={styles.debtTypeOption}
-                        data-active={!isRepayMode ? 'true' : 'false'}
-                        data-variant="debt"
-                      >
-                        Debt
-                      </span>
-                      <span
-                        className={styles.debtTypeOption}
-                        data-active={isRepayMode ? 'true' : 'false'}
-                        data-variant="repay"
-                      >
-                        Repayment
-                      </span>
-                      <span className={styles.debtTypeThumb} aria-hidden />
+                      {tab.label}
                     </button>
-                  </div>
-                  <ReusableDropdown
-                    label="Person"
-                    options={PERSON_OPTIONS}
-                    value={formValues.debtPerson}
-                    onChange={(value) => updateField('debtPerson', value)}
-                    placeholder="Select person"
-                    className={styles.dropdownField}
-                    onAddNew={() => handleOpenNewItemModal('Person')}
-                  />
-                </div>
+                  </li>
+                );
+              })}
+            </ul>
 
-                <div className={styles.debtMetaRow}>
-                  {renderDateField({ className: styles.dateField })}
-                  <div className={styles.debtTagColumn}>
-                    <div className={`${styles.fieldLabelRow} ${styles.debtTagHeader}`}>
-                      <span className={styles.fieldLabel}>{debtTagLabel}</span>
-                      <div className={styles.lastMonthGroup}>
-                        <span className={styles.lastMonthLabel}>Last Month</span>
-                        <button
-                          type="button"
-                          className={`${styles.switchButton} ${
-                            isLastMonth ? styles.switchButtonActive : ''
-                          }`}
-                          onClick={() => setIsLastMonth((prev) => !prev)}
-                          role="switch"
-                          aria-checked={isLastMonth}
+            <section
+              className={styles.tabPanel}
+              id={`add-transaction-panel-${activeTab}`}
+              role="tabpanel"
+              aria-labelledby={`add-transaction-tab-${activeTab}`}
+            >
+              {activeTab === 'debt' ? (
+                <div className={styles.debtSection}>
+                  <div className={styles.debtTopRow}>
+                    <div className={styles.debtTypeGroup}>
+                      <span
+                        id={debtTypeLabelId}
+                        className={`${styles.fieldLabel} ${styles.debtTypeLabel}`}
+                      >
+                        Debt Type
+                      </span>
+                      <button
+                        type="button"
+                        className={`${styles.debtTypeToggle} ${
+                          isRepayMode ? styles.debtTypeToggleRepay : styles.debtTypeToggleDebt
+                        }`}
+                        onClick={() => updateField('debtType', isRepayMode ? 'debt' : 'repay')}
+                        role="switch"
+                        aria-checked={isRepayMode}
+                        aria-labelledby={debtTypeLabelId}
+                      >
+                        <span
+                          className={styles.debtTypeOption}
+                          data-active={!isRepayMode ? 'true' : 'false'}
+                          data-variant="debt"
                         >
-                          <span className={styles.switchTrack}>
-                            <span className={styles.switchThumb} />
-                          </span>
-                        </button>
-                      </div>
+                          Debt
+                        </span>
+                        <span
+                          className={styles.debtTypeOption}
+                          data-active={isRepayMode ? 'true' : 'false'}
+                          data-variant="repay"
+                        >
+                          Repayment
+                        </span>
+                        <span className={styles.debtTypeThumb} aria-hidden />
+                      </button>
                     </div>
                     <ReusableDropdown
-                      options={debtTagOptions}
-                      value={selectedDebtTag}
-                      onChange={(value) => handleDebtTagSelect(value)}
-                      placeholder="Select or search debt tag"
+                      label="Person"
+                      options={PERSON_OPTIONS}
+                      value={formValues.debtPerson}
+                      onChange={(value) => updateField('debtPerson', value)}
+                      placeholder="Select person"
                       className={styles.dropdownField}
-                      ariaLabel={debtTagLabel}
-                      onAddNew={() => handleOpenNewItemModal(debtTagModalType)}
+                      onAddNew={() => handleOpenNewItemModal('Person')}
                     />
                   </div>
-                </div>
 
-                <div className={styles.debtAccountsRow}>
+                  <div className={styles.debtMetaRow}>
+                    {renderDateField({ className: styles.dateField })}
+                    <div className={styles.debtTagColumn}>
+                      <div className={`${styles.fieldLabelRow} ${styles.debtTagHeader}`}>
+                        <span className={styles.fieldLabel}>{debtTagLabel}</span>
+                        <div className={styles.lastMonthGroup}>
+                          <span className={styles.lastMonthLabel}>Last Month</span>
+                          <button
+                            type="button"
+                            className={`${styles.switchButton} ${
+                              isLastMonth ? styles.switchButtonActive : ''
+                            }`}
+                            onClick={() => setIsLastMonth((prev) => !prev)}
+                            role="switch"
+                            aria-checked={isLastMonth}
+                          >
+                            <span className={styles.switchTrack}>
+                              <span className={styles.switchThumb} />
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                      <ReusableDropdown
+                        options={debtTagOptions}
+                        value={selectedDebtTag}
+                        onChange={(value) => handleDebtTagSelect(value)}
+                        placeholder="Select or search debt tag"
+                        className={styles.dropdownField}
+                        ariaLabel={debtTagLabel}
+                        onAddNew={() => handleOpenNewItemModal(debtTagModalType)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.debtAccountsRow}>
+                    <ReusableDropdown
+                      label="Account"
+                      options={ACCOUNT_OPTIONS}
+                      value={formValues.account}
+                      onChange={(value) => updateField('account', value)}
+                      placeholder="Select account"
+                      className={styles.dropdownField}
+                      filterTabs={ACCOUNT_FILTER_TABS}
+                      onAddNew={() => handleOpenNewItemModal('Account')}
+                    />
+
+                    {renderAmountField()}
+                  </div>
+
+                  <div className={styles.debtCategoryRow}>
+                    <ReusableDropdown
+                      label="Category"
+                      options={DEBT_CATEGORY_OPTIONS}
+                      value={formValues.debtCategory}
+                      onChange={(value) => updateField('debtCategory', value)}
+                      placeholder="Select category"
+                      className={styles.dropdownField}
+                      onAddNew={() => handleOpenNewItemModal('Debt Category')}
+                    />
+
+                    {renderNotesField({ fullRow: false })}
+                  </div>
+                </div>
+              ) : null}
+
+              {activeTab === 'income' ? (
+                <div className={styles.formGrid}>
+                  {renderDateField()}
                   <ReusableDropdown
                     label="Account"
                     options={ACCOUNT_OPTIONS}
@@ -565,147 +603,114 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
                     filterTabs={ACCOUNT_FILTER_TABS}
                     onAddNew={() => handleOpenNewItemModal('Account')}
                   />
-
                   {renderAmountField()}
-                </div>
-
-                <div className={styles.debtCategoryRow}>
                   <ReusableDropdown
                     label="Category"
-                    options={DEBT_CATEGORY_OPTIONS}
-                    value={formValues.debtCategory}
-                    onChange={(value) => updateField('debtCategory', value)}
-                    placeholder="Select category"
+                    options={INCOME_CATEGORY_OPTIONS}
+                    value={formValues.incomeCategory}
+                    onChange={(value) => updateField('incomeCategory', value)}
+                    placeholder="Select income category"
                     className={styles.dropdownField}
-                    onAddNew={() => handleOpenNewItemModal('Debt Category')}
+                    onAddNew={() => handleOpenNewItemModal('Income Category')}
                   />
-
-                  {renderNotesField({ fullRow: false })}
+                  <ReusableDropdown
+                    label="Shop (optional)"
+                    options={SHOP_OPTIONS}
+                    value={formValues.incomeShop}
+                    onChange={(value) => updateField('incomeShop', value)}
+                    placeholder="Select shop"
+                    className={`${styles.dropdownField} ${styles.fullRow}`}
+                    onAddNew={() => handleOpenNewItemModal('Shop')}
+                  />
+                  {renderNotesField()}
                 </div>
-              </div>
-            ) : null}
+              ) : null}
 
-            {activeTab === 'income' ? (
-              <div className={styles.formGrid}>
-                {renderDateField()}
-                <ReusableDropdown
-                  label="Account"
-                  options={ACCOUNT_OPTIONS}
-                  value={formValues.account}
-                  onChange={(value) => updateField('account', value)}
-                  placeholder="Select account"
-                  className={styles.dropdownField}
-                  filterTabs={ACCOUNT_FILTER_TABS}
-                  onAddNew={() => handleOpenNewItemModal('Account')}
-                />
-                {renderAmountField()}
-                <ReusableDropdown
-                  label="Category"
-                  options={INCOME_CATEGORY_OPTIONS}
-                  value={formValues.incomeCategory}
-                  onChange={(value) => updateField('incomeCategory', value)}
-                  placeholder="Select income category"
-                  className={styles.dropdownField}
-                  onAddNew={() => handleOpenNewItemModal('Income Category')}
-                />
-                <ReusableDropdown
-                  label="Shop (optional)"
-                  options={SHOP_OPTIONS}
-                  value={formValues.incomeShop}
-                  onChange={(value) => updateField('incomeShop', value)}
-                  placeholder="Select shop"
-                  className={`${styles.dropdownField} ${styles.fullRow}`}
-                  onAddNew={() => handleOpenNewItemModal('Shop')}
-                />
-                {renderNotesField()}
-              </div>
-            ) : null}
-
-            {activeTab === 'expenses' ? (
-              <div className={styles.formGrid}>
-                {renderDateField()}
-                <ReusableDropdown
-                  label="Account"
-                  options={ACCOUNT_OPTIONS}
-                  value={formValues.account}
-                  onChange={(value) => updateField('account', value)}
-                  placeholder="Select account"
-                  className={styles.dropdownField}
-                  filterTabs={ACCOUNT_FILTER_TABS}
-                  onAddNew={() => handleOpenNewItemModal('Account')}
-                />
-                {renderAmountField()}
-                <ReusableDropdown
-                  label="Category"
-                  options={EXPENSE_CATEGORY_OPTIONS}
-                  value={formValues.expenseCategory}
-                  onChange={(value) => updateField('expenseCategory', value)}
-                  placeholder="Select expense category"
-                  className={styles.dropdownField}
-                  onAddNew={() => handleOpenNewItemModal('Expense Category')}
-                />
-                <ReusableDropdown
-                  label="Shop (optional)"
-                  options={SHOP_OPTIONS}
-                  value={formValues.expenseShop}
-                  onChange={(value) => updateField('expenseShop', value)}
-                  placeholder="Select shop"
-                  className={`${styles.dropdownField} ${styles.fullRow}`}
-                  onAddNew={() => handleOpenNewItemModal('Shop')}
-                />
-                {renderNotesField()}
-              </div>
-            ) : null}
-
-            {activeTab === 'transfer' ? (
-              <div className={styles.transferSection}>
-                <div className={styles.formRow}>
+              {activeTab === 'expenses' ? (
+                <div className={styles.formGrid}>
                   {renderDateField()}
+                  <ReusableDropdown
+                    label="Account"
+                    options={ACCOUNT_OPTIONS}
+                    value={formValues.account}
+                    onChange={(value) => updateField('account', value)}
+                    placeholder="Select account"
+                    className={styles.dropdownField}
+                    filterTabs={ACCOUNT_FILTER_TABS}
+                    onAddNew={() => handleOpenNewItemModal('Account')}
+                  />
                   {renderAmountField()}
-                </div>
-                <div className={styles.formRow}>
                   <ReusableDropdown
                     label="Category"
-                    options={TRANSFER_CATEGORY_OPTIONS}
-                    value={formValues.transferCategory}
-                    onChange={(value) => updateField('transferCategory', value)}
-                    placeholder="Select transfer category"
+                    options={EXPENSE_CATEGORY_OPTIONS}
+                    value={formValues.expenseCategory}
+                    onChange={(value) => updateField('expenseCategory', value)}
+                    placeholder="Select expense category"
                     className={styles.dropdownField}
-                    onAddNew={() => handleOpenNewItemModal('Transfer Category')}
-                  />
-                  {renderNotesField({ fullRow: false })}
-                </div>
-                <div className={styles.formRow}>
-                  <ReusableDropdown
-                    label="From account"
-                    options={ACCOUNT_OPTIONS}
-                    value={formValues.transferFromAccount}
-                    onChange={(value) => updateField('transferFromAccount', value)}
-                    placeholder="Select source"
-                    className={styles.dropdownField}
-                    hasError={isTransferAccountConflict}
-                    filterTabs={ACCOUNT_FILTER_TABS}
-                    onAddNew={() => handleOpenNewItemModal('Account')}
+                    onAddNew={() => handleOpenNewItemModal('Expense Category')}
                   />
                   <ReusableDropdown
-                    label="To account"
-                    options={ACCOUNT_OPTIONS}
-                    value={formValues.transferToAccount}
-                    onChange={(value) => updateField('transferToAccount', value)}
-                    placeholder="Select destination"
-                    className={styles.dropdownField}
-                    hasError={isTransferAccountConflict}
-                    filterTabs={ACCOUNT_FILTER_TABS}
-                    onAddNew={() => handleOpenNewItemModal('Account')}
+                    label="Shop (optional)"
+                    options={SHOP_OPTIONS}
+                    value={formValues.expenseShop}
+                    onChange={(value) => updateField('expenseShop', value)}
+                    placeholder="Select shop"
+                    className={`${styles.dropdownField} ${styles.fullRow}`}
+                    onAddNew={() => handleOpenNewItemModal('Shop')}
                   />
+                  {renderNotesField()}
                 </div>
-                {isTransferAccountConflict ? (
-                  <p className={styles.fieldError}>Cannot transfer to the same account</p>
-                ) : null}
-              </div>
-            ) : null}
-          </section>
-        </div>
+              ) : null}
+
+              {activeTab === 'transfer' ? (
+                <div className={styles.transferSection}>
+                  <div className={styles.formRow}>
+                    {renderDateField()}
+                    {renderAmountField()}
+                  </div>
+                  <div className={styles.formRow}>
+                    <ReusableDropdown
+                      label="Category"
+                      options={TRANSFER_CATEGORY_OPTIONS}
+                      value={formValues.transferCategory}
+                      onChange={(value) => updateField('transferCategory', value)}
+                      placeholder="Select transfer category"
+                      className={styles.dropdownField}
+                      onAddNew={() => handleOpenNewItemModal('Transfer Category')}
+                    />
+                    {renderNotesField({ fullRow: false })}
+                  </div>
+                  <div className={styles.formRow}>
+                    <ReusableDropdown
+                      label="From account"
+                      options={ACCOUNT_OPTIONS}
+                      value={formValues.transferFromAccount}
+                      onChange={(value) => updateField('transferFromAccount', value)}
+                      placeholder="Select source"
+                      className={styles.dropdownField}
+                      hasError={isTransferAccountConflict}
+                      filterTabs={ACCOUNT_FILTER_TABS}
+                      onAddNew={() => handleOpenNewItemModal('Account')}
+                    />
+                    <ReusableDropdown
+                      label="To account"
+                      options={ACCOUNT_OPTIONS}
+                      value={formValues.transferToAccount}
+                      onChange={(value) => updateField('transferToAccount', value)}
+                      placeholder="Select destination"
+                      className={styles.dropdownField}
+                      hasError={isTransferAccountConflict}
+                      filterTabs={ACCOUNT_FILTER_TABS}
+                      onAddNew={() => handleOpenNewItemModal('Account')}
+                    />
+                  </div>
+                  {isTransferAccountConflict ? (
+                    <p className={styles.fieldError}>Cannot transfer to the same account</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </section>
+          </div>
 
           <footer className={styles.actions}>
             <button type="button" className={styles.secondaryButton} onClick={requestClose}>
