@@ -11,6 +11,23 @@
   pointer-events: none;
 }
 
+.dropdown[data-error='true'] .trigger {
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.dropdown[data-error='true'] .trigger:hover,
+.dropdown[data-error='true'] .trigger:focus-visible {
+  border-color: rgba(239, 68, 68, 0.75);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.24);
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.dropdown[data-error='true'] .triggerText {
+  color: var(--mf-negative-strong, #dc2626);
+}
+
 .label {
   font-size: 0.85rem;
   font-weight: 600;
@@ -104,6 +121,12 @@
   background: rgba(148, 163, 184, 0.08);
 }
 
+.menuNewAction {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(148, 163, 184, 0.04);
+}
+
 .searchInput {
   width: 100%;
   border: none;
@@ -159,23 +182,20 @@
   color: var(--mf-text-muted);
 }
 
-.menuActions {
-  padding: 0.6rem 0.75rem 0.8rem;
-  border-top: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(148, 163, 184, 0.08);
-}
-
 .newButton {
   width: 100%;
-  border: 1px dashed rgba(99, 102, 241, 0.45);
+  border: 1px solid rgba(99, 102, 241, 0.35);
   border-radius: 12px;
   background: rgba(99, 102, 241, 0.08);
-  color: var(--mf-primary, #6366f1);
+  color: var(--mf-accent-strong, var(--mf-primary, #6366f1));
   font-size: 0.92rem;
   font-weight: 600;
   padding: 0.55rem 0.8rem;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease, transform 0.2s ease;
 }
 
 .newButton:hover,
@@ -183,6 +203,7 @@
   background: rgba(99, 102, 241, 0.18);
   color: var(--mf-text-strong);
   border-color: rgba(99, 102, 241, 0.55);
+  transform: translateY(-1px);
   outline: none;
 }
 

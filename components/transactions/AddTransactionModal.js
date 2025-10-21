@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FiX } from 'react-icons/fi';
 
 import ReusableDropdown from '../common/ReusableDropdown';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 import styles from './AddTransactionModal.module.css';
 
 const MONTH_TAGS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -49,6 +50,7 @@ const BASE_FORM_STATE = {
   incomeShop: '',
   expenseCategory: '',
   expenseShop: '',
+  transferCategory: '',
   transferFromAccount: '',
   transferToAccount: '',
 };
@@ -71,6 +73,7 @@ const INCOME_CATEGORY_OPTIONS = ['Salary', 'Bonus'];
 const EXPENSE_CATEGORY_OPTIONS = ['Groceries', 'Dining', 'Transport'];
 const SHOP_OPTIONS = ['Main Shop', 'Online Store', 'Local Market'];
 const DEBT_TAG_LIBRARY = ['AUG25', 'SEP25', 'OCT25', 'JUL25', 'JUN25', 'MAY25'];
+const TRANSFER_CATEGORY_OPTIONS = ['Internal Transfer', 'Savings Allocation'];
 
 const TAB_ACCENTS = {
   debt: 'negative',
@@ -90,13 +93,31 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
   const initialFormRef = useRef(createInitialFormState());
   const [activeTab, setActiveTab] = useState('debt');
   const [formValues, setFormValues] = useState(() => initialFormRef.current);
-  const [showMoreTagsDropdown, setShowMoreTagsDropdown] = useState(false);
   const [lastClearedNotes, setLastClearedNotes] = useState('');
   const [selectedDate, setSelectedDate] = useState(initialFormRef.current.date);
   const [selectedDebtTag, setSelectedDebtTag] = useState(initialFormRef.current.debtTag);
   const [isLastMonth, setIsLastMonth] = useState(initialFormRef.current.debtLastMonth);
+  const [showNewItemModal, setShowNewItemModal] = useState(false);
+  const [newItemType, setNewItemType] = useState('');
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const currentDateTag = useMemo(() => buildMonthTag(selectedDate), [selectedDate]);
   const previousMonthTag = useMemo(() => buildMonthTag(selectedDate, -1), [selectedDate]);
+  const formattedSelectedDate = useMemo(() => {
+    if (!selectedDate) {
+      return '';
+    }
+
+    const [year, month, day] = selectedDate.split('-');
+    if (!year || !month || !day) {
+      return '';
+    }
+
+    return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+  }, [selectedDate]);
+  const mockModalTitleId = useMemo(
+    () => `add-transaction-new-item-${Math.random().toString(36).slice(2)}`,
+    [],
+  );
 
   const resetForm = useCallback(() => {
     const nextInitialState = createInitialFormState();
@@ -106,8 +127,10 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
     setSelectedDebtTag(nextInitialState.debtTag);
     setIsLastMonth(nextInitialState.debtLastMonth);
     setActiveTab('debt');
-    setShowMoreTagsDropdown(false);
     setLastClearedNotes('');
+    setShowNewItemModal(false);
+    setNewItemType('');
+    setShowUnsavedModal(false);
   }, []);
 
   useEffect(() => {
@@ -159,7 +182,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
       return;
     }
 
-    finalizeClose();
+    setShowUnsavedModal(true);
   }, [finalizeClose, isDirty, onRequestClose]);
 
   useEffect(() => {
@@ -179,10 +202,6 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, requestClose]);
-
-  useEffect(() => {
-    setShowMoreTagsDropdown(false);
-  }, [activeTab]);
 
   useEffect(() => {
     updateField('date', selectedDate);
@@ -250,16 +269,11 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
   };
 
   const handleDebtTagSelect = (tag) => {
-    if (!tag) {
-      return;
-    }
-    setSelectedDebtTag(tag);
-    setShowMoreTagsDropdown(false);
+    setSelectedDebtTag(tag || '');
   };
 
   const isRepayMode = formValues.debtType === 'repay';
   const defaultDebtTag = isLastMonth ? previousMonthTag : currentDateTag;
-  const selectedTagLabel = selectedDebtTag || defaultDebtTag || 'No tag';
 
   const debtTagOptions = useMemo(() => {
     const tags = new Set(DEBT_TAG_LIBRARY);
@@ -269,93 +283,137 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
     if (selectedDebtTag) {
       tags.add(selectedDebtTag);
     }
-    return Array.from(tags);
+    return Array.from(tags)
+      .filter(Boolean)
+      .sort();
   }, [defaultDebtTag, selectedDebtTag]);
+  const debtTagLabel = isRepayMode ? 'Debt Repayments' : 'Debt Tag';
+  const debtTagModalType = isRepayMode ? 'Debt Repayment' : 'Debt Tag';
+  const isTransferAccountConflict = useMemo(() => {
+    const from = formValues.transferFromAccount;
+    const to = formValues.transferToAccount;
+    return Boolean(from && to && from === to);
+  }, [formValues.transferFromAccount, formValues.transferToAccount]);
 
-  const handleResetDebtTag = () => {
-    if (!defaultDebtTag) {
-      return;
-    }
-    setSelectedDebtTag(defaultDebtTag);
-    setShowMoreTagsDropdown(false);
-  };
-
-  const renderDateField = () => (
-    <div className={styles.field}>
-      <label className={styles.fieldLabel} htmlFor="transaction-date">
-        Date
-      </label>
-      <input
-        id="transaction-date"
-        type="date"
-        className={styles.input}
-        value={selectedDate}
-        onChange={(event) => setSelectedDate(event.target.value)}
-      />
-    </div>
-  );
-
-  const renderAmountField = () => (
-    <div className={styles.field}>
-      <label className={styles.fieldLabel} htmlFor="transaction-amount">
-        Amount
-      </label>
-      <input
-        id="transaction-amount"
-        type="number"
-        className={styles.input}
-        value={formValues.amount}
-        onChange={(event) => updateField('amount', event.target.value)}
-        placeholder="0.00"
-        step="0.01"
-      />
-    </div>
-  );
-
-  const renderNotesField = () => (
-    <div className={`${styles.field} ${styles.notesField} ${styles.fullRow}`}>
-      <div className={styles.fieldLabelRow}>
-        <label className={styles.fieldLabel} htmlFor="transaction-notes">
-          Notes
-        </label>
-        <div className={styles.notesActions}>
-          {formValues.notes ? (
-            <button type="button" className={styles.linkButton} onClick={handleClearNotes}>
-              Clear
-            </button>
-          ) : null}
-          {!formValues.notes && lastClearedNotes ? (
-            <button type="button" className={styles.linkButton} onClick={handleRestoreNotes}>
-              Restore
-            </button>
+  const renderDateField = ({ label = 'Date', className = '', showFormatted = true } = {}) => {
+    const containerClasses = [styles.field, className].filter(Boolean).join(' ');
+    return (
+      <div className={containerClasses}>
+        <div className={styles.fieldLabelRow}>
+          <label className={styles.fieldLabel} htmlFor="transaction-date">
+            {label}
+          </label>
+          {showFormatted && formattedSelectedDate ? (
+            <span className={styles.dateDisplay}>{formattedSelectedDate}</span>
           ) : null}
         </div>
+        <input
+          id="transaction-date"
+          type="date"
+          className={styles.input}
+          value={selectedDate}
+          onChange={(event) => setSelectedDate(event.target.value)}
+        />
       </div>
-      <textarea
-        id="transaction-notes"
-        className={styles.textarea}
-        value={formValues.notes}
-        onChange={handleNotesChange}
-        placeholder="Add a note or short description"
-        rows={1}
-      />
-    </div>
-  );
+    );
+  };
+
+  const renderAmountField = ({ className = '' } = {}) => {
+    const containerClasses = [styles.field, className].filter(Boolean).join(' ');
+    return (
+      <div className={containerClasses}>
+        <label className={styles.fieldLabel} htmlFor="transaction-amount">
+          Amount
+        </label>
+        <input
+          id="transaction-amount"
+          type="number"
+          className={styles.input}
+          value={formValues.amount}
+          onChange={(event) => updateField('amount', event.target.value)}
+          placeholder="0.00"
+          step="0.01"
+        />
+      </div>
+    );
+  };
+
+  const renderNotesField = ({ className = '', fullRow = true } = {}) => {
+    const containerClasses = [styles.field, styles.notesField];
+    if (fullRow) {
+      containerClasses.push(styles.fullRow);
+    }
+    if (className) {
+      containerClasses.push(className);
+    }
+
+    return (
+      <div className={containerClasses.join(' ')}>
+        <div className={styles.fieldLabelRow}>
+          <label className={styles.fieldLabel} htmlFor="transaction-notes">
+            Notes
+          </label>
+          <div className={styles.notesActions}>
+            {formValues.notes ? (
+              <button type="button" className={styles.linkButton} onClick={handleClearNotes}>
+                Clear
+              </button>
+            ) : null}
+            {!formValues.notes && lastClearedNotes ? (
+              <button type="button" className={styles.linkButton} onClick={handleRestoreNotes}>
+                Restore
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <textarea
+          id="transaction-notes"
+          className={styles.textarea}
+          value={formValues.notes}
+          onChange={handleNotesChange}
+          placeholder="Add a note or short description"
+          rows={1}
+        />
+      </div>
+    );
+  };
+
+  const handleOpenNewItemModal = useCallback((type) => {
+    setNewItemType(type);
+    setShowNewItemModal(true);
+  }, []);
+
+  const handleCloseNewItemModal = useCallback(() => {
+    setShowNewItemModal(false);
+    setNewItemType('');
+  }, []);
+
+  const handleConfirmUnsavedClose = useCallback(() => {
+    setShowUnsavedModal(false);
+    finalizeClose();
+  }, [finalizeClose]);
+
+  const handleCancelUnsavedClose = useCallback(() => {
+    setShowUnsavedModal(false);
+  }, []);
+
+  const mockModalTitleText = newItemType ? `Add New ${newItemType}` : 'Add New Item';
 
   if (!isOpen) {
     return null;
   }
 
   return (
-    <div className={styles.overlay} onClick={handleOverlayClick}>
-      <div
-        className={styles.modal}
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-      >
+    <>
+      <div className={styles.overlay} onClick={handleOverlayClick}>
+        <div
+          className={styles.modal}
+          onClick={(event) => event.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          aria-describedby={descriptionId}
+        >
         <header className={styles.header}>
           <div>
             <h2 className={styles.title} id={titleId}>
@@ -414,102 +472,35 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
           >
             {activeTab === 'debt' ? (
               <div className={styles.debtSection}>
-                <div className={styles.debtToggleRow}>
-                  <span className={styles.fieldLabel}>Debt type</span>
-                  <div className={styles.toggleGroup}>
-                    {['debt', 'repay'].map((type) => {
-                      const toggleClasses = [styles.toggleButton];
-                      const isActiveToggle = formValues.debtType === type;
-                      if (isActiveToggle) {
-                        toggleClasses.push(styles.toggleButtonActive);
-                        toggleClasses.push(
-                          type === 'debt'
-                            ? styles.toggleButtonNegative
-                            : styles.toggleButtonPositive,
-                        );
-                      }
-                      return (
-                        <button
-                          key={type}
-                          type="button"
-                          className={toggleClasses.join(' ')}
-                          onClick={() => updateField('debtType', type)}
-                          aria-pressed={isActiveToggle}
-                        >
-                          {type === 'debt' ? 'Debt' : 'Repay'}
-                        </button>
-                      );
-                    })}
+                <div className={styles.debtTopRow}>
+                  <div className={styles.debtTypeGroup}>
+                    <span className={styles.fieldLabel}>Debt Type</span>
+                    <button
+                      type="button"
+                      className={`${styles.debtTypeToggle} ${
+                        isRepayMode ? styles.debtTypeToggleRepay : styles.debtTypeToggleDebt
+                      }`}
+                      onClick={() => updateField('debtType', isRepayMode ? 'debt' : 'repay')}
+                      role="switch"
+                      aria-checked={isRepayMode}
+                    >
+                      <span
+                        className={styles.debtTypeOption}
+                        data-active={!isRepayMode ? 'true' : 'false'}
+                        data-variant="debt"
+                      >
+                        Debt
+                      </span>
+                      <span
+                        className={styles.debtTypeOption}
+                        data-active={isRepayMode ? 'true' : 'false'}
+                        data-variant="repay"
+                      >
+                        Repayment
+                      </span>
+                      <span className={styles.debtTypeThumb} aria-hidden />
+                    </button>
                   </div>
-                </div>
-
-                <div className={`${styles.formGrid} ${styles.debtGrid}`}>
-                  {renderDateField()}
-                  <div className={`${styles.field} ${styles.tagField}`}>
-                    <span className={styles.fieldLabel}>Debt tag</span>
-                    <div className={styles.tagControls}>
-                      <button
-                        type="button"
-                        className={styles.tagChip}
-                        onClick={handleResetDebtTag}
-                        disabled={!defaultDebtTag}
-                        title={defaultDebtTag ? 'Reset to recommended tag' : undefined}
-                      >
-                        {selectedTagLabel}
-                      </button>
-                      <button
-                        type="button"
-                        className={`${styles.switchButton} ${
-                          isLastMonth ? styles.switchButtonActive : ''
-                        }`}
-                        onClick={() => setIsLastMonth((prev) => !prev)}
-                        aria-pressed={isLastMonth}
-                      >
-                        <span className={styles.switchTrack}>
-                          <span className={styles.switchThumb} />
-                        </span>
-                        <span className={styles.switchLabel}>Last Month</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.moreTagButton}
-                        onClick={() => setShowMoreTagsDropdown((prev) => !prev)}
-                        aria-expanded={showMoreTagsDropdown}
-                      >
-                        + More
-                      </button>
-                    </div>
-                    {showMoreTagsDropdown ? (
-                      <div className={styles.moreTagsDropdown}>
-                        <ReusableDropdown
-                          label="Debt tags"
-                          options={debtTagOptions}
-                          value={selectedDebtTag}
-                          onChange={(value) => handleDebtTagSelect(value)}
-                          placeholder="Search debt tags"
-                          className={styles.dropdownField}
-                          openOnMount
-                          onOpenChange={(isOpen) => {
-                            if (!isOpen) {
-                              setShowMoreTagsDropdown(false);
-                            }
-                          }}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <ReusableDropdown
-                    label="Account"
-                    options={ACCOUNT_OPTIONS}
-                    value={formValues.account}
-                    onChange={(value) => updateField('account', value)}
-                    placeholder="Select account"
-                    className={styles.dropdownField}
-                  />
-
-                  {renderAmountField()}
-
                   <ReusableDropdown
                     label="Person"
                     options={PERSON_OPTIONS}
@@ -517,8 +508,59 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
                     onChange={(value) => updateField('debtPerson', value)}
                     placeholder="Select person"
                     className={styles.dropdownField}
-                    disabled={isRepayMode}
+                    onAddNew={() => handleOpenNewItemModal('Person')}
                   />
+                </div>
+
+                <div className={styles.debtMetaRow}>
+                  {renderDateField({ className: styles.dateField })}
+                  <div className={styles.debtTagColumn}>
+                    <div className={styles.debtTagHeader}>
+                      <span className={styles.fieldLabel}>{debtTagLabel}</span>
+                      <div className={styles.lastMonthGroup}>
+                        <span className={styles.lastMonthLabel}>Last Month</span>
+                        <button
+                          type="button"
+                          className={`${styles.switchButton} ${
+                            isLastMonth ? styles.switchButtonActive : ''
+                          }`}
+                          onClick={() => setIsLastMonth((prev) => !prev)}
+                          role="switch"
+                          aria-checked={isLastMonth}
+                        >
+                          <span className={styles.switchTrack}>
+                            <span className={styles.switchThumb} />
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                    <ReusableDropdown
+                      options={debtTagOptions}
+                      value={selectedDebtTag}
+                      onChange={(value) => handleDebtTagSelect(value)}
+                      placeholder="Select or search debt tag"
+                      className={styles.dropdownField}
+                      ariaLabel={debtTagLabel}
+                      onAddNew={() => handleOpenNewItemModal(debtTagModalType)}
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.debtAccountsRow}>
+                  <ReusableDropdown
+                    label="Account"
+                    options={ACCOUNT_OPTIONS}
+                    value={formValues.account}
+                    onChange={(value) => updateField('account', value)}
+                    placeholder="Select account"
+                    className={styles.dropdownField}
+                    onAddNew={() => handleOpenNewItemModal('Account')}
+                  />
+
+                  {renderAmountField()}
+                </div>
+
+                <div className={styles.debtCategoryRow}>
                   <ReusableDropdown
                     label="Category"
                     options={DEBT_CATEGORY_OPTIONS}
@@ -526,17 +568,11 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
                     onChange={(value) => updateField('debtCategory', value)}
                     placeholder="Select category"
                     className={styles.dropdownField}
-                    disabled={isRepayMode}
+                    onAddNew={() => handleOpenNewItemModal('Debt Category')}
                   />
 
-                  {renderNotesField()}
+                  {renderNotesField({ fullRow: false })}
                 </div>
-
-                {isRepayMode ? (
-                  <div className={styles.repayPlaceholder}>
-                    Repay mode placeholder — additional controls will appear in a future update.
-                  </div>
-                ) : null}
               </div>
             ) : null}
 
@@ -550,6 +586,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
                   onChange={(value) => updateField('account', value)}
                   placeholder="Select account"
                   className={styles.dropdownField}
+                  onAddNew={() => handleOpenNewItemModal('Account')}
                 />
                 {renderAmountField()}
                 <ReusableDropdown
@@ -559,6 +596,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
                   onChange={(value) => updateField('incomeCategory', value)}
                   placeholder="Select income category"
                   className={styles.dropdownField}
+                  onAddNew={() => handleOpenNewItemModal('Income Category')}
                 />
                 <ReusableDropdown
                   label="Shop (optional)"
@@ -567,6 +605,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
                   onChange={(value) => updateField('incomeShop', value)}
                   placeholder="Select shop"
                   className={`${styles.dropdownField} ${styles.fullRow}`}
+                  onAddNew={() => handleOpenNewItemModal('Shop')}
                 />
                 {renderNotesField()}
               </div>
@@ -582,6 +621,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
                   onChange={(value) => updateField('account', value)}
                   placeholder="Select account"
                   className={styles.dropdownField}
+                  onAddNew={() => handleOpenNewItemModal('Account')}
                 />
                 {renderAmountField()}
                 <ReusableDropdown
@@ -591,6 +631,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
                   onChange={(value) => updateField('expenseCategory', value)}
                   placeholder="Select expense category"
                   className={styles.dropdownField}
+                  onAddNew={() => handleOpenNewItemModal('Expense Category')}
                 />
                 <ReusableDropdown
                   label="Shop (optional)"
@@ -599,46 +640,112 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
                   onChange={(value) => updateField('expenseShop', value)}
                   placeholder="Select shop"
                   className={`${styles.dropdownField} ${styles.fullRow}`}
+                  onAddNew={() => handleOpenNewItemModal('Shop')}
                 />
                 {renderNotesField()}
               </div>
             ) : null}
 
             {activeTab === 'transfer' ? (
-              <div className={styles.formGrid}>
-                {renderDateField()}
-                {renderAmountField()}
-                <ReusableDropdown
-                  label="From account"
-                  options={ACCOUNT_OPTIONS}
-                  value={formValues.transferFromAccount}
-                  onChange={(value) => updateField('transferFromAccount', value)}
-                  placeholder="Select source"
-                  className={styles.dropdownField}
-                />
-                <ReusableDropdown
-                  label="To account"
-                  options={ACCOUNT_OPTIONS}
-                  value={formValues.transferToAccount}
-                  onChange={(value) => updateField('transferToAccount', value)}
-                  placeholder="Select destination"
-                  className={styles.dropdownField}
-                />
-                {renderNotesField()}
+              <div className={styles.transferSection}>
+                <div className={styles.formRow}>
+                  {renderDateField()}
+                  {renderAmountField()}
+                </div>
+                <div className={styles.formRow}>
+                  <ReusableDropdown
+                    label="Category"
+                    options={TRANSFER_CATEGORY_OPTIONS}
+                    value={formValues.transferCategory}
+                    onChange={(value) => updateField('transferCategory', value)}
+                    placeholder="Select transfer category"
+                    className={styles.dropdownField}
+                    onAddNew={() => handleOpenNewItemModal('Transfer Category')}
+                  />
+                  {renderNotesField({ fullRow: false })}
+                </div>
+                <div className={styles.formRow}>
+                  <ReusableDropdown
+                    label="From account"
+                    options={ACCOUNT_OPTIONS}
+                    value={formValues.transferFromAccount}
+                    onChange={(value) => updateField('transferFromAccount', value)}
+                    placeholder="Select source"
+                    className={styles.dropdownField}
+                    hasError={isTransferAccountConflict}
+                    onAddNew={() => handleOpenNewItemModal('Account')}
+                  />
+                  <ReusableDropdown
+                    label="To account"
+                    options={ACCOUNT_OPTIONS}
+                    value={formValues.transferToAccount}
+                    onChange={(value) => updateField('transferToAccount', value)}
+                    placeholder="Select destination"
+                    className={styles.dropdownField}
+                    hasError={isTransferAccountConflict}
+                    onAddNew={() => handleOpenNewItemModal('Account')}
+                  />
+                </div>
+                {isTransferAccountConflict ? (
+                  <p className={styles.fieldError}>Cannot transfer to the same account</p>
+                ) : null}
               </div>
             ) : null}
           </section>
         </div>
 
-        <footer className={styles.actions}>
-          <button type="button" className={styles.secondaryButton} onClick={requestClose}>
-            Cancel
-          </button>
-          <button type="button" className={styles.primaryButton} onClick={handleSave}>
-            Save Transaction
-          </button>
-        </footer>
+          <footer className={styles.actions}>
+            <button type="button" className={styles.secondaryButton} onClick={requestClose}>
+              Cancel
+            </button>
+            <button type="button" className={styles.primaryButton} onClick={handleSave}>
+              Save Transaction
+            </button>
+          </footer>
+        </div>
       </div>
-    </div>
+
+      <ConfirmationModal
+        isOpen={showUnsavedModal}
+        title="Discard unsaved changes?"
+        message="You have transaction details that haven't been saved yet. Closing now will discard them."
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        confirmTone="danger"
+        onConfirm={handleConfirmUnsavedClose}
+        onCancel={handleCancelUnsavedClose}
+      />
+
+      {showNewItemModal ? (
+        <div
+          className={styles.mockOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={mockModalTitleId}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              handleCloseNewItemModal();
+            }
+          }}
+        >
+          <div
+            className={styles.mockModal}
+            role="document"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className={styles.mockModalTitle} id={mockModalTitleId}>
+              {mockModalTitleText}
+            </h3>
+            <p className={styles.mockModalBody}>
+              This is a placeholder modal for creating new dropdown entries. Replace it with the
+              appropriate form when ready.
+            </p>
+            <button type="button" className={styles.mockModalButton} onClick={handleCloseNewItemModal}>
+              Close Mock
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

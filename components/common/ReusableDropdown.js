@@ -48,6 +48,10 @@ export default function ReusableDropdown({
   openOnMount = false,
   onOpenChange,
   searchPlaceholder = 'Search...',
+  onAddNew,
+  addNewLabel = '+ New',
+  ariaLabel,
+  hasError = false,
 }) {
   const normalizedValue = value === undefined || value === null ? '' : String(value);
   const normalizedOptions = useMemo(
@@ -171,16 +175,24 @@ export default function ReusableDropdown({
   };
 
   const handleNewClick = useCallback(() => {
-    // eslint-disable-next-line no-console
-    console.log('Add New clicked');
-  }, []);
+    if (disabled) {
+      return;
+    }
+    onAddNew?.();
+    closeDropdown();
+  }, [closeDropdown, disabled, onAddNew]);
 
   const dropdownId = id ?? `reusable-dropdown-${Math.random().toString(36).slice(2)}`;
   const triggerTestId = testIdPrefix ? `${testIdPrefix}-trigger` : undefined;
   const searchTestId = testIdPrefix ? `${testIdPrefix}-search` : undefined;
+  const triggerAriaLabel = ariaLabel ?? (label ? undefined : placeholder);
 
   return (
-    <div className={`${styles.dropdown} ${className}`} data-disabled={disabled ? 'true' : undefined}>
+    <div
+      className={`${styles.dropdown} ${className}`}
+      data-disabled={disabled ? 'true' : undefined}
+      data-error={hasError ? 'true' : undefined}
+    >
       {label ? (
         <label className={styles.label} htmlFor={`${dropdownId}-search`}>
           {label}
@@ -195,6 +207,7 @@ export default function ReusableDropdown({
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-label={triggerAriaLabel}
         data-placeholder={selectedOption ? 'false' : 'true'}
         data-testid={triggerTestId}
       >
@@ -231,6 +244,13 @@ export default function ReusableDropdown({
               data-testid={searchTestId}
             />
           </div>
+          {onAddNew ? (
+            <div className={styles.menuNewAction}>
+              <button type="button" className={styles.newButton} onClick={handleNewClick}>
+                {addNewLabel}
+              </button>
+            </div>
+          ) : null}
           <ul className={styles.optionsList}>
             {filteredOptions.length === 0 ? (
               <li className={styles.emptyState}>No matches found</li>
@@ -254,11 +274,6 @@ export default function ReusableDropdown({
               ))
             )}
           </ul>
-          <div className={styles.menuActions}>
-            <button type="button" className={styles.newButton} onClick={handleNewClick}>
-              + New
-            </button>
-          </div>
         </div>
       ) : null}
     </div>
