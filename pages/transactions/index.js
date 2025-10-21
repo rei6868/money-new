@@ -6,6 +6,7 @@ import { TransactionsToolbar } from '../../components/transactions/TransactionsT
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
 import TransactionAdvancedModal from '../../components/transactions/TransactionAdvancedModal';
+import AddTransactionModal from '../../components/transactions/AddTransactionModal';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
 
@@ -33,6 +34,7 @@ export default function TransactionsHistoryPage() {
   });
   const [sortState, setSortState] = useState({ columnId: null, direction: null });
   const [serverPagination, setServerPagination] = useState({ totalPages: 1, totalRows: 0 });
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -399,11 +401,18 @@ export default function TransactionsHistoryPage() {
   };
 
   const handleAddTransaction = () => {
-    setAdvancedPanel({
-      mode: 'create',
-      transaction: null,
-    });
+    setIsAddModalOpen(true);
   };
+
+  const handleCloseAddTransaction = useCallback(() => {
+    setIsAddModalOpen(false);
+  }, []);
+
+  const handleSaveNewTransaction = useCallback((payload) => {
+    // eslint-disable-next-line no-console
+    console.log('Save new transaction placeholder', payload);
+    setIsAddModalOpen(false);
+  }, []);
 
   const handleAdvanced = (payload) => {
     setAdvancedPanel(payload);
@@ -588,6 +597,11 @@ export default function TransactionsHistoryPage() {
         panelData={advancedPanel}
         onClose={handleCloseAdvanced}
         onQuickEditSave={handleQuickEditSave}
+      />
+      <AddTransactionModal
+        isOpen={isAddModalOpen}
+        onClose={handleCloseAddTransaction}
+        onSave={handleSaveNewTransaction}
       />
     </AppLayout>
   );

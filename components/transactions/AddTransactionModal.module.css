@@ -1,0 +1,427 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  z-index: 120;
+}
+
+.modal {
+  width: min(720px, 96vw);
+  max-height: 90vh;
+  background: var(--mf-surface, #ffffff);
+  border-radius: 26px;
+  box-shadow: 0 28px 52px rgba(15, 23, 42, 0.24);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.6rem 2rem 1.2rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--mf-text-strong);
+}
+
+.subtitle {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  color: var(--mf-text-secondary);
+  max-width: 32rem;
+}
+
+.closeButton {
+  border: none;
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--mf-text-secondary);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.closeButton:hover,
+.closeButton:focus-visible {
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--mf-text-primary);
+  outline: none;
+}
+
+.tabList {
+  margin: 0;
+  padding: 0 2rem;
+  list-style: none;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.tabButton {
+  border: none;
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--mf-text-secondary);
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.tabButton:hover,
+.tabButton:focus-visible {
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--mf-text-primary);
+  outline: none;
+}
+
+.tabButtonActive {
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+  color: #ffffff;
+  box-shadow: 0 14px 28px rgba(79, 70, 229, 0.26);
+}
+
+.commonFields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.2rem;
+  padding: 1.6rem 2rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.fieldLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.fieldLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--mf-text-secondary);
+}
+
+.input {
+  border: 1px solid var(--mf-border-subtle);
+  border-radius: 14px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.95rem;
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--mf-text-primary);
+  transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.input:focus-visible {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.dateTagPlaceholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.25rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--mf-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dropdownField {
+  width: 100%;
+}
+
+.notesField {
+  grid-column: 1 / -1;
+}
+
+.notesActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.linkButton {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--mf-primary, #6366f1);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.linkButton:hover,
+.linkButton:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.textarea {
+  border: 1px solid var(--mf-border-subtle);
+  border-radius: 16px;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.95rem;
+  resize: vertical;
+  min-height: 110px;
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--mf-text-primary);
+  transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.textarea:focus-visible {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.tabPanel {
+  padding: 0 2rem 1.6rem;
+  overflow-y: auto;
+}
+
+.tabContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  padding-top: 1.2rem;
+}
+
+.tabGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.2rem;
+}
+
+.toggleGroup {
+  display: inline-flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.toggleButton {
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--mf-text-secondary);
+  padding: 0.45rem 1.1rem;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+}
+
+.toggleButton:hover,
+.toggleButton:focus-visible {
+  outline: none;
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--mf-text-primary);
+}
+
+.toggleButtonActive {
+  background: rgba(99, 102, 241, 0.22);
+  border-color: rgba(99, 102, 241, 0.45);
+  color: var(--mf-text-strong);
+}
+
+.debtTagButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.tagButton,
+.moreTagButton {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--mf-text-secondary);
+  padding: 0.4rem 0.9rem;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+}
+
+.tagButton:hover,
+.tagButton:focus-visible,
+.moreTagButton:hover,
+.moreTagButton:focus-visible {
+  outline: none;
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--mf-text-primary);
+}
+
+.tagButtonActive {
+  background: rgba(79, 70, 229, 0.22);
+  color: var(--mf-text-strong);
+  border-color: rgba(79, 70, 229, 0.45);
+}
+
+.moreTagsDropdown {
+  margin-top: 0.75rem;
+  max-width: 320px;
+}
+
+.lastMonthRow {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.switchButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--mf-text-secondary);
+}
+
+.switchTrack {
+  width: 48px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.28);
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.switchThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
+  transition: transform 0.2s ease;
+}
+
+.switchButtonActive .switchTrack {
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+}
+
+.switchButtonActive .switchThumb {
+  transform: translateX(22px);
+}
+
+.switchLabel {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.repayPlaceholder {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px dashed rgba(99, 102, 241, 0.32);
+  color: var(--mf-text-secondary);
+  font-size: 0.9rem;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.2rem 2rem 1.8rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.secondaryButton {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: transparent;
+  color: var(--mf-text-primary);
+  padding: 0.6rem 1.3rem;
+  border-radius: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+}
+
+.secondaryButton:hover,
+.secondaryButton:focus-visible {
+  background: rgba(148, 163, 184, 0.18);
+  outline: none;
+}
+
+.primaryButton {
+  border: none;
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+  color: #ffffff;
+  padding: 0.65rem 1.45rem;
+  border-radius: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 16px 28px rgba(79, 70, 229, 0.32);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primaryButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 20px 34px rgba(79, 70, 229, 0.36);
+}
+
+.primaryButton:focus-visible {
+  outline: 3px solid rgba(99, 102, 241, 0.35);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .header {
+    padding: 1.4rem 1.4rem 1rem;
+  }
+
+  .tabList {
+    padding: 0 1.4rem;
+  }
+
+  .commonFields {
+    padding: 1.4rem;
+  }
+
+  .tabPanel {
+    padding: 0 1.4rem 1.4rem;
+  }
+
+  .actions {
+    padding: 1rem 1.4rem 1.4rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}
