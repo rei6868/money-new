@@ -170,6 +170,11 @@ export default function ReusableDropdown({
     closeDropdown();
   };
 
+  const handleNewClick = useCallback(() => {
+    // eslint-disable-next-line no-console
+    console.log('Add New clicked');
+  }, []);
+
   const dropdownId = id ?? `reusable-dropdown-${Math.random().toString(36).slice(2)}`;
   const triggerTestId = testIdPrefix ? `${testIdPrefix}-trigger` : undefined;
   const searchTestId = testIdPrefix ? `${testIdPrefix}-search` : undefined;
@@ -249,6 +254,11 @@ export default function ReusableDropdown({
               ))
             )}
           </ul>
+          <div className={styles.menuActions}>
+            <button type="button" className={styles.newButton} onClick={handleNewClick}>
+              + New
+            </button>
+          </div>
         </div>
       ) : null}
     </div>
