@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import AppLayout from '../../components/AppLayout';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
@@ -7,6 +7,7 @@ import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
 import TransactionAdvancedModal from '../../components/transactions/TransactionAdvancedModal';
 import AddTransactionModal from '../../components/transactions/AddTransactionModal';
+import { ConfirmationModal } from '../../components/common/ConfirmationModal';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
 
@@ -35,6 +36,8 @@ export default function TransactionsHistoryPage() {
   const [sortState, setSortState] = useState({ columnId: null, direction: null });
   const [serverPagination, setServerPagination] = useState({ totalPages: 1, totalRows: 0 });
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const discardResolverRef = useRef(null);
+  const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false);
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -52,6 +55,16 @@ export default function TransactionsHistoryPage() {
       document.body.style.overflow = previousOverflow;
     };
   }, [isAddModalOpen]);
+
+  useEffect(
+    () => () => {
+      if (discardResolverRef.current) {
+        discardResolverRef.current(false);
+        discardResolverRef.current = null;
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -421,14 +434,43 @@ export default function TransactionsHistoryPage() {
     setIsAddModalOpen(true);
   };
 
+  const handleRequestCloseAddModal = useCallback(() => {
+    if (isDiscardDialogOpen) {
+      return Promise.resolve(false);
+    }
+
+    return new Promise((resolve) => {
+      discardResolverRef.current = resolve;
+      setIsDiscardDialogOpen(true);
+    });
+  }, [isDiscardDialogOpen]);
+
   const handleCloseAddTransaction = useCallback(() => {
     setIsAddModalOpen(false);
+    setIsDiscardDialogOpen(false);
+    discardResolverRef.current = null;
   }, []);
 
   const handleSaveNewTransaction = useCallback((payload) => {
     // eslint-disable-next-line no-console
     console.log('Save new transaction placeholder', payload);
     setIsAddModalOpen(false);
+  }, []);
+
+  const handleConfirmDiscardDraft = useCallback(() => {
+    if (discardResolverRef.current) {
+      discardResolverRef.current(true);
+    }
+    discardResolverRef.current = null;
+    setIsDiscardDialogOpen(false);
+  }, []);
+
+  const handleCancelDiscardDraft = useCallback(() => {
+    if (discardResolverRef.current) {
+      discardResolverRef.current(false);
+    }
+    discardResolverRef.current = null;
+    setIsDiscardDialogOpen(false);
   }, []);
 
   const handleAdvanced = (payload) => {
@@ -619,6 +661,17 @@ export default function TransactionsHistoryPage() {
         isOpen={isAddModalOpen}
         onClose={handleCloseAddTransaction}
         onSave={handleSaveNewTransaction}
+        onRequestClose={handleRequestCloseAddModal}
+      />
+      <ConfirmationModal
+        isOpen={isDiscardDialogOpen}
+        title="Discard unsaved changes?"
+        message="You have transaction details that haven't been saved. If you close now, your changes will be lost."
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        confirmTone="danger"
+        onConfirm={handleConfirmDiscardDraft}
+        onCancel={handleCancelDiscardDraft}
       />
     </AppLayout>
   );

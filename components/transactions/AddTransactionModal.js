@@ -70,8 +70,14 @@ const DEBT_CATEGORY_OPTIONS = ['Debt Category 1', 'Loan Repayment'];
 const INCOME_CATEGORY_OPTIONS = ['Salary', 'Bonus'];
 const EXPENSE_CATEGORY_OPTIONS = ['Groceries', 'Dining', 'Transport'];
 const SHOP_OPTIONS = ['Main Shop', 'Online Store', 'Local Market'];
-const DEBT_TAG_SHORTCUTS = ['AUG25', 'SEP25', 'OCT25'];
-const MORE_DEBT_TAGS = ['JUL25', 'JUN25', 'MAY25'];
+const DEBT_TAG_LIBRARY = ['AUG25', 'SEP25', 'OCT25', 'JUL25', 'JUN25', 'MAY25'];
+
+const TAB_ACCENTS = {
+  debt: 'negative',
+  expenses: 'negative',
+  income: 'positive',
+  transfer: 'positive',
+};
 
 const TABS = [
   { id: 'debt', label: 'Debt' },
@@ -80,7 +86,7 @@ const TABS = [
   { id: 'transfer', label: 'Transfer' },
 ];
 
-export default function AddTransactionModal({ isOpen, onClose, onSave }) {
+export default function AddTransactionModal({ isOpen, onClose, onSave, onRequestClose }) {
   const initialFormRef = useRef(createInitialFormState());
   const [activeTab, setActiveTab] = useState('debt');
   const [formValues, setFormValues] = useState(() => initialFormRef.current);
@@ -134,18 +140,27 @@ export default function AddTransactionModal({ isOpen, onClose, onSave }) {
     onClose?.();
   }, [onClose, resetForm]);
 
-  const requestClose = useCallback(() => {
+  const requestClose = useCallback(async () => {
     if (!isDirty) {
       finalizeClose();
       return;
     }
 
-    const shouldClose =
-      typeof window === 'undefined' ? true : window.confirm('Discard unsaved changes?');
-    if (shouldClose) {
-      finalizeClose();
+    if (onRequestClose) {
+      try {
+        const shouldClose = await onRequestClose({ hasChanges: true });
+        if (shouldClose) {
+          finalizeClose();
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error(error);
+      }
+      return;
     }
-  }, [finalizeClose, isDirty]);
+
+    finalizeClose();
+  }, [finalizeClose, isDirty, onRequestClose]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -189,10 +204,6 @@ export default function AddTransactionModal({ isOpen, onClose, onSave }) {
   useEffect(() => {
     updateField('debtLastMonth', isLastMonth);
   }, [isLastMonth, updateField]);
-
-  if (!isOpen) {
-    return null;
-  }
 
   const handleOverlayClick = (event) => {
     if (event.target === event.currentTarget) {
@@ -247,6 +258,93 @@ export default function AddTransactionModal({ isOpen, onClose, onSave }) {
   };
 
   const isRepayMode = formValues.debtType === 'repay';
+  const defaultDebtTag = isLastMonth ? previousMonthTag : currentDateTag;
+  const selectedTagLabel = selectedDebtTag || defaultDebtTag || 'No tag';
+
+  const debtTagOptions = useMemo(() => {
+    const tags = new Set(DEBT_TAG_LIBRARY);
+    if (defaultDebtTag) {
+      tags.add(defaultDebtTag);
+    }
+    if (selectedDebtTag) {
+      tags.add(selectedDebtTag);
+    }
+    return Array.from(tags);
+  }, [defaultDebtTag, selectedDebtTag]);
+
+  const handleResetDebtTag = () => {
+    if (!defaultDebtTag) {
+      return;
+    }
+    setSelectedDebtTag(defaultDebtTag);
+    setShowMoreTagsDropdown(false);
+  };
+
+  const renderDateField = () => (
+    <div className={styles.field}>
+      <label className={styles.fieldLabel} htmlFor="transaction-date">
+        Date
+      </label>
+      <input
+        id="transaction-date"
+        type="date"
+        className={styles.input}
+        value={selectedDate}
+        onChange={(event) => setSelectedDate(event.target.value)}
+      />
+    </div>
+  );
+
+  const renderAmountField = () => (
+    <div className={styles.field}>
+      <label className={styles.fieldLabel} htmlFor="transaction-amount">
+        Amount
+      </label>
+      <input
+        id="transaction-amount"
+        type="number"
+        className={styles.input}
+        value={formValues.amount}
+        onChange={(event) => updateField('amount', event.target.value)}
+        placeholder="0.00"
+        step="0.01"
+      />
+    </div>
+  );
+
+  const renderNotesField = () => (
+    <div className={`${styles.field} ${styles.notesField} ${styles.fullRow}`}>
+      <div className={styles.fieldLabelRow}>
+        <label className={styles.fieldLabel} htmlFor="transaction-notes">
+          Notes
+        </label>
+        <div className={styles.notesActions}>
+          {formValues.notes ? (
+            <button type="button" className={styles.linkButton} onClick={handleClearNotes}>
+              Clear
+            </button>
+          ) : null}
+          {!formValues.notes && lastClearedNotes ? (
+            <button type="button" className={styles.linkButton} onClick={handleRestoreNotes}>
+              Restore
+            </button>
+          ) : null}
+        </div>
+      </div>
+      <textarea
+        id="transaction-notes"
+        className={styles.textarea}
+        value={formValues.notes}
+        onChange={handleNotesChange}
+        placeholder="Add a note or short description"
+        rows={1}
+      />
+    </div>
+  );
+
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <div className={styles.overlay} onClick={handleOverlayClick}>
@@ -278,11 +376,23 @@ export default function AddTransactionModal({ isOpen, onClose, onSave }) {
               const tabId = `add-transaction-tab-${tab.id}`;
               const panelId = `add-transaction-panel-${tab.id}`;
               const isActive = tab.id === activeTab;
+              const tone = TAB_ACCENTS[tab.id] ?? 'neutral';
+              const buttonClasses = [styles.tabButton];
+              if (isActive) {
+                buttonClasses.push(styles.tabButtonActive);
+                if (tone === 'negative') {
+                  buttonClasses.push(styles.tabButtonActiveNegative);
+                } else if (tone === 'positive') {
+                  buttonClasses.push(styles.tabButtonActivePositive);
+                } else {
+                  buttonClasses.push(styles.tabButtonActiveNeutral);
+                }
+              }
               return (
                 <li key={tab.id}>
                   <button
                     type="button"
-                    className={`${styles.tabButton} ${isActive ? styles.tabButtonActive : ''}`}
+                    className={buttonClasses.join(' ')}
                     onClick={() => handleTabChange(tab.id)}
                     role="tab"
                     id={tabId}
@@ -296,23 +406,208 @@ export default function AddTransactionModal({ isOpen, onClose, onSave }) {
             })}
           </ul>
 
-          <div className={styles.commonFields}>
-            <div className={styles.field}>
-              <label className={styles.fieldLabel} htmlFor="transaction-date">
-                Date
-              </label>
-              <input
-                id="transaction-date"
-                type="date"
-                className={styles.input}
-                value={selectedDate}
-                onChange={(event) => setSelectedDate(event.target.value)}
-              />
-              <span className={styles.dateTagPlaceholder}>{currentDateTag || '\u00A0'}</span>
-            </div>
+          <section
+            className={styles.tabPanel}
+            id={`add-transaction-panel-${activeTab}`}
+            role="tabpanel"
+            aria-labelledby={`add-transaction-tab-${activeTab}`}
+          >
+            {activeTab === 'debt' ? (
+              <div className={styles.debtSection}>
+                <div className={styles.debtToggleRow}>
+                  <span className={styles.fieldLabel}>Debt type</span>
+                  <div className={styles.toggleGroup}>
+                    {['debt', 'repay'].map((type) => {
+                      const toggleClasses = [styles.toggleButton];
+                      const isActiveToggle = formValues.debtType === type;
+                      if (isActiveToggle) {
+                        toggleClasses.push(styles.toggleButtonActive);
+                        toggleClasses.push(
+                          type === 'debt'
+                            ? styles.toggleButtonNegative
+                            : styles.toggleButtonPositive,
+                        );
+                      }
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          className={toggleClasses.join(' ')}
+                          onClick={() => updateField('debtType', type)}
+                          aria-pressed={isActiveToggle}
+                        >
+                          {type === 'debt' ? 'Debt' : 'Repay'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className={`${styles.formGrid} ${styles.debtGrid}`}>
+                  {renderDateField()}
+                  <div className={`${styles.field} ${styles.tagField}`}>
+                    <span className={styles.fieldLabel}>Debt tag</span>
+                    <div className={styles.tagControls}>
+                      <button
+                        type="button"
+                        className={styles.tagChip}
+                        onClick={handleResetDebtTag}
+                        disabled={!defaultDebtTag}
+                        title={defaultDebtTag ? 'Reset to recommended tag' : undefined}
+                      >
+                        {selectedTagLabel}
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.switchButton} ${
+                          isLastMonth ? styles.switchButtonActive : ''
+                        }`}
+                        onClick={() => setIsLastMonth((prev) => !prev)}
+                        aria-pressed={isLastMonth}
+                      >
+                        <span className={styles.switchTrack}>
+                          <span className={styles.switchThumb} />
+                        </span>
+                        <span className={styles.switchLabel}>Last Month</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.moreTagButton}
+                        onClick={() => setShowMoreTagsDropdown((prev) => !prev)}
+                        aria-expanded={showMoreTagsDropdown}
+                      >
+                        + More
+                      </button>
+                    </div>
+                    {showMoreTagsDropdown ? (
+                      <div className={styles.moreTagsDropdown}>
+                        <ReusableDropdown
+                          label="Debt tags"
+                          options={debtTagOptions}
+                          value={selectedDebtTag}
+                          onChange={(value) => handleDebtTagSelect(value)}
+                          placeholder="Search debt tags"
+                          className={styles.dropdownField}
+                          openOnMount
+                          onOpenChange={(isOpen) => {
+                            if (!isOpen) {
+                              setShowMoreTagsDropdown(false);
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <ReusableDropdown
+                    label="Account"
+                    options={ACCOUNT_OPTIONS}
+                    value={formValues.account}
+                    onChange={(value) => updateField('account', value)}
+                    placeholder="Select account"
+                    className={styles.dropdownField}
+                  />
+
+                  {renderAmountField()}
+
+                  <ReusableDropdown
+                    label="Person"
+                    options={PERSON_OPTIONS}
+                    value={formValues.debtPerson}
+                    onChange={(value) => updateField('debtPerson', value)}
+                    placeholder="Select person"
+                    className={styles.dropdownField}
+                    disabled={isRepayMode}
+                  />
+                  <ReusableDropdown
+                    label="Category"
+                    options={DEBT_CATEGORY_OPTIONS}
+                    value={formValues.debtCategory}
+                    onChange={(value) => updateField('debtCategory', value)}
+                    placeholder="Select category"
+                    className={styles.dropdownField}
+                    disabled={isRepayMode}
+                  />
+
+                  {renderNotesField()}
+                </div>
+
+                {isRepayMode ? (
+                  <div className={styles.repayPlaceholder}>
+                    Repay mode placeholder — additional controls will appear in a future update.
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {activeTab === 'income' ? (
+              <div className={styles.formGrid}>
+                {renderDateField()}
+                <ReusableDropdown
+                  label="Account"
+                  options={ACCOUNT_OPTIONS}
+                  value={formValues.account}
+                  onChange={(value) => updateField('account', value)}
+                  placeholder="Select account"
+                  className={styles.dropdownField}
+                />
+                {renderAmountField()}
+                <ReusableDropdown
+                  label="Category"
+                  options={INCOME_CATEGORY_OPTIONS}
+                  value={formValues.incomeCategory}
+                  onChange={(value) => updateField('incomeCategory', value)}
+                  placeholder="Select income category"
+                  className={styles.dropdownField}
+                />
+                <ReusableDropdown
+                  label="Shop (optional)"
+                  options={SHOP_OPTIONS}
+                  value={formValues.incomeShop}
+                  onChange={(value) => updateField('incomeShop', value)}
+                  placeholder="Select shop"
+                  className={`${styles.dropdownField} ${styles.fullRow}`}
+                />
+                {renderNotesField()}
+              </div>
+            ) : null}
+
+            {activeTab === 'expenses' ? (
+              <div className={styles.formGrid}>
+                {renderDateField()}
+                <ReusableDropdown
+                  label="Account"
+                  options={ACCOUNT_OPTIONS}
+                  value={formValues.account}
+                  onChange={(value) => updateField('account', value)}
+                  placeholder="Select account"
+                  className={styles.dropdownField}
+                />
+                {renderAmountField()}
+                <ReusableDropdown
+                  label="Category"
+                  options={EXPENSE_CATEGORY_OPTIONS}
+                  value={formValues.expenseCategory}
+                  onChange={(value) => updateField('expenseCategory', value)}
+                  placeholder="Select expense category"
+                  className={styles.dropdownField}
+                />
+                <ReusableDropdown
+                  label="Shop (optional)"
+                  options={SHOP_OPTIONS}
+                  value={formValues.expenseShop}
+                  onChange={(value) => updateField('expenseShop', value)}
+                  placeholder="Select shop"
+                  className={`${styles.dropdownField} ${styles.fullRow}`}
+                />
+                {renderNotesField()}
+              </div>
+            ) : null}
 
             {activeTab === 'transfer' ? (
-              <>
+              <div className={styles.formGrid}>
+                {renderDateField()}
+                {renderAmountField()}
                 <ReusableDropdown
                   label="From account"
                   options={ACCOUNT_OPTIONS}
@@ -329,224 +624,10 @@ export default function AddTransactionModal({ isOpen, onClose, onSave }) {
                   placeholder="Select destination"
                   className={styles.dropdownField}
                 />
-              </>
-            ) : (
-              <ReusableDropdown
-                label="Account"
-                options={ACCOUNT_OPTIONS}
-                value={formValues.account}
-                onChange={(value) => updateField('account', value)}
-                placeholder="Select account"
-                className={styles.dropdownField}
-              />
-            )}
-
-            <div className={styles.field}>
-              <label className={styles.fieldLabel} htmlFor="transaction-amount">
-                Amount
-              </label>
-              <input
-                id="transaction-amount"
-                type="number"
-                className={styles.input}
-                value={formValues.amount}
-                onChange={(event) => updateField('amount', event.target.value)}
-                placeholder="0.00"
-                step="0.01"
-              />
-            </div>
-          </div>
-
-          <section
-            className={styles.tabPanel}
-            id={`add-transaction-panel-${activeTab}`}
-            role="tabpanel"
-            aria-labelledby={`add-transaction-tab-${activeTab}`}
-          >
-            {activeTab === 'debt' ? (
-              <div className={styles.tabContent}>
-                <div className={styles.field}>
-                  <span className={styles.fieldLabel}>Debt type</span>
-                  <div className={styles.toggleGroup}>
-                    {['debt', 'repay'].map((type) => (
-                      <button
-                        key={type}
-                        type="button"
-                        className={`${styles.toggleButton} ${
-                          formValues.debtType === type ? styles.toggleButtonActive : ''
-                        }`}
-                        onClick={() => updateField('debtType', type)}
-                        aria-pressed={formValues.debtType === type}
-                      >
-                        {type === 'debt' ? 'Debt' : 'Repay'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-              <div className={styles.tabGrid}>
-                <ReusableDropdown
-                  label="Person"
-                  options={PERSON_OPTIONS}
-                  value={formValues.debtPerson}
-                  onChange={(value) => updateField('debtPerson', value)}
-                  placeholder="Select person"
-                  className={styles.dropdownField}
-                  disabled={isRepayMode}
-                />
-                <ReusableDropdown
-                  label="Category"
-                  options={DEBT_CATEGORY_OPTIONS}
-                  value={formValues.debtCategory}
-                  onChange={(value) => updateField('debtCategory', value)}
-                  placeholder="Select category"
-                  className={styles.dropdownField}
-                  disabled={isRepayMode}
-                />
+                {renderNotesField()}
               </div>
-
-              <div className={styles.field}>
-                <span className={styles.fieldLabel}>Debt Tag</span>
-                <div className={styles.debtTagButtons}>
-                  {DEBT_TAG_SHORTCUTS.map((tag) => (
-                    <button
-                      type="button"
-                      key={tag}
-                      className={`${styles.tagButton} ${
-                        selectedDebtTag === tag ? styles.tagButtonActive : ''
-                      }`}
-                      onClick={() => handleDebtTagSelect(tag)}
-                      aria-pressed={selectedDebtTag === tag}
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    className={styles.moreTagButton}
-                    onClick={() => setShowMoreTagsDropdown(true)}
-                  >
-                    + More
-                  </button>
-                </div>
-                {showMoreTagsDropdown ? (
-                  <div className={styles.moreTagsDropdown}>
-                    <ReusableDropdown
-                      label="More tags"
-                      options={MORE_DEBT_TAGS}
-                      value={selectedDebtTag}
-                      onChange={(value) => handleDebtTagSelect(value)}
-                      placeholder="Search debt tags"
-                      className={styles.dropdownField}
-                      openOnMount
-                      onOpenChange={(isOpen) => {
-                        if (!isOpen) {
-                          setShowMoreTagsDropdown(false);
-                        }
-                      }}
-                    />
-                  </div>
-                ) : null}
-                </div>
-
-              <div className={styles.lastMonthRow}>
-                <button
-                  type="button"
-                  className={`${styles.switchButton} ${
-                    isLastMonth ? styles.switchButtonActive : ''
-                  }`}
-                  onClick={() => setIsLastMonth((prev) => !prev)}
-                  aria-pressed={isLastMonth}
-                >
-                  <span className={styles.switchTrack}>
-                    <span className={styles.switchThumb} />
-                  </span>
-                  <span className={styles.switchLabel}>Last Month</span>
-                </button>
-              </div>
-
-              {isRepayMode ? (
-                <div className={styles.repayPlaceholder}>
-                  Repay mode placeholder — additional controls will appear in a future update.
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          {activeTab === 'income' ? (
-            <div className={styles.tabContent}>
-              <div className={styles.tabGrid}>
-                <ReusableDropdown
-                  label="Category"
-                  options={INCOME_CATEGORY_OPTIONS}
-                  value={formValues.incomeCategory}
-                  onChange={(value) => updateField('incomeCategory', value)}
-                  placeholder="Select income category"
-                  className={styles.dropdownField}
-                />
-                <ReusableDropdown
-                  label="Shop (optional)"
-                  options={SHOP_OPTIONS}
-                  value={formValues.incomeShop}
-                  onChange={(value) => updateField('incomeShop', value)}
-                  placeholder="Select shop"
-                  className={styles.dropdownField}
-                />
-              </div>
-            </div>
-          ) : null}
-
-          {activeTab === 'expenses' ? (
-            <div className={styles.tabContent}>
-              <div className={styles.tabGrid}>
-                <ReusableDropdown
-                  label="Category"
-                  options={EXPENSE_CATEGORY_OPTIONS}
-                  value={formValues.expenseCategory}
-                  onChange={(value) => updateField('expenseCategory', value)}
-                  placeholder="Select expense category"
-                  className={styles.dropdownField}
-                />
-                <ReusableDropdown
-                  label="Shop (optional)"
-                  options={SHOP_OPTIONS}
-                  value={formValues.expenseShop}
-                  onChange={(value) => updateField('expenseShop', value)}
-                  placeholder="Select shop"
-                  className={styles.dropdownField}
-                />
-              </div>
-            </div>
-          ) : null}
-        </section>
-
-          <div className={`${styles.field} ${styles.notesField}`}>
-            <div className={styles.fieldLabelRow}>
-              <label className={styles.fieldLabel} htmlFor="transaction-notes">
-                Notes
-              </label>
-              <div className={styles.notesActions}>
-                {formValues.notes ? (
-                  <button type="button" className={styles.linkButton} onClick={handleClearNotes}>
-                    Clear
-                  </button>
-                ) : null}
-                {!formValues.notes && lastClearedNotes ? (
-                  <button type="button" className={styles.linkButton} onClick={handleRestoreNotes}>
-                    Restore
-                  </button>
-                ) : null}
-              </div>
-            </div>
-            <textarea
-              id="transaction-notes"
-              className={styles.textarea}
-              value={formValues.notes}
-              onChange={handleNotesChange}
-              placeholder="Add a note or short description"
-              rows={1}
-            />
-          </div>
+            ) : null}
+          </section>
         </div>
 
         <footer className={styles.actions}>
