@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react';
-import { FiRotateCcw, FiSearch, FiX } from 'react-icons/fi';
+import { FiRotateCcw, FiX } from 'react-icons/fi';
 
 export const TableRestoreInput = forwardRef(function TableRestoreInput(
   {
@@ -16,7 +16,7 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
     clearButtonClassName,
     restoreButtonClassName,
     iconButtonClassName,
-    staticIconClassName,
+    actionsClassName,
     clearButtonAriaLabel = 'Clear',
     restoreButtonAriaLabel = 'Restore',
     clearButtonTitle,
@@ -83,6 +83,7 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
 
   const showRestore = hasPreviousValue && !hasValue;
   const showClear = hasValue;
+  const showActions = showRestore || showClear;
 
   return (
     <div className={containerClassName} {...containerProps}>
@@ -97,33 +98,34 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
         onChange={(event) => onChange?.(event.target.value)}
         data-testid={inputTestId}
       />
-      {showRestore ? (
-        <button
-          type="button"
-          className={`${iconButtonClassName ?? ''} ${restoreButtonClassName ?? ''}`.trim()}
-          onClick={handleRestore}
-          aria-label={restoreButtonAriaLabel}
-          title={restoreButtonTitle}
-          data-testid={restoreButtonTestId}
-        >
-          <FiRotateCcw aria-hidden />
-        </button>
+      {showActions ? (
+        <div className={actionsClassName}>
+          {showRestore ? (
+            <button
+              type="button"
+              className={`${iconButtonClassName ?? ''} ${restoreButtonClassName ?? ''}`.trim()}
+              onClick={handleRestore}
+              aria-label={restoreButtonAriaLabel}
+              title={restoreButtonTitle}
+              data-testid={restoreButtonTestId}
+            >
+              <FiRotateCcw aria-hidden />
+            </button>
+          ) : null}
+          {showClear ? (
+            <button
+              type="button"
+              className={`${iconButtonClassName ?? ''} ${clearButtonClassName ?? ''}`.trim()}
+              onClick={handleClear}
+              aria-label={clearButtonAriaLabel}
+              title={clearButtonTitle}
+              data-testid={clearButtonTestId}
+            >
+              <FiX aria-hidden />
+            </button>
+          ) : null}
+        </div>
       ) : null}
-      {showClear ? (
-        <button
-          type="button"
-          className={`${iconButtonClassName ?? ''} ${clearButtonClassName ?? ''}`.trim()}
-          onClick={handleClear}
-          aria-label={clearButtonAriaLabel}
-          title={clearButtonTitle}
-          data-testid={clearButtonTestId}
-        >
-          <FiX aria-hidden />
-        </button>
-      ) : null}
-      <span className={staticIconClassName} aria-hidden>
-        <FiSearch />
-      </span>
     </div>
   );
 });

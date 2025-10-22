@@ -127,12 +127,23 @@
   color: var(--mf-text-primary);
   font-size: 0.95rem;
   outline: none;
-  padding-right: 80px;
+  padding-right: 48px;
 }
 
 .searchInput::-webkit-search-cancel-button,
 .searchInput::-webkit-search-decoration {
   display: none;
+}
+
+.searchInputActions {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 2;
 }
 
 .searchIconButton {
@@ -146,10 +157,6 @@
   place-items: center;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease;
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
 }
 
 .searchIconButton:hover,
@@ -157,11 +164,6 @@
   background: rgba(148, 163, 184, 0.25);
   color: var(--mf-text-primary);
   outline: none;
-}
-
-.searchClearButton,
-.searchRestoreButton {
-  right: 44px;
 }
 
 .searchClearButton {
@@ -180,19 +182,6 @@
 .searchRestoreButton:hover,
 .searchRestoreButton:focus-visible {
   color: rgba(37, 99, 235, 0.98);
-}
-
-.searchStaticIcon {
-  position: absolute;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-  color: var(--mf-text-secondary);
-  cursor: default;
 }
 
 .iconButton {
