@@ -7,7 +7,6 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
     onChange,
     onSubmit,
     onClear,
-    onRequestClearConfirm,
     previousValue,
     onRestore,
     placeholder,
@@ -56,11 +55,7 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
     }
     if (event.key === 'Escape' && hasValue) {
       event.preventDefault();
-      if (onRequestClearConfirm) {
-        onRequestClearConfirm();
-      } else {
-        onClear?.();
-      }
+      onClear?.();
     }
   };
 
@@ -69,11 +64,10 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
     if (!hasValue) {
       return;
     }
-    if (onRequestClearConfirm) {
-      onRequestClearConfirm();
-    } else {
-      onClear?.();
-    }
+    onClear?.();
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
   };
 
   const handleRestore = (event) => {
