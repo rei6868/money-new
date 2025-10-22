@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { FiPlus, FiRefreshCw, FiSettings } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
-import { TableConfirmModal, TableRestoreInput } from '../table';
+import { TableRestoreInput } from '../table';
 
 export function TransactionsToolbar({
   searchValue,
@@ -24,9 +24,7 @@ export function TransactionsToolbar({
   onResetColumns,
   onDoneCustomize,
 }) {
-  const hasQuery = Boolean(searchValue?.trim());
   const searchInputRef = useRef(null);
-  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const columnSelectAllRef = useRef(null);
 
   const focusSearchInput = () => {
@@ -36,42 +34,12 @@ export function TransactionsToolbar({
   };
 
   useEffect(() => {
-    if (!isConfirmingClear) {
-      return undefined;
-    }
-
-    const handleKey = (event) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        setIsConfirmingClear(false);
-        focusSearchInput();
-      }
-    };
-
-    window.addEventListener('keydown', handleKey);
-    return () => {
-      window.removeEventListener('keydown', handleKey);
-    };
-  }, [isConfirmingClear]);
-
-  useEffect(() => {
     if (!columnSelectAllRef.current) {
       return;
     }
     columnSelectAllRef.current.indeterminate =
       Boolean(someToggleableVisible) && !allToggleableVisible;
   }, [someToggleableVisible, allToggleableVisible]);
-
-  const handleConfirmClear = () => {
-    setIsConfirmingClear(false);
-    onClearSearch?.();
-    focusSearchInput();
-  };
-
-  const handleCancelClear = () => {
-    setIsConfirmingClear(false);
-    focusSearchInput();
-  };
 
   const handleToggleSelected = () => {
     if (selectedCount === 0) {
@@ -91,7 +59,6 @@ export function TransactionsToolbar({
           onChange={onSearchChange}
           onSubmit={onSubmitSearch}
           onClear={onClearSearch}
-          onRequestClearConfirm={() => (hasQuery ? setIsConfirmingClear(true) : null)}
           previousValue={previousQuery}
           onRestore={(value) => {
             onRestoreQuery?.(value);
@@ -215,23 +182,6 @@ export function TransactionsToolbar({
           Add transaction
         </button>
       </div>
-
-      <TableConfirmModal
-        isOpen={isConfirmingClear}
-        title="Clear search"
-        message="Clear the current search text?"
-        cancelLabel="Cancel"
-        confirmLabel="Clear search"
-        onCancel={handleCancelClear}
-        onConfirm={handleConfirmClear}
-        className={styles.confirmOverlay}
-        contentClassName={styles.confirmDialog}
-        actionsClassName={styles.confirmActions}
-        cancelButtonClassName={styles.secondaryButton}
-        confirmButtonClassName={styles.primaryButton}
-        cancelButtonProps={{ 'data-testid': 'transactions-search-cancel-clear' }}
-        confirmButtonProps={{ 'data-testid': 'transactions-search-confirm-clear' }}
-      />
     </section>
   );
 }
