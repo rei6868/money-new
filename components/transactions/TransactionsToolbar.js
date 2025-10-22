@@ -59,7 +59,7 @@ export function TransactionsToolbar({
           onChange={onSearchChange}
           onSubmit={onSubmitSearch}
           onClear={onClearSearch}
-          previousValue={previousQuery}
+          previousValue={previousQuery ?? ''}
           onRestore={(value) => {
             onRestoreQuery?.(value);
             focusSearchInput();
