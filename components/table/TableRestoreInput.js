@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { FiRotateCcw, FiX } from 'react-icons/fi';
 
 export const TableRestoreInput = forwardRef(function TableRestoreInput(
@@ -29,6 +29,9 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
   forwardedRef,
 ) {
   const inputRef = useRef(null);
+  const [valueBeforeClear, setValueBeforeClear] = useState(null);
+
+  const { onBlur: inputOnBlur, onChange: inputOnChange, ...restInputProps } = inputProps;
 
   const resolvedValue = value ?? '';
   const stringValue =
@@ -55,6 +58,7 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
     }
     if (event.key === 'Escape' && hasValue) {
       event.preventDefault();
+      setValueBeforeClear(stringValue);
       onClear?.();
     }
   };
@@ -62,8 +66,12 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
   const handleClear = (event) => {
     event.preventDefault();
     if (!hasValue) {
+      if (hasPreviousValue) {
+        onClear?.();
+      }
       return;
     }
+    setValueBeforeClear(stringValue);
     onClear?.();
     requestAnimationFrame(() => {
       inputRef.current?.focus();
@@ -72,30 +80,55 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
 
   const handleRestore = (event) => {
     event.preventDefault();
+    if (valueBeforeClear !== null) {
+      onChange?.(valueBeforeClear);
+      setValueBeforeClear(null);
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+      return;
+    }
     if (!hasPreviousValue) {
       return;
     }
     onRestore?.(previousValue);
+    setValueBeforeClear(null);
     requestAnimationFrame(() => {
       inputRef.current?.focus();
     });
   };
 
-  const showRestore = hasPreviousValue && !hasValue;
+  const canRestoreLocally = valueBeforeClear !== null && !hasValue;
+  const canRestoreGlobally = !canRestoreLocally && hasPreviousValue && !hasValue;
+  const showRestore = canRestoreLocally || canRestoreGlobally;
   const showClear = hasValue;
   const showActions = showRestore || showClear;
+
+  const handleBlur = (event) => {
+    if (valueBeforeClear !== null) {
+      setValueBeforeClear(null);
+    }
+    inputOnBlur?.(event);
+  };
 
   return (
     <div className={containerClassName} {...containerProps}>
       <input
-        {...inputProps}
+        {...restInputProps}
         ref={inputRef}
         type="search"
         className={inputClassName}
         placeholder={placeholder}
         value={stringValue}
         onKeyDown={handleKeyDown}
-        onChange={(event) => onChange?.(event.target.value)}
+        onChange={(event) => {
+          if (valueBeforeClear !== null) {
+            setValueBeforeClear(null);
+          }
+          inputOnChange?.(event);
+          onChange?.(event.target.value);
+        }}
+        onBlur={handleBlur}
         data-testid={inputTestId}
       />
       {showActions ? (
