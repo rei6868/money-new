@@ -8,8 +8,8 @@ import styles from '../styles/Login.module.css';
 export default function LoginPage() {
   const router = useRouter();
   const { login, isAuthenticated, isLoading } = useAuth();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('admin');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 

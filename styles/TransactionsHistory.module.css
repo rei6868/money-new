@@ -162,6 +162,7 @@
 .searchClearButton,
 .searchRestoreButton {
   right: 44px;
+  z-index: 3;
 }
 
 .searchClearButton {

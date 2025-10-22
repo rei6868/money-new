@@ -22,6 +22,7 @@ import {
 
 import { useAuth } from '../context/AuthContext';
 import { TopNavBar } from './TopNavBar';
+import { Tooltip } from './ui/Tooltip';
 
 import styles from './AppLayout.module.css';
 
@@ -219,26 +220,48 @@ export default function AppLayout({ title, subtitle, children }) {
     setIsCollapsed((prev) => !prev);
   };
 
+  const renderWithTooltip = (element, label, key) => {
+    if (!isCollapsed) {
+      return element;
+    }
+
+    const tooltipProps = key === undefined ? {} : { key };
+
+    return (
+      <Tooltip content={label} {...tooltipProps}>
+        {element}
+      </Tooltip>
+    );
+  };
+
   const renderNavLink = (item) => {
     const Icon = item.icon;
     const isActive = activeKeys.has(item.key);
+    const linkClassName = `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`;
+    const linkContent = (
+      <>
+        <span className={styles.iconSlot}>
+          <Icon />
+        </span>
+        <span className={styles.linkLabel}>{item.label}</span>
+      </>
+    );
 
-    return (
+    const linkElement = (
       <Link
         key={item.key}
         href={item.href}
-        className={`${styles.navLink} ${isActive ? styles.navLinkActive : ''}`}
+        className={linkClassName}
         data-testid={`sidebar-link-${item.key}`}
         title={item.label}
         aria-current={isActive ? 'page' : undefined}
         aria-label={item.label}
       >
-        <span className={styles.iconSlot}>
-          <Icon />
-        </span>
-        <span className={styles.linkLabel}>{item.label}</span>
+        {linkContent}
       </Link>
     );
+
+    return renderWithTooltip(linkElement, item.label, item.key);
   };
 
   const renderNavGroup = (item) => {
@@ -246,24 +269,28 @@ export default function AppLayout({ title, subtitle, children }) {
     const isExpanded = expandedGroups.includes(item.key);
     const parentActive = activeKeys.has(item.key);
 
+    const triggerButton = (
+      <button
+        type="button"
+        className={`${styles.navGroupTrigger} ${parentActive ? styles.navLinkActive : ''}`}
+        onClick={() => handleToggleGroup(item.key)}
+        aria-expanded={isExpanded}
+        aria-controls={`sidebar-submenu-${item.key}`}
+        data-testid={`sidebar-group-${item.key}`}
+        title={item.label}
+        aria-label={item.label}
+      >
+        <span className={styles.iconSlot}>
+          <Icon />
+        </span>
+        <span className={styles.linkLabel}>{item.label}</span>
+        <FiChevronDown className={`${styles.chevron} ${isExpanded ? styles.chevronOpen : ''}`} />
+      </button>
+    );
+
     return (
       <div key={item.key} className={styles.navGroup}>
-        <button
-          type="button"
-          className={`${styles.navGroupTrigger} ${parentActive ? styles.navLinkActive : ''}`}
-          onClick={() => handleToggleGroup(item.key)}
-          aria-expanded={isExpanded}
-          aria-controls={`sidebar-submenu-${item.key}`}
-          data-testid={`sidebar-group-${item.key}`}
-          title={item.label}
-          aria-label={item.label}
-        >
-          <span className={styles.iconSlot}>
-            <Icon />
-          </span>
-          <span className={styles.linkLabel}>{item.label}</span>
-          <FiChevronDown className={`${styles.chevron} ${isExpanded ? styles.chevronOpen : ''}`} />
-        </button>
+        {renderWithTooltip(triggerButton, item.label)}
         <div
           id={`sidebar-submenu-${item.key}`}
           className={`${styles.subNav} ${isExpanded ? styles.subNavOpen : ''}`}
@@ -331,46 +358,58 @@ export default function AppLayout({ title, subtitle, children }) {
         </nav>
 
         <div className={styles.sidebarFooter}>
-          <Link
-            href="/settings"
-            className={`${styles.navLink} ${isSettingsActive ? styles.navLinkActive : ''}`}
-            data-testid="sidebar-link-settings"
-            title="Settings"
-            aria-label="Settings"
-            aria-current={isSettingsActive ? 'page' : undefined}
-          >
-            <span className={styles.iconSlot}>
-              <FiSettings />
-            </span>
-            <span className={styles.linkLabel}>Settings</span>
-          </Link>
+          {renderWithTooltip(
+            <Link
+              href="/settings"
+              className={`${styles.navLink} ${isSettingsActive ? styles.navLinkActive : ''}`}
+              data-testid="sidebar-link-settings"
+              title="Settings"
+              aria-label="Settings"
+              aria-current={isSettingsActive ? 'page' : undefined}
+            >
+              <span className={styles.iconSlot}>
+                <FiSettings />
+              </span>
+              <span className={styles.linkLabel}>Settings</span>
+            </Link>,
+            'Settings',
+            'settings-footer',
+          )}
 
-          <button
-            type="button"
-            className={styles.navLink}
-            onClick={handleToggleTheme}
-            data-testid="dark-mode-toggle"
-            aria-pressed={theme === 'dark'}
-            aria-label="Toggle dark mode"
-            title="Toggle dark mode"
-          >
-            <span className={styles.iconSlot}>{theme === 'dark' ? <FiSun /> : <FiMoon />}</span>
-            <span className={styles.linkLabel}>Dark Mode</span>
-          </button>
+          {renderWithTooltip(
+            <button
+              type="button"
+              className={styles.navLink}
+              onClick={handleToggleTheme}
+              data-testid="dark-mode-toggle"
+              aria-pressed={theme === 'dark'}
+              aria-label="Toggle dark mode"
+              title="Toggle dark mode"
+            >
+              <span className={styles.iconSlot}>{theme === 'dark' ? <FiSun /> : <FiMoon />}</span>
+              <span className={styles.linkLabel}>Dark Mode</span>
+            </button>,
+            'Dark Mode',
+            'theme-toggle',
+          )}
 
-          <button
-            type="button"
-            className={styles.navLink}
-            onClick={handleLogout}
-            data-testid="logout-button"
-            aria-label="Logout"
-            title="Logout"
-          >
-            <span className={styles.iconSlot}>
-              <FiLogOut />
-            </span>
-            <span className={styles.linkLabel}>Logout</span>
-          </button>
+          {renderWithTooltip(
+            <button
+              type="button"
+              className={styles.navLink}
+              onClick={handleLogout}
+              data-testid="logout-button"
+              aria-label="Logout"
+              title="Logout"
+            >
+              <span className={styles.iconSlot}>
+                <FiLogOut />
+              </span>
+              <span className={styles.linkLabel}>Logout</span>
+            </button>,
+            'Logout',
+            'logout-button',
+          )}
         </div>
       </aside>
       <div className={styles.mainColumn}>

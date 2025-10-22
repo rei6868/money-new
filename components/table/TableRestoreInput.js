@@ -75,7 +75,7 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
     if (!hasPreviousValue) {
       return;
     }
-    onRestore?.(previousValue);
+    onRestore?.(previousValueString);
     requestAnimationFrame(() => {
       inputRef.current?.focus();
     });

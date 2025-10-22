@@ -98,6 +98,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
   const [showNewItemModal, setShowNewItemModal] = useState(false);
   const [newItemType, setNewItemType] = useState('');
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const notesTextareaRef = useRef(null);
   const currentDateTag = useMemo(() => buildMonthTag(selectedDate), [selectedDate]);
   const previousMonthTag = useMemo(() => buildMonthTag(selectedDate, -1), [selectedDate]);
   const formattedSelectedDate = useMemo(() => {
@@ -189,17 +190,25 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
     }
 
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        requestClose();
+      if (event.key !== 'Escape') {
+        return;
       }
+
+      if (document.activeElement === notesTextareaRef.current) {
+        event.preventDefault();
+        handleClearNotes();
+        return;
+      }
+
+      event.preventDefault();
+      requestClose();
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, requestClose]);
+  }, [handleClearNotes, isOpen, requestClose]);
 
   useEffect(() => {
     updateField('date', selectedDate);
@@ -252,21 +261,21 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
     updateField('notes', event.target.value);
   };
 
-  const handleClearNotes = () => {
+  const handleClearNotes = useCallback(() => {
     if (!formValues.notes) {
       return;
     }
     setLastClearedNotes(formValues.notes);
     updateField('notes', '');
-  };
+  }, [formValues.notes, updateField]);
 
-  const handleRestoreNotes = () => {
+  const handleRestoreNotes = useCallback(() => {
     if (!lastClearedNotes) {
       return;
     }
     updateField('notes', lastClearedNotes);
     setLastClearedNotes('');
-  };
+  }, [lastClearedNotes, updateField]);
 
   const handleDebtTagSelect = (tag) => {
     setSelectedDebtTag(tag || '');
@@ -366,6 +375,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
             onChange={handleNotesChange}
             placeholder="Add a note or short description"
             rows={1}
+            ref={notesTextareaRef}
           />
           <div className={styles.notesActions}>
             {formValues.notes ? (
