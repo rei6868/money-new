@@ -363,20 +363,21 @@
   align-items: flex-start;
 }
 
-.notesField {
+.notesFieldContainer {
   width: 100%;
 }
 
-.notesFieldContainer {
+.inputWrapper {
   position: relative;
+  display: flex;
   width: 100%;
 }
 
 .notesActions {
   position: absolute;
-  top: 50%;
-  right: 0.85rem;
-  transform: translateY(-50%);
+  top: 0.55rem;
+  right: 0.55rem;
+  transform: none;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -385,22 +386,20 @@
 
 .notesIconButton {
   border: none;
-  background: transparent;
+  background: rgba(148, 163, 184, 0.18);
   color: var(--mf-text-secondary);
-  width: 28px;
-  height: 28px;
-  border-radius: 9px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease;
 }
 
 .notesIconButton:hover,
 .notesIconButton:focus-visible {
-  background: rgba(148, 163, 184, 0.2);
-  color: var(--mf-text-primary);
+  background: rgba(99, 102, 241, 0.15);
   outline: none;
 }
 
@@ -422,8 +421,9 @@
   color: rgba(37, 99, 235, 0.98);
 }
 
-.notesFieldContainer textarea {
-  padding-right: 4.25rem;
+.inputWrapper .textarea {
+  width: 100%;
+  padding-right: 3.75rem;
 }
 
 .fieldError {

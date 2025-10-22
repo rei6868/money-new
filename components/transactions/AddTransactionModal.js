@@ -343,7 +343,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
   };
 
   const renderNotesField = ({ className = '', fullRow = true } = {}) => {
-    const containerClasses = [styles.field, styles.notesField];
+    const containerClasses = [styles.field, styles.notesFieldContainer];
     if (fullRow) {
       containerClasses.push(styles.fullRow);
     }
@@ -358,7 +358,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
             Notes
           </label>
         </div>
-        <div className={styles.notesFieldContainer}>
+        <div className={styles.inputWrapper}>
           <textarea
             id="transaction-notes"
             className={styles.textarea}
