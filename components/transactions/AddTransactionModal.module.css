@@ -182,14 +182,33 @@
   text-transform: uppercase;
 }
 
+.formFieldBase {
+  --mf-form-field-height: 48px;
+  --mf-form-field-radius: 12px;
+  --mf-form-field-border-width: 1px;
+  --mf-form-field-border-color: var(--mf-border-subtle);
+  --mf-form-field-background: var(--color-background-secondary, rgba(148, 163, 184, 0.12));
+  --mf-form-field-font-size: 0.95rem;
+  --mf-form-field-padding-y: 0.6rem;
+  --mf-form-field-padding-x: 0.85rem;
+  --mf-form-field-transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
 .input {
-  border: 1px solid var(--mf-border-subtle);
-  border-radius: 14px;
-  padding: 0.6rem 0.85rem;
-  font-size: 0.95rem;
-  background: rgba(148, 163, 184, 0.12);
+  border: var(--mf-form-field-border-width, 1px) solid
+    var(--mf-form-field-border-color, var(--mf-border-subtle));
+  border-radius: var(--mf-form-field-radius, 14px);
+  padding: var(--mf-form-field-padding-y, 0.6rem) var(--mf-form-field-padding-x, 0.85rem);
+  font-size: var(--mf-form-field-font-size, 0.95rem);
+  min-height: var(--mf-form-field-height, auto);
+  background: var(--mf-form-field-background, rgba(148, 163, 184, 0.12));
   color: var(--mf-text-primary);
-  transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition: var(
+    --mf-form-field-transition,
+    border 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease
+  );
 }
 
 .input:focus-visible {
@@ -227,7 +246,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: 1.4rem;
   row-gap: 1.4rem;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .debtGrid > * {
@@ -259,7 +278,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
-  min-height: 52px;
+  min-height: var(--mf-form-field-height, 52px);
   padding: 0.35rem;
   border-radius: 999px;
   border: 1px solid rgba(248, 113, 113, 0.5);
@@ -328,35 +347,17 @@
   min-width: 0;
 }
 
-.debtTagColumn {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  align-self: flex-start;
-  width: 100%;
-  min-width: 0;
-}
-
-.debtTagHeader {
+.toggleField {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.lastMonthGroup {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.lastMonthLabel {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--mf-text-secondary);
+  padding: var(--mf-form-field-padding-y, 0.6rem) var(--mf-form-field-padding-x, 0.85rem);
+  border-radius: var(--mf-form-field-radius, 12px);
+  border: var(--mf-form-field-border-width, 1px) solid
+    var(--mf-form-field-border-color, var(--mf-border-subtle));
+  background: var(--mf-form-field-background, rgba(148, 163, 184, 0.12));
+  min-height: var(--mf-form-field-height, 48px);
 }
 
 .switchButton {
@@ -367,6 +368,7 @@
   background: none;
   padding: 0;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .switchButton:focus-visible {

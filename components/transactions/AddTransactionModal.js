@@ -317,7 +317,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
         <input
           id="transaction-date"
           type="date"
-          className={styles.input}
+          className={`${styles.input} ${styles.formFieldBase}`}
           value={selectedDate}
           onChange={(event) => setSelectedDate(event.target.value)}
         />
@@ -335,7 +335,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
         <input
           id="transaction-amount"
           type="number"
-          className={styles.input}
+          className={`${styles.input} ${styles.formFieldBase}`}
           value={formValues.amount}
           onChange={(event) => updateField('amount', event.target.value)}
           placeholder="0.00"

@@ -20,16 +20,16 @@ export default function DebtTabContent({
   isLastMonth,
   onToggleLastMonth,
 }) {
+  const lastMonthLabelId = 'debt-last-month-toggle-label';
+
   return (
     <div className={styles.debtSection}>
       <div className={styles.debtGrid}>
-        <div className={styles.debtTypeGroup}>
-          <div className={styles.debtTypeHeader}>
-            <span className={styles.fieldLabel}>Debt Type</span>
-          </div>
+        <div className={`${styles.debtTypeGroup} ${styles.gridField}`}>
+          <span className={styles.fieldLabel}>Debt Type</span>
           <button
             type="button"
-            className={`${styles.debtTypeToggle} ${
+            className={`${styles.debtTypeToggle} ${styles.formFieldBase} ${
               isRepayMode ? styles.debtTypeToggleRepay : styles.debtTypeToggleDebt
             }`}
             onClick={() => updateField('debtType', isRepayMode ? 'debt' : 'repay')}
@@ -60,40 +60,11 @@ export default function DebtTabContent({
           value={formValues.debtPerson}
           onChange={(value) => updateField('debtPerson', value)}
           placeholder="Select person"
-          className={`${styles.dropdownField} ${styles.gridField}`}
+          className={`${styles.dropdownField} ${styles.gridField} ${styles.formFieldBase}`}
           onAddNew={() => onOpenNewItemModal('Person')}
         />
 
         {renderDateField({ className: `${styles.dateField} ${styles.gridField}` })}
-
-        <div className={`${styles.debtTagColumn} ${styles.gridField}`}>
-          <div className={styles.debtTagHeader}>
-            <span className={styles.fieldLabel}>{debtTagLabel}</span>
-            <div className={styles.lastMonthGroup}>
-              <span className={styles.lastMonthLabel}>Last Month</span>
-              <button
-                type="button"
-                className={`${styles.switchButton} ${isLastMonth ? styles.switchButtonActive : ''}`}
-                onClick={onToggleLastMonth}
-                role="switch"
-                aria-checked={isLastMonth}
-              >
-                <span className={styles.switchTrack}>
-                  <span className={styles.switchThumb} />
-                </span>
-              </button>
-            </div>
-          </div>
-          <ReusableDropdown
-            options={debtTagOptions}
-            value={selectedDebtTag}
-            onChange={(value) => onDebtTagSelect(value)}
-            placeholder="Select or search debt tag"
-            className={styles.dropdownField}
-            ariaLabel={debtTagLabel}
-            onAddNew={() => onOpenNewItemModal(debtTagModalType)}
-          />
-        </div>
 
         <ReusableDropdown
           label="Account"
@@ -101,10 +72,9 @@ export default function DebtTabContent({
           value={formValues.account}
           onChange={(value) => updateField('account', value)}
           placeholder="Select account"
-          className={`${styles.dropdownField} ${styles.gridField}`}
+          className={`${styles.dropdownField} ${styles.gridField} ${styles.formFieldBase}`}
           onAddNew={() => onOpenNewItemModal('Account')}
         />
-        {renderAmountField({ className: styles.gridField })}
 
         <ReusableDropdown
           label="Category"
@@ -112,9 +82,39 @@ export default function DebtTabContent({
           value={formValues.debtCategory}
           onChange={(value) => updateField('debtCategory', value)}
           placeholder="Select category"
-          className={`${styles.dropdownField} ${styles.gridField}`}
+          className={`${styles.dropdownField} ${styles.gridField} ${styles.formFieldBase}`}
           onAddNew={() => onOpenNewItemModal('Debt Category')}
         />
+
+        {renderAmountField({ className: styles.gridField })}
+
+        <ReusableDropdown
+          label={debtTagLabel}
+          options={debtTagOptions}
+          value={selectedDebtTag}
+          onChange={(value) => onDebtTagSelect(value)}
+          placeholder="Select or search debt tag"
+          className={`${styles.dropdownField} ${styles.gridField} ${styles.formFieldBase}`}
+          onAddNew={() => onOpenNewItemModal(debtTagModalType)}
+        />
+
+        <div className={`${styles.toggleField} ${styles.gridField} ${styles.formFieldBase}`}>
+          <span className={styles.fieldLabel} id={lastMonthLabelId}>
+            Last Month
+          </span>
+          <button
+            type="button"
+            className={`${styles.switchButton} ${isLastMonth ? styles.switchButtonActive : ''}`}
+            onClick={onToggleLastMonth}
+            role="switch"
+            aria-checked={isLastMonth}
+            aria-labelledby={lastMonthLabelId}
+          >
+            <span className={styles.switchTrack}>
+              <span className={styles.switchThumb} />
+            </span>
+          </button>
+        </div>
       </div>
 
       {renderNotesField({ className: styles.debtNotesField, fullRow: false })}
