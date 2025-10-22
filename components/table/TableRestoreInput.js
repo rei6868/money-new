@@ -85,6 +85,12 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
   const showClear = hasValue;
   const showActions = showRestore || showClear;
 
+  console.log('[TableRestoreInput Debug]');
+  console.log('  value:', value);
+  console.log('  previousValue:', previousValue);
+  const shouldShowRestore = Boolean(previousValue) && !value?.trim();
+  console.log('  showRestore (calculated):', shouldShowRestore);
+
   return (
     <div className={containerClassName} {...containerProps}>
       <input
