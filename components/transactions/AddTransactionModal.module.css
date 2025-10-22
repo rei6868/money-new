@@ -76,72 +76,14 @@
   outline: none;
 }
 
-.tabList {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+.transactionTypeSelector {
+  padding: 0.25rem 0 1rem;
   border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  display: flex;
 }
 
-.tabButton {
-  border: none;
-  background: rgba(148, 163, 184, 0.16);
-  color: var(--mf-text-secondary);
-  padding: 0.55rem 1rem;
-  border-radius: 999px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-  touch-action: manipulation;
-}
-
-@media (hover: hover) {
-  .tabButton:not(.tabButtonActive):hover,
-  .tabButton:not(.tabButtonActive):focus-visible {
-    background: rgba(99, 102, 241, 0.18);
-    color: var(--mf-text-primary);
-    outline: none;
-  }
-}
-
-.tabButton:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-}
-
-.tabButtonActive,
-.tabButtonActive:hover,
-.tabButtonActive:focus-visible {
-  color: #ffffff;
-  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.18);
-}
-
-.tabButtonActive:focus-visible {
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.28), 0 12px 26px rgba(15, 23, 42, 0.18);
-}
-
-.tabButtonActiveNegative {
-  background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
-}
-
-.tabButtonActivePositive {
-  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
-}
-
-.tabButtonActiveNeutral {
-  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
-}
-
-.tabButtonActiveNegative:hover,
-.tabButtonActiveNegative:focus-visible,
-.tabButtonActivePositive:hover,
-.tabButtonActivePositive:focus-visible,
-.tabButtonActiveNeutral:hover,
-.tabButtonActiveNeutral:focus-visible {
-  background: inherit;
+.transactionTypeSegmented {
+  flex: 1 1 auto;
 }
 
 .tabPanel {

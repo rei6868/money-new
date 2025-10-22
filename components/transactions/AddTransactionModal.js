@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FiX } from 'react-icons/fi';
 
 import { ConfirmationModal } from '../common/ConfirmationModal';
+import SegmentedControl from '../ui/SegmentedControl';
 import DebtTabContent from './DebtTabContent';
 import ExpensesTabContent from './ExpensesTabContent';
 import IncomeTabContent from './IncomeTabContent';
@@ -78,23 +79,17 @@ const SHOP_OPTIONS = ['Main Shop', 'Online Store', 'Local Market'];
 const DEBT_TAG_LIBRARY = ['AUG25', 'SEP25', 'OCT25', 'JUL25', 'JUN25', 'MAY25'];
 const TRANSFER_CATEGORY_OPTIONS = ['Internal Transfer', 'Savings Allocation'];
 
-const TAB_ACCENTS = {
-  debt: 'negative',
-  expenses: 'negative',
-  income: 'positive',
-  transfer: 'positive',
-};
-
-const TABS = [
-  { id: 'debt', label: 'Debt' },
-  { id: 'income', label: 'Income' },
-  { id: 'expenses', label: 'Expenses' },
-  { id: 'transfer', label: 'Transfer' },
+const TRANSACTION_TYPE_OPTIONS = [
+  { value: 'debt', label: 'Debt', tone: 'negative' },
+  { value: 'income', label: 'Income', tone: 'positive' },
+  { value: 'expenses', label: 'Expenses', tone: 'negative' },
+  { value: 'transfer', label: 'Transfer', tone: 'positive' },
 ];
+const DEFAULT_TRANSACTION_TYPE = TRANSACTION_TYPE_OPTIONS[0].value;
 
 export default function AddTransactionModal({ isOpen, onClose, onSave, onRequestClose }) {
   const initialFormRef = useRef(createInitialFormState());
-  const [activeTab, setActiveTab] = useState('debt');
+  const [transactionType, setTransactionType] = useState(DEFAULT_TRANSACTION_TYPE);
   const [formValues, setFormValues] = useState(() => initialFormRef.current);
   const [lastClearedNotes, setLastClearedNotes] = useState('');
   const [selectedDate, setSelectedDate] = useState(initialFormRef.current.date);
@@ -129,7 +124,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
     setSelectedDate(nextInitialState.date);
     setSelectedDebtTag(nextInitialState.debtTag);
     setIsLastMonth(nextInitialState.debtLastMonth);
-    setActiveTab('debt');
+    setTransactionType(DEFAULT_TRANSACTION_TYPE);
     setLastClearedNotes('');
     setShowNewItemModal(false);
     setNewItemType('');
@@ -236,12 +231,14 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
   const titleId = 'add-transaction-modal-title';
   const descriptionId = 'add-transaction-modal-description';
 
-  const handleTabChange = (tabId) => {
-    setActiveTab(tabId);
+  const handleTransactionTypeChange = (nextType) => {
+    const fallback = DEFAULT_TRANSACTION_TYPE;
+    const isSupported = TRANSACTION_TYPE_OPTIONS.some((option) => option.value === nextType);
+    setTransactionType(isSupported ? nextType : fallback);
   };
 
   const handleSave = () => {
-    const payload = { ...formValues, kind: activeTab };
+    const payload = { ...formValues, kind: transactionType };
     if (onSave) {
       onSave(payload);
     } else {
@@ -436,48 +433,24 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
         </header>
 
         <div className={styles.modalBody}>
-          <ul className={styles.tabList} role="tablist">
-            {TABS.map((tab) => {
-              const tabId = `add-transaction-tab-${tab.id}`;
-              const panelId = `add-transaction-panel-${tab.id}`;
-              const isActive = tab.id === activeTab;
-              const tone = TAB_ACCENTS[tab.id] ?? 'neutral';
-              const buttonClasses = [styles.tabButton];
-              if (isActive) {
-                buttonClasses.push(styles.tabButtonActive);
-                if (tone === 'negative') {
-                  buttonClasses.push(styles.tabButtonActiveNegative);
-                } else if (tone === 'positive') {
-                  buttonClasses.push(styles.tabButtonActivePositive);
-                } else {
-                  buttonClasses.push(styles.tabButtonActiveNeutral);
-                }
-              }
-              return (
-                <li key={tab.id}>
-                  <button
-                    type="button"
-                    className={buttonClasses.join(' ')}
-                    onClick={() => handleTabChange(tab.id)}
-                    role="tab"
-                    id={tabId}
-                    aria-selected={isActive}
-                    aria-controls={panelId}
-                  >
-                    {tab.label}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          <div className={styles.transactionTypeSelector}>
+            <SegmentedControl
+              className={styles.transactionTypeSegmented}
+              options={TRANSACTION_TYPE_OPTIONS}
+              value={transactionType}
+              onChange={handleTransactionTypeChange}
+              name="transaction-type"
+              ariaLabel="Transaction Type"
+            />
+          </div>
 
           <section
             className={styles.tabPanel}
-            id={`add-transaction-panel-${activeTab}`}
-            role="tabpanel"
-            aria-labelledby={`add-transaction-tab-${activeTab}`}
+            id={`add-transaction-panel-${transactionType}`}
+            role="region"
+            aria-labelledby={`transaction-type-${transactionType}`}
           >
-            {activeTab === 'debt' ? (
+            {transactionType === 'debt' ? (
               <DebtTabContent
                 formValues={formValues}
                 updateField={updateField}
@@ -499,7 +472,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
               />
             ) : null}
 
-            {activeTab === 'income' ? (
+            {transactionType === 'income' ? (
               <IncomeTabContent
                 formValues={formValues}
                 updateField={updateField}
@@ -513,7 +486,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
               />
             ) : null}
 
-            {activeTab === 'expenses' ? (
+            {transactionType === 'expenses' ? (
               <ExpensesTabContent
                 formValues={formValues}
                 updateField={updateField}
@@ -527,7 +500,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
               />
             ) : null}
 
-            {activeTab === 'transfer' ? (
+            {transactionType === 'transfer' ? (
               <TransferTabContent
                 formValues={formValues}
                 updateField={updateField}
