@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FiRotateCcw, FiX } from 'react-icons/fi';
 
+import AmountInput from '../common/AmountInput';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import SegmentedControl from '../ui/SegmentedControl';
 import DebtTabContent from './DebtTabContent';
@@ -363,20 +364,16 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
   const renderAmountField = ({ className = '' } = {}) => {
     const containerClasses = [styles.field, className].filter(Boolean).join(' ');
     return (
-      <div className={containerClasses}>
-        <label className={styles.fieldLabel} htmlFor="transaction-amount">
-          Amount
-        </label>
-        <input
-          id="transaction-amount"
-          type="number"
-          className={`${styles.input} ${styles.formFieldBase}`}
-          value={formValues.amount}
-          onChange={(event) => updateField('amount', event.target.value)}
-          placeholder="0.00"
-          step="0.01"
-        />
-      </div>
+      <AmountInput
+        id="transaction-amount"
+        label="Amount"
+        value={formValues.amount}
+        onChange={(newValue) => updateField('amount', newValue)}
+        placeholder="0"
+        className={`${styles.input} ${styles.formFieldBase}`}
+        labelClassName={styles.fieldLabel}
+        wrapperClassName={containerClasses}
+      />
     );
   };
 
