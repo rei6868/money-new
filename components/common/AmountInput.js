@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { convertToVietnameseWords } from '../../lib/numberToWords_vi';
+
 import styles from './AmountInput.module.css';
 
 const NON_NUMERIC_PATTERN = /[^0-9.]/g;
@@ -81,12 +83,23 @@ export default function AmountInput({
   name,
   ...rest
 }) {
-  const formattedFromValue = useMemo(() => formatDisplayValue(value), [value]);
+  const normalizedRawValue = useMemo(() => parseInputValue(value), [value]);
+  const formattedFromValue = useMemo(
+    () => formatDisplayValue(normalizedRawValue),
+    [normalizedRawValue],
+  );
   const [displayValue, setDisplayValue] = useState(formattedFromValue);
+  const [vietnameseWords, setVietnameseWords] = useState(() =>
+    convertToVietnameseWords(normalizedRawValue),
+  );
 
   useEffect(() => {
     setDisplayValue(formattedFromValue);
   }, [formattedFromValue]);
+
+  useEffect(() => {
+    setVietnameseWords(convertToVietnameseWords(normalizedRawValue));
+  }, [normalizedRawValue]);
 
   const handleChange = (event) => {
     const nextDisplayValue = event.target.value;
@@ -95,6 +108,7 @@ export default function AmountInput({
 
     const nextFormattedValue = formatDisplayValue(rawNumericValue);
     setDisplayValue(nextFormattedValue);
+    setVietnameseWords(convertToVietnameseWords(rawNumericValue));
   };
 
   const containerClasses = [styles.container, wrapperClassName].filter(Boolean).join(' ');
@@ -107,6 +121,9 @@ export default function AmountInput({
         <label className={labelClasses} htmlFor={id}>
           {label}
         </label>
+      ) : null}
+      {vietnameseWords ? (
+        <div className={styles.amountWordsPlaceholder}>{vietnameseWords}</div>
       ) : null}
       <input
         id={id}
