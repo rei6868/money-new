@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FiX } from 'react-icons/fi';
+import { FiRotateCcw, FiX } from 'react-icons/fi';
 
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import SegmentedControl from '../ui/SegmentedControl';
@@ -343,7 +343,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
   };
 
   const renderNotesField = ({ className = '', fullRow = true } = {}) => {
-    const containerClasses = [styles.field, styles.notesField];
+    const containerClasses = [styles.field, styles.notesFieldContainer];
     if (fullRow) {
       containerClasses.push(styles.fullRow);
     }
@@ -357,27 +357,41 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
           <label className={styles.fieldLabel} htmlFor="transaction-notes">
             Notes
           </label>
+        </div>
+        <div className={styles.inputWrapper}>
+          <textarea
+            id="transaction-notes"
+            className={styles.textarea}
+            value={formValues.notes}
+            onChange={handleNotesChange}
+            placeholder="Add a note or short description"
+            rows={1}
+          />
           <div className={styles.notesActions}>
             {formValues.notes ? (
-              <button type="button" className={styles.linkButton} onClick={handleClearNotes}>
-                Clear
+              <button
+                type="button"
+                className={`${styles.notesIconButton} ${styles.notesClearButton}`}
+                onClick={handleClearNotes}
+                aria-label="Clear notes"
+                title="Clear notes"
+              >
+                <FiX aria-hidden />
               </button>
             ) : null}
             {!formValues.notes && lastClearedNotes ? (
-              <button type="button" className={styles.linkButton} onClick={handleRestoreNotes}>
-                Restore
+              <button
+                type="button"
+                className={`${styles.notesIconButton} ${styles.notesRestoreButton}`}
+                onClick={handleRestoreNotes}
+                aria-label="Restore last cleared notes"
+                title="Restore last cleared notes"
+              >
+                <FiRotateCcw aria-hidden />
               </button>
             ) : null}
           </div>
         </div>
-        <textarea
-          id="transaction-notes"
-          className={styles.textarea}
-          value={formValues.notes}
-          onChange={handleNotesChange}
-          placeholder="Add a note or short description"
-          rows={1}
-        />
       </div>
     );
   };
