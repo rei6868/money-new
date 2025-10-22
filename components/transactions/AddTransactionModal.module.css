@@ -213,19 +213,29 @@
 }
 
 .debtSection {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 1.4rem;
-  row-gap: 1.6rem;
-  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
 }
 
 .debtSection > * {
   min-width: 0;
 }
 
-.debtTopRow {
-  display: contents;
+.debtGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1.4rem;
+  row-gap: 1.4rem;
+  align-items: flex-start;
+}
+
+.debtGrid > * {
+  min-width: 0;
+}
+
+.gridField {
+  width: 100%;
 }
 
 .debtTypeGroup {
@@ -314,10 +324,6 @@
   transform: translateX(calc(100% + 8px));
 }
 
-.debtMetaRow {
-  display: contents;
-}
-
 .dateField {
   min-width: 0;
 }
@@ -396,9 +402,8 @@
   transform: translateX(24px);
 }
 
-.debtAccountsRow,
-.debtCategoryRow {
-  display: contents;
+.debtNotesField {
+  width: 100%;
 }
 
 .transferSection {
@@ -600,9 +605,8 @@
     width: 100%;
   }
 
-  .debtSection {
+  .debtGrid {
     grid-template-columns: 1fr;
-    row-gap: 1.4rem;
   }
 
   .formRow {

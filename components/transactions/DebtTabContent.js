@@ -22,7 +22,7 @@ export default function DebtTabContent({
 }) {
   return (
     <div className={styles.debtSection}>
-      <div className={styles.debtTopRow}>
+      <div className={styles.debtGrid}>
         <div className={styles.debtTypeGroup}>
           <div className={styles.debtTypeHeader}>
             <span className={styles.fieldLabel}>Debt Type</span>
@@ -60,14 +60,13 @@ export default function DebtTabContent({
           value={formValues.debtPerson}
           onChange={(value) => updateField('debtPerson', value)}
           placeholder="Select person"
-          className={styles.dropdownField}
+          className={`${styles.dropdownField} ${styles.gridField}`}
           onAddNew={() => onOpenNewItemModal('Person')}
         />
-      </div>
 
-      <div className={styles.debtMetaRow}>
-        {renderDateField({ className: styles.dateField })}
-        <div className={styles.debtTagColumn}>
+        {renderDateField({ className: `${styles.dateField} ${styles.gridField}` })}
+
+        <div className={`${styles.debtTagColumn} ${styles.gridField}`}>
           <div className={styles.debtTagHeader}>
             <span className={styles.fieldLabel}>{debtTagLabel}</span>
             <div className={styles.lastMonthGroup}>
@@ -95,33 +94,30 @@ export default function DebtTabContent({
             onAddNew={() => onOpenNewItemModal(debtTagModalType)}
           />
         </div>
-      </div>
 
-      <div className={styles.debtAccountsRow}>
         <ReusableDropdown
           label="Account"
           options={accountOptions}
           value={formValues.account}
           onChange={(value) => updateField('account', value)}
           placeholder="Select account"
-          className={styles.dropdownField}
+          className={`${styles.dropdownField} ${styles.gridField}`}
           onAddNew={() => onOpenNewItemModal('Account')}
         />
-        {renderAmountField()}
-      </div>
+        {renderAmountField({ className: styles.gridField })}
 
-      <div className={styles.debtCategoryRow}>
         <ReusableDropdown
           label="Category"
           options={debtCategoryOptions}
           value={formValues.debtCategory}
           onChange={(value) => updateField('debtCategory', value)}
           placeholder="Select category"
-          className={styles.dropdownField}
+          className={`${styles.dropdownField} ${styles.gridField}`}
           onAddNew={() => onOpenNewItemModal('Debt Category')}
         />
-        {renderNotesField({ fullRow: false })}
       </div>
+
+      {renderNotesField({ className: styles.debtNotesField, fullRow: false })}
     </div>
   );
 }
