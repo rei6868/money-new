@@ -59,7 +59,7 @@ export function TransactionsToolbar({
           onChange={onSearchChange}
           onSubmit={onSubmitSearch}
           onClear={onClearSearch}
-          previousValue={previousQuery}
+          previousValue={previousQuery ?? ''}
           onRestore={(value) => {
             onRestoreQuery?.(value);
             focusSearchInput();
@@ -70,7 +70,7 @@ export function TransactionsToolbar({
           iconButtonClassName={styles.searchIconButton}
           restoreButtonClassName={styles.searchRestoreButton}
           clearButtonClassName={styles.searchClearButton}
-          staticIconClassName={`${styles.searchIconButton} ${styles.searchStaticIcon}`}
+          actionsClassName={styles.searchInputActions}
           inputTestId="transactions-search-input"
           restoreButtonTestId="transactions-search-restore"
           clearButtonTestId="transactions-search-clear"

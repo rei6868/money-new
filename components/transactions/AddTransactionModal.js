@@ -89,6 +89,7 @@ const DEFAULT_TRANSACTION_TYPE = TRANSACTION_TYPE_OPTIONS[0].value;
 
 export default function AddTransactionModal({ isOpen, onClose, onSave, onRequestClose }) {
   const initialFormRef = useRef(createInitialFormState());
+  const notesTextareaRef = useRef(null);
   const [transactionType, setTransactionType] = useState(DEFAULT_TRANSACTION_TYPE);
   const [formValues, setFormValues] = useState(() => initialFormRef.current);
   const [lastClearedNotes, setLastClearedNotes] = useState('');
@@ -252,13 +253,50 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
     updateField('notes', event.target.value);
   };
 
-  const handleClearNotes = () => {
+  const handleClearNotes = useCallback(() => {
     if (!formValues.notes) {
       return;
     }
     setLastClearedNotes(formValues.notes);
     updateField('notes', '');
-  };
+  }, [formValues.notes, updateField]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const textarea = notesTextareaRef.current;
+    if (!textarea) {
+      return undefined;
+    }
+
+    const handleNotesKeyDown = (event) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      if (event.target !== textarea) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (formValues.notes) {
+        handleClearNotes();
+        return;
+      }
+
+      requestClose();
+    };
+
+    textarea.addEventListener('keydown', handleNotesKeyDown);
+
+    return () => {
+      textarea.removeEventListener('keydown', handleNotesKeyDown);
+    };
+  }, [formValues.notes, handleClearNotes, isOpen, requestClose]);
 
   const handleRestoreNotes = () => {
     if (!lastClearedNotes) {
@@ -366,6 +404,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
             onChange={handleNotesChange}
             placeholder="Add a note or short description"
             rows={1}
+            ref={notesTextareaRef}
           />
           <div className={styles.notesActions}>
             {formValues.notes ? (
