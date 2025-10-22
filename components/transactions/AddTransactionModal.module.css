@@ -155,6 +155,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .fieldLabelRow {
@@ -199,7 +201,9 @@
 
 .dropdownField {
   width: 100%;
+  min-width: 0;
 }
+
 
 .formGrid {
   display: grid;
@@ -209,16 +213,19 @@
 }
 
 .debtSection {
-  display: flex;
-  flex-direction: column;
-  gap: 1.6rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1.4rem;
+  row-gap: 1.6rem;
+  align-items: flex-start;
+}
+
+.debtSection > * {
+  min-width: 0;
 }
 
 .debtTopRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 1fr);
-  gap: 1.2rem;
-  align-items: center;
+  display: contents;
 }
 
 .debtTypeGroup {
@@ -226,6 +233,15 @@
   flex-direction: column;
   gap: 0.6rem;
   align-items: flex-start;
+  width: 100%;
+  min-width: 0;
+}
+
+.debtTypeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .debtTypeToggle {
@@ -241,6 +257,7 @@
   cursor: pointer;
   box-shadow: 0 14px 28px rgba(239, 68, 68, 0.16);
   transition: background 0.2s ease, border 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
 }
 
 .debtTypeToggleDebt {
@@ -298,10 +315,7 @@
 }
 
 .debtMetaRow {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1.2rem;
-  align-items: flex-start;
+  display: contents;
 }
 
 .dateField {
@@ -312,6 +326,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  align-self: flex-start;
+  width: 100%;
+  min-width: 0;
 }
 
 .debtTagHeader {
@@ -319,6 +336,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .lastMonthGroup {
@@ -380,10 +398,7 @@
 
 .debtAccountsRow,
 .debtCategoryRow {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.2rem;
-  align-items: flex-start;
+  display: contents;
 }
 
 .transferSection {
@@ -585,10 +600,11 @@
     width: 100%;
   }
 
-  .debtTopRow,
-  .debtMetaRow,
-  .debtAccountsRow,
-  .debtCategoryRow,
+  .debtSection {
+    grid-template-columns: 1fr;
+    row-gap: 1.4rem;
+  }
+
   .formRow {
     grid-template-columns: 1fr;
   }

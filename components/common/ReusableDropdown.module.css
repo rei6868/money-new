@@ -103,16 +103,17 @@
 }
 
 .menu {
-  position: absolute;
-  top: calc(100% + 0.45rem);
+  position: fixed;
+  top: 0;
   left: 0;
-  width: 100%;
   border-radius: 16px;
   border: 1px solid rgba(148, 163, 184, 0.28);
   background: var(--mf-surface, #ffffff);
   box-shadow: 0 18px 32px rgba(15, 23, 42, 0.18);
-  z-index: 40;
+  z-index: 2000;
   overflow: hidden;
+  min-width: 180px;
+  max-width: min(420px, 96vw);
 }
 
 .searchWrapper {
@@ -209,6 +210,6 @@
 
 @media (max-width: 640px) {
   .menu {
-    width: min(92vw, 320px);
+    max-width: min(92vw, 320px);
   }
 }

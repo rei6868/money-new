@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FiChevronDown, FiX } from 'react-icons/fi';
 
 import styles from './ReusableDropdown.module.css';
@@ -63,6 +64,7 @@ export default function ReusableDropdown({
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
   const searchInputRef = useRef(null);
+  const [menuStyles, setMenuStyles] = useState(null);
 
   const selectedOption = useMemo(
     () => normalizedOptions.find((option) => option.value === normalizedValue) ?? null,
@@ -85,6 +87,7 @@ export default function ReusableDropdown({
       setIsOpen(false);
       setSearchTerm('');
       onOpenChange?.(false);
+      setMenuStyles(null);
       if (focusTrigger) {
         requestAnimationFrame(() => {
           triggerRef.current?.focus();
@@ -107,6 +110,35 @@ export default function ReusableDropdown({
       return next;
     });
   };
+
+  const updateMenuPosition = useCallback(() => {
+    if (!isOpen || typeof window === 'undefined' || !triggerRef.current) {
+      return;
+    }
+
+    const rect = triggerRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth || 0;
+    const horizontalMargin = 12;
+    const verticalMargin = 8;
+    const maxAvailableWidth = Math.max(viewportWidth - horizontalMargin * 2, 180);
+    const width = Math.min(Math.max(rect.width, 180), maxAvailableWidth);
+    const maxLeft = Math.max(viewportWidth - width - horizontalMargin, horizontalMargin);
+    const left = Math.min(Math.max(rect.left, horizontalMargin), maxLeft);
+    const top = Math.max(rect.bottom, verticalMargin);
+
+    setMenuStyles((previous) => {
+      const next = { top, left, width };
+      if (
+        previous &&
+        previous.top === next.top &&
+        previous.left === next.left &&
+        previous.width === next.width
+      ) {
+        return previous;
+      }
+      return next;
+    });
+  }, [isOpen]);
 
   useEffect(() => {
     if (!openOnMount || disabled) {
@@ -147,6 +179,31 @@ export default function ReusableDropdown({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, closeDropdown]);
+
+  useEffect(() => {
+    if (!isOpen || typeof window === 'undefined') {
+      return undefined;
+    }
+
+    updateMenuPosition();
+    const rafId = requestAnimationFrame(updateMenuPosition);
+
+    const handleResize = () => {
+      updateMenuPosition();
+    };
+    const handleScroll = () => {
+      updateMenuPosition();
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', handleScroll, true);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [isOpen, updateMenuPosition]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -230,52 +287,65 @@ export default function ReusableDropdown({
         </span>
       </button>
 
-      {isOpen ? (
-        <div className={styles.menu} ref={menuRef} role="listbox">
-          <div className={styles.searchWrapper}>
-            <input
-              ref={searchInputRef}
-              id={`${dropdownId}-search`}
-              type="search"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder={searchPlaceholder}
-              className={styles.searchInput}
-              data-testid={searchTestId}
-            />
-          </div>
-          {onAddNew ? (
-            <div className={styles.menuNewAction}>
-              <button type="button" className={styles.newButton} onClick={handleNewClick}>
-                {addNewLabel}
-              </button>
-            </div>
-          ) : null}
-          <ul className={styles.optionsList}>
-            {filteredOptions.length === 0 ? (
-              <li className={styles.emptyState}>No matches found</li>
-            ) : (
-              filteredOptions.map((option) => (
-                <li key={option.key}>
-                  <button
-                    type="button"
-                    className={styles.optionButton}
-                    onClick={() => handleSelect(option)}
-                    data-selected={option.value === normalizedValue ? 'true' : 'false'}
-                    role="option"
-                    aria-selected={option.value === normalizedValue}
-                    data-testid={
-                      testIdPrefix ? `${testIdPrefix}-option-${option.value}` : undefined
-                    }
-                  >
-                    {option.label}
+      {isOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className={styles.menu}
+              ref={menuRef}
+              role="listbox"
+              style={{
+                top: menuStyles ? `${menuStyles.top}px` : '0px',
+                left: menuStyles ? `${menuStyles.left}px` : '0px',
+                width: menuStyles ? `${menuStyles.width}px` : undefined,
+                visibility: menuStyles ? 'visible' : 'hidden',
+              }}
+            >
+              <div className={styles.searchWrapper}>
+                <input
+                  ref={searchInputRef}
+                  id={`${dropdownId}-search`}
+                  type="search"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder={searchPlaceholder}
+                  className={styles.searchInput}
+                  data-testid={searchTestId}
+                />
+              </div>
+              {onAddNew ? (
+                <div className={styles.menuNewAction}>
+                  <button type="button" className={styles.newButton} onClick={handleNewClick}>
+                    {addNewLabel}
                   </button>
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
-      ) : null}
+                </div>
+              ) : null}
+              <ul className={styles.optionsList}>
+                {filteredOptions.length === 0 ? (
+                  <li className={styles.emptyState}>No matches found</li>
+                ) : (
+                  filteredOptions.map((option) => (
+                    <li key={option.key}>
+                      <button
+                        type="button"
+                        className={styles.optionButton}
+                        onClick={() => handleSelect(option)}
+                        data-selected={option.value === normalizedValue ? 'true' : 'false'}
+                        role="option"
+                        aria-selected={option.value === normalizedValue}
+                        data-testid={
+                          testIdPrefix ? `${testIdPrefix}-option-${option.value}` : undefined
+                        }
+                      >
+                        {option.label}
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
