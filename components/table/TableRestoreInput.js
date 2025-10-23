@@ -51,15 +51,53 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
     blur: () => inputRef.current?.blur(),
   }));
 
+  const focusInput = () => {
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  };
+
+  const restoreLocalValue = () => {
+    if (valueBeforeClear === null) {
+      return false;
+    }
+    onChange?.(valueBeforeClear);
+    setValueBeforeClear(null);
+    focusInput();
+    return true;
+  };
+
+  const restorePreviousValue = () => {
+    if (!hasPreviousValue) {
+      return false;
+    }
+    onRestore?.(previousValue);
+    setValueBeforeClear(null);
+    focusInput();
+    return true;
+  };
+
   const handleKeyDown = (event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
       onSubmit?.();
+      return;
     }
-    if (event.key === 'Escape' && hasValue) {
+    if (event.key !== 'Escape') {
+      return;
+    }
+
+    if (hasValue) {
       event.preventDefault();
       setValueBeforeClear(stringValue);
       onClear?.();
+      focusInput();
+      return;
+    }
+
+    const restored = restoreLocalValue() || restorePreviousValue();
+    if (restored) {
+      event.preventDefault();
     }
   };
 
@@ -73,29 +111,15 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
     }
     setValueBeforeClear(stringValue);
     onClear?.();
-    requestAnimationFrame(() => {
-      inputRef.current?.focus();
-    });
+    focusInput();
   };
 
   const handleRestore = (event) => {
     event.preventDefault();
-    if (valueBeforeClear !== null) {
-      onChange?.(valueBeforeClear);
-      setValueBeforeClear(null);
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
+    if (restoreLocalValue()) {
       return;
     }
-    if (!hasPreviousValue) {
-      return;
-    }
-    onRestore?.(previousValue);
-    setValueBeforeClear(null);
-    requestAnimationFrame(() => {
-      inputRef.current?.focus();
-    });
+    restorePreviousValue();
   };
 
   const canRestoreLocally = valueBeforeClear !== null && !hasValue;
