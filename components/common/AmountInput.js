@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { safeEvaluate } from '../../lib/safeEvaluate';
+import { containsDivisionByZero, normalizeExpression, safeEvaluate } from '../../lib/safeEvaluate';
 import styles from './AmountInput.module.css';
 
 const NON_NUMERIC_PATTERN = /[^0-9.]/g;
@@ -9,13 +9,14 @@ const GROUP_SEPARATOR_PATTERN = /\B(?=(\d{3})+(?!\d))/g;
 
 const SUGGESTION_MULTIPLIERS = [1000, 10000, 100000];
 const OPERATOR_SET = new Set(['+', '-', '*', '/']);
+const PAREN_SET = new Set(['(', ')']);
 
 const sanitizeExpressionInput = (value) => {
   if (!value) {
     return '';
   }
 
-  return value.replace(/\s+/g, '').replace(/,/g, '').replace(/[^0-9.+\-*/]/g, '');
+  return value.replace(/\s+/g, '').replace(/,/g, '').replace(/[^0-9.+\-*/()]/g, '');
 };
 
 const tokenizeExpression = (expressionString) => {
@@ -29,15 +30,28 @@ const tokenizeExpression = (expressionString) => {
 
   for (let index = 0; index < sanitized.length; index += 1) {
     const char = sanitized[index];
+    if (PAREN_SET.has(char)) {
+      if (current) {
+        tokens.push({ type: 'number', value: current });
+        current = '';
+      }
+
+      tokens.push({ type: 'paren', value: char });
+      continue;
+    }
+
     if (!OPERATOR_SET.has(char)) {
       current += char;
       continue;
     }
 
-    const isUnaryMinus =
-      char === '-' &&
-      (current === '' &&
-        (tokens.length === 0 || tokens[tokens.length - 1]?.type === 'operator'));
+    const previousToken = tokens[tokens.length - 1];
+    const prevAllowsUnaryMinus =
+      !previousToken ||
+      previousToken.type === 'operator' ||
+      (previousToken.type === 'paren' && previousToken.value === '(');
+
+    const isUnaryMinus = char === '-' && current === '' && prevAllowsUnaryMinus;
 
     if (isUnaryMinus) {
       current += char;
@@ -59,7 +73,30 @@ const tokenizeExpression = (expressionString) => {
   return tokens;
 };
 
-const hasOperators = (tokens) => tokens.some((token) => token.type === 'operator');
+const tokenHasDigits = (token) => token.type === 'number' && /\d/.test(token.value);
+
+const shouldTreatTokensAsExpression = (tokens) => {
+  if (!tokens || tokens.length === 0) {
+    return false;
+  }
+
+  const hasNumericToken = tokens.some(tokenHasDigits);
+  if (!hasNumericToken) {
+    return false;
+  }
+
+  const hasOperatorToken = tokens.some((token) => token.type === 'operator');
+  if (hasOperatorToken) {
+    return true;
+  }
+
+  const hasParentheses = tokens.some((token) => token.type === 'paren');
+  if (hasParentheses) {
+    return tokens.length > 1;
+  }
+
+  return false;
+};
 
 const formatExpressionTokens = (tokens) =>
   tokens.map((token) => {
@@ -270,11 +307,9 @@ export default function AmountInput({
     const nextDisplayValue = event.target.value;
     const sanitizedExpression = sanitizeExpressionInput(nextDisplayValue);
     const expressionTokens = tokenizeExpression(sanitizedExpression);
-    const containsOperatorWithValue =
-      hasOperators(expressionTokens) &&
-      expressionTokens.some((token) => token.type === 'number' && token.value);
+    const expressionDetected = shouldTreatTokensAsExpression(expressionTokens);
 
-    if (containsOperatorWithValue) {
+    if (expressionDetected) {
       const normalizedExpression = expressionTokens.map((token) => token.value).join('');
       setExpression(normalizedExpression);
 
@@ -387,47 +422,79 @@ export default function AmountInput({
 
       if (event.key === 'Enter') {
         const trimmedExpression = expression.trim();
-        if (trimmedExpression && isExpressionActive && hasOperators(tokenizeExpression(trimmedExpression))) {
-          event.preventDefault();
-          handled = true;
+        if (trimmedExpression && isExpressionActive) {
+          const rawTokens = tokenizeExpression(trimmedExpression);
+          const shouldEvaluate = shouldTreatTokensAsExpression(rawTokens);
 
-          const evaluationResult = safeEvaluate(trimmedExpression);
-          const tokens = formatExpressionTokens(tokenizeExpression(trimmedExpression));
-          const formattedExpression = joinTokensForHistory(tokens);
+          if (shouldEvaluate) {
+            event.preventDefault();
+            handled = true;
 
-          if (evaluationResult !== null) {
-            const rawResult = parseInputValue(String(evaluationResult));
-            const formattedResult = formatDisplayValue(rawResult);
-            const historyLine = formattedExpression
-              ? `${formattedExpression} = ${formattedResult}`
-              : formattedResult
-              ? `= ${formattedResult}`
-              : '';
+            const normalizedForEvaluation = normalizeExpression(trimmedExpression);
 
-            setHistory(historyLine);
-            setExpression('');
-            setDisplayExpression('');
-            setShowSuggestions(false);
-
-            const normalizedResult = rawResult;
-            setDisplayValue(formattedResult);
-            onChange?.(normalizedResult);
-
-            if (normalizedResult) {
-              const nextSuggestions = generateSuggestions(normalizedResult);
-              setSuggestions(nextSuggestions);
-            } else {
+            if (!normalizedForEvaluation) {
+              setHistory('Error: Invalid expression');
+              setExpression('');
+              setDisplayExpression('');
+              setDisplayValue('');
               setSuggestions([]);
+              setShowSuggestions(false);
+              onChange?.('');
+              return;
             }
-          } else {
-            const invalidExpressionLabel = formattedExpression || trimmedExpression;
-            setHistory(`Invalid expression: ${invalidExpressionLabel}`);
-            setExpression('');
-            setDisplayExpression('');
-            setDisplayValue('');
-            setSuggestions([]);
-            setShowSuggestions(false);
-            onChange?.('');
+
+            if (containsDivisionByZero(normalizedForEvaluation)) {
+              setHistory('Error: Cannot divide by zero');
+              setExpression('');
+              setDisplayExpression('');
+              setDisplayValue('');
+              setSuggestions([]);
+              setShowSuggestions(false);
+              onChange?.('');
+              return;
+            }
+
+            const tokens = formatExpressionTokens(
+              tokenizeExpression(normalizedForEvaluation),
+            );
+            const formattedExpression = joinTokensForHistory(tokens);
+
+            const evaluationResult = safeEvaluate(normalizedForEvaluation);
+
+            if (evaluationResult !== null) {
+              const rawResult = parseInputValue(String(evaluationResult));
+              const formattedResult = formatDisplayValue(rawResult);
+              const historyLine = formattedExpression
+                ? `${formattedExpression} = ${formattedResult}`
+                : formattedResult
+                ? `= ${formattedResult}`
+                : '';
+
+              setHistory(historyLine);
+              setExpression('');
+              setDisplayExpression('');
+              setShowSuggestions(false);
+
+              const normalizedResult = rawResult;
+              setDisplayValue(formattedResult);
+              onChange?.(normalizedResult);
+
+              if (normalizedResult) {
+                const nextSuggestions = generateSuggestions(normalizedResult);
+                setSuggestions(nextSuggestions);
+              } else {
+                setSuggestions([]);
+              }
+            } else {
+              const invalidExpressionLabel = formattedExpression || trimmedExpression;
+              setHistory(`Error: Invalid expression${invalidExpressionLabel ? `: ${invalidExpressionLabel}` : ''}`);
+              setExpression('');
+              setDisplayExpression('');
+              setDisplayValue('');
+              setSuggestions([]);
+              setShowSuggestions(false);
+              onChange?.('');
+            }
           }
         }
       }

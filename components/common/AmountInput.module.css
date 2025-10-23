@@ -62,3 +62,7 @@
   font-weight: 500;
 }
 
+.historyError {
+  color: #dc2626;
+  font-style: italic;
+}
