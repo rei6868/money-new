@@ -89,6 +89,7 @@ const DEFAULT_TRANSACTION_TYPE = TRANSACTION_TYPE_OPTIONS[0].value;
 
 export default function AddTransactionModal({ isOpen, onClose, onSave, onRequestClose }) {
   const initialFormRef = useRef(createInitialFormState());
+  const notesTextareaRef = useRef(null);
   const [transactionType, setTransactionType] = useState(DEFAULT_TRANSACTION_TYPE);
   const [formValues, setFormValues] = useState(() => initialFormRef.current);
   const [lastClearedNotes, setLastClearedNotes] = useState('');
@@ -98,7 +99,6 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
   const [showNewItemModal, setShowNewItemModal] = useState(false);
   const [newItemType, setNewItemType] = useState('');
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
-  const notesTextareaRef = useRef(null);
   const currentDateTag = useMemo(() => buildMonthTag(selectedDate), [selectedDate]);
   const previousMonthTag = useMemo(() => buildMonthTag(selectedDate, -1), [selectedDate]);
   const formattedSelectedDate = useMemo(() => {
@@ -268,6 +268,43 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
     setLastClearedNotes(formValues.notes);
     updateField('notes', '');
   }, [formValues.notes, updateField]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const textarea = notesTextareaRef.current;
+    if (!textarea) {
+      return undefined;
+    }
+
+    const handleNotesKeyDown = (event) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      if (event.target !== textarea) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (formValues.notes) {
+        handleClearNotes();
+        return;
+      }
+
+      requestClose();
+    };
+
+    textarea.addEventListener('keydown', handleNotesKeyDown);
+
+    return () => {
+      textarea.removeEventListener('keydown', handleNotesKeyDown);
+    };
+  }, [formValues.notes, handleClearNotes, isOpen, requestClose]);
 
   const handleRestoreNotes = useCallback(() => {
     if (!lastClearedNotes) {
