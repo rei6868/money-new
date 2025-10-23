@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import styles from './AmountInput.module.css';
 
 const NON_NUMERIC_PATTERN = /[^0-9.]/g;
 const LEADING_ZERO_PATTERN = /^0+(?=\d)/;
 const GROUP_SEPARATOR_PATTERN = /\B(?=(\d{3})+(?!\d))/g;
+
+const SUGGESTION_MULTIPLIERS = [1000, 10000, 100000];
 
 export const parseInputValue = (inputValue) => {
   if (inputValue === null || inputValue === undefined) {
@@ -68,9 +70,54 @@ export const formatDisplayValue = (rawValue) => {
   return `${isNegative ? '-' : ''}${formattedInteger}${decimalSection}`;
 };
 
+const generateSuggestions = (rawValue) => {
+  const normalizedValue = parseInputValue(rawValue);
+  if (!normalizedValue) {
+    return [];
+  }
+
+  if (normalizedValue.includes('.') || normalizedValue.startsWith('-')) {
+    return [];
+  }
+
+  if (!/^\d+$/.test(normalizedValue)) {
+    return [];
+  }
+
+  const base = Number.parseInt(normalizedValue, 10);
+  if (!Number.isFinite(base) || base === 0) {
+    return [];
+  }
+
+  const seenRawValues = new Set();
+  const suggestions = [];
+
+  for (const multiplier of SUGGESTION_MULTIPLIERS) {
+    const suggestionValue = base * multiplier;
+    if (!Number.isFinite(suggestionValue) || suggestionValue <= 0) {
+      continue;
+    }
+
+    const rawSuggestion = String(Math.trunc(suggestionValue));
+    if (seenRawValues.has(rawSuggestion) || rawSuggestion === normalizedValue) {
+      continue;
+    }
+
+    seenRawValues.add(rawSuggestion);
+    suggestions.push({
+      raw: rawSuggestion,
+      formatted: formatDisplayValue(rawSuggestion),
+    });
+  }
+
+  return suggestions.slice(0, 3);
+};
+
 export default function AmountInput({
   value,
   onChange,
+  onFocus,
+  onBlur,
   placeholder = '',
   id,
   label,
@@ -87,10 +134,35 @@ export default function AmountInput({
     [normalizedRawValue],
   );
   const [displayValue, setDisplayValue] = useState(formattedFromValue);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef(null);
+  const suggestionBoxRef = useRef(null);
+  const hideSuggestionsTimeoutRef = useRef(null);
+  const suppressFocusSuggestionsRef = useRef(false);
+  const calculatedSuggestions = useMemo(
+    () => generateSuggestions(normalizedRawValue),
+    [normalizedRawValue],
+  );
 
   useEffect(() => {
     setDisplayValue(formattedFromValue);
   }, [formattedFromValue]);
+
+  useEffect(() => {
+    setSuggestions(calculatedSuggestions);
+    if (calculatedSuggestions.length === 0) {
+      setShowSuggestions(false);
+    }
+  }, [calculatedSuggestions]);
+
+  useEffect(() => {
+    return () => {
+      if (hideSuggestionsTimeoutRef.current) {
+        clearTimeout(hideSuggestionsTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleChange = (event) => {
     const nextDisplayValue = event.target.value;
@@ -99,7 +171,77 @@ export default function AmountInput({
 
     const nextFormattedValue = formatDisplayValue(rawNumericValue);
     setDisplayValue(nextFormattedValue);
+
+    const nextSuggestions = generateSuggestions(rawNumericValue);
+    setSuggestions(nextSuggestions);
+    setShowSuggestions(nextSuggestions.length > 0);
   };
+
+  const handleFocus = useCallback(
+    (event) => {
+      if (hideSuggestionsTimeoutRef.current) {
+        clearTimeout(hideSuggestionsTimeoutRef.current);
+        hideSuggestionsTimeoutRef.current = null;
+      }
+
+      if (suppressFocusSuggestionsRef.current) {
+        suppressFocusSuggestionsRef.current = false;
+        return;
+      }
+
+      if (suggestions.length > 0) {
+        setShowSuggestions(true);
+      }
+
+      onFocus?.(event);
+    },
+    [onFocus, suggestions.length],
+  );
+
+  const handleBlur = useCallback(
+    (event) => {
+      if (hideSuggestionsTimeoutRef.current) {
+        clearTimeout(hideSuggestionsTimeoutRef.current);
+      }
+
+      hideSuggestionsTimeoutRef.current = setTimeout(() => {
+        const activeElement = document.activeElement;
+        if (suggestionBoxRef.current?.contains(activeElement)) {
+          return;
+        }
+
+        setShowSuggestions(false);
+      }, 120);
+
+      onBlur?.(event);
+    },
+    [onBlur],
+  );
+
+  const handleSuggestionClick = useCallback(
+    (suggestion) => {
+      if (!suggestion) {
+        return;
+      }
+
+      if (hideSuggestionsTimeoutRef.current) {
+        clearTimeout(hideSuggestionsTimeoutRef.current);
+        hideSuggestionsTimeoutRef.current = null;
+      }
+
+      const rawValue = suggestion.raw;
+      onChange?.(rawValue);
+      setDisplayValue(formatDisplayValue(rawValue));
+      setShowSuggestions(false);
+
+      suppressFocusSuggestionsRef.current = true;
+
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    },
+    [onChange],
+  );
 
   const containerClasses = [styles.container, wrapperClassName].filter(Boolean).join(' ');
   const labelClasses = [styles.label, labelClassName].filter(Boolean).join(' ');
@@ -120,9 +262,28 @@ export default function AmountInput({
         className={inputClasses}
         value={displayValue}
         onChange={handleChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        ref={inputRef}
         placeholder={placeholder}
         {...rest}
       />
+      {showSuggestions && suggestions.length > 0 ? (
+        <div className={styles.suggestionsContainer} ref={suggestionBoxRef}>
+          {suggestions.map((suggestion) => (
+            <button
+              key={suggestion.raw}
+              type="button"
+              className={styles.suggestionButton}
+              onClick={() => handleSuggestionClick(suggestion)}
+              onMouseDown={(event) => event.preventDefault()}
+              tabIndex={-1}
+            >
+              {suggestion.formatted}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
