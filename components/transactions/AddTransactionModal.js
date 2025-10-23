@@ -102,6 +102,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
   const [showNewItemModal, setShowNewItemModal] = useState(false);
   const [newItemType, setNewItemType] = useState('');
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [amountHistory, setAmountHistory] = useState('');
   const currentDateTag = useMemo(() => buildMonthTag(selectedDate), [selectedDate]);
   const previousMonthTag = useMemo(() => buildMonthTag(selectedDate, -1), [selectedDate]);
   const formattedSelectedDate = useMemo(() => {
@@ -133,6 +134,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
     setShowNewItemModal(false);
     setNewItemType('');
     setShowUnsavedModal(false);
+    setAmountHistory('');
   }, []);
 
   useEffect(() => {
@@ -364,12 +366,16 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
   };
 
   const amountWordParts = useMemo(() => {
+    if (amountHistory) {
+      return [];
+    }
+
     const segments = convertToVietnameseWordsAbbreviated(formValues.amount);
     return segments.map((segment, index) => ({
       ...segment,
       key: `${index}-${segment.part}-${segment.isNumber ? 'n' : 't'}`,
     }));
-  }, [formValues.amount]);
+  }, [amountHistory, formValues.amount]);
 
   const renderAmountField = ({ className = '' } = {}) => {
     const containerClasses = [styles.field, className].filter(Boolean).join(' ');
@@ -379,7 +385,13 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
           <label className={styles.fieldLabel} htmlFor="transaction-amount">
             Amount
           </label>
-          {amountWordParts.length > 0 ? (
+          {amountHistory ? (
+            <span
+              className={`${styles.amountWordsPlaceholderInline} ${amountInputStyles.historyText}`}
+            >
+              {amountHistory}
+            </span>
+          ) : amountWordParts.length > 0 ? (
             <span className={styles.amountWordsPlaceholderInline}>
               {amountWordParts.map((part) => (
                 <span
@@ -396,6 +408,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
           id="transaction-amount"
           value={formValues.amount}
           onChange={(newValue) => updateField('amount', newValue)}
+          onHistoryChange={setAmountHistory}
           placeholder="0"
           className={`${styles.input} ${styles.formFieldBase}`}
         />
