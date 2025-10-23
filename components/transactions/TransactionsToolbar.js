@@ -27,6 +27,11 @@ export function TransactionsToolbar({
   const searchInputRef = useRef(null);
   const columnSelectAllRef = useRef(null);
 
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log('[Toolbar Debug] previousQuery prop:', previousQuery);
+  }, [previousQuery]);
+
   const focusSearchInput = () => {
     requestAnimationFrame(() => {
       searchInputRef.current?.focus();

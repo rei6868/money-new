@@ -399,28 +399,58 @@ export default function TransactionsHistoryPage() {
 
   const handleSubmitQuery = useCallback(() => {
     const normalized = draftQuery.trim();
+    // eslint-disable-next-line no-console
+    console.log(
+      '[Page Debug] Submitting. draft:',
+      draftQuery,
+      'applied:',
+      appliedQuery,
+      'previous:',
+      previousQuery,
+    );
     if (normalized === appliedQuery.trim()) {
-      setAppliedQuery(normalized);
+      if (appliedQuery && !previousQuery) {
+        setPreviousQuery(appliedQuery);
+        // eslint-disable-next-line no-console
+        console.log('[Page Debug] No change. Ensuring previousQuery set to:', appliedQuery);
+      }
       return;
     }
 
     if (appliedQuery) {
       setPreviousQuery(appliedQuery);
+      // eslint-disable-next-line no-console
+      console.log('[Page Debug] Setting previousQuery to:', appliedQuery);
     }
     setAppliedQuery(normalized);
     setCurrentPage(1);
-  }, [draftQuery, appliedQuery]);
+    // eslint-disable-next-line no-console
+    console.log('[Page Debug] Submitted. New applied:', normalized);
+  }, [draftQuery, appliedQuery, previousQuery]);
 
   const handleClearQuery = () => {
+    // eslint-disable-next-line no-console
+    console.log(
+      '[Page Debug] Clearing. draft:',
+      draftQuery,
+      'applied:',
+      appliedQuery,
+      'previous:',
+      previousQuery,
+    );
     if (!draftQuery && !appliedQuery) {
       return;
     }
     if (appliedQuery) {
       setPreviousQuery(appliedQuery);
+      // eslint-disable-next-line no-console
+      console.log('[Page Debug] Setting previousQuery to:', appliedQuery);
     }
     setDraftQuery('');
     setAppliedQuery('');
     setCurrentPage(1);
+    // eslint-disable-next-line no-console
+    console.log('[Page Debug] Cleared.');
   };
 
   const handleRestoreQuery = (value) => {
