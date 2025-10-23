@@ -8,7 +8,7 @@ import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
 import TransactionAdvancedModal from '../../components/transactions/TransactionAdvancedModal';
 import AddTransactionModal from '../../components/transactions/AddTransactionModal';
-import { ConfirmationModal } from '../../components/common/ConfirmationModal';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
 
@@ -358,28 +358,13 @@ export default function TransactionsHistoryPage() {
     [isReorderMode, sortState],
   );
 
-  const handleSelectRow = (id, checked) => {
-    setSelectedIds((prev) => {
-      if (checked) {
-        if (prev.includes(id)) {
-          return prev;
-        }
-        return [...prev, id];
-      }
-      return prev.filter((item) => item !== id);
-    });
-  };
-
-  const handleSelectAll = (checked) => {
-    if (!checked) {
+  const handleSelectionChange = useCallback((nextSelected) => {
+    if (!Array.isArray(nextSelected)) {
       setSelectedIds([]);
       return;
     }
-
-    const targetRows = showSelectedOnly ? displayedTransactions : transactions;
-    const mapped = Array.isArray(targetRows) ? targetRows.map((txn) => txn.id) : [];
-    setSelectedIds(mapped);
-  };
+    setSelectedIds(nextSelected);
+  }, []);
 
   const handleDeselectAll = () => {
     setSelectedIds([]);
@@ -626,11 +611,9 @@ export default function TransactionsHistoryPage() {
           <TransactionsTable
             transactions={displayedTransactions}
             selectedIds={selectedIds}
-            onSelectRow={handleSelectRow}
-            onSelectAll={handleSelectAll}
+            onSelectionChange={handleSelectionChange}
             selectionSummary={selectionSummary}
             onOpenAdvanced={handleAdvanced}
-            columnDefinitions={columnDefinitions}
             allColumns={orderedColumns}
             visibleColumns={visibleColumns}
             pagination={{
@@ -670,13 +653,13 @@ export default function TransactionsHistoryPage() {
         onSave={handleSaveNewTransaction}
         onRequestClose={handleRequestCloseAddModal}
       />
-      <ConfirmationModal
+      <ConfirmDialog
         isOpen={isDiscardDialogOpen}
         title="Discard unsaved changes?"
         message="You have transaction details that haven't been saved. If you close now, your changes will be lost."
         confirmLabel="Discard"
         cancelLabel="Keep editing"
-        confirmTone="danger"
+        tone="danger"
         onConfirm={handleConfirmDiscardDraft}
         onCancel={handleCancelDiscardDraft}
       />

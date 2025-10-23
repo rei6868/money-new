@@ -1,385 +1,192 @@
-import { useCallback, useState } from 'react';
-import { FiChevronRight, FiEdit2, FiFilter, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi';
+import styles from './TableBase.module.css';
+import { resolveColumnSizing, SELECTION_COLUMN_WIDTH } from './tableUtils';
 
-import styles from '../../styles/TransactionsHistory.module.css';
-import { formatAmount, formatPercent } from '../../lib/numberFormat';
-import { ACTIONS_COLUMN_WIDTH, CHECKBOX_COLUMN_WIDTH, resolveColumnSizing } from './tableUtils';
-import { TableActionMenuPortal } from './TableActions';
-import { TableTooltip } from './TableTooltip';
-
-const dateFormatters = {
-  'DD/MM/YY': new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-  }),
-  'MM/DD/YY': new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-  }),
-};
-
-function formatTransactionDate(value, format = 'DD/MM/YY') {
-  if (!value) {
-    return '—';
-  }
-
-  const dateValue = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(dateValue.getTime())) {
-    return value;
-  }
-
-  if (format === 'YYYY-MM-DD') {
-    const month = String(dateValue.getMonth() + 1).padStart(2, '0');
-    const day = String(dateValue.getDate()).padStart(2, '0');
-    return `${dateValue.getFullYear()}-${month}-${day}`;
-  }
-
-  const formatter = dateFormatters[format] ?? dateFormatters['DD/MM/YY'];
-  return formatter.format(dateValue);
+function classNames(...values) {
+  return values.filter(Boolean).join(' ');
 }
 
-function getAmountToneClass(type) {
-  if (type === 'Income') {
-    return styles.amountIncome;
+function getCellValue(row, column) {
+  if (!column) {
+    return undefined;
   }
-  if (type === 'Transfer') {
-    return styles.amountTransfer;
+  if (typeof column.accessor === 'function') {
+    return column.accessor(row);
   }
-  return styles.amountExpense;
-}
-
-function TotalBackCell({ transaction }) {
-  const totalBack = formatAmount(transaction.totalBack);
-  const percentBack = Number(transaction.percentBack ?? 0);
-  const fixedBack = Number(transaction.fixedBack ?? 0);
-  const amount = Number(transaction.amount ?? 0);
-  const hasPercent = percentBack > 0;
-  const hasFixed = fixedBack > 0;
-  const canShowFormula =
-    Number(transaction.totalBack ?? 0) > 0 && hasPercent && hasFixed && amount > 0;
-  const formulaText = `${formatAmount(amount)}×${formatPercent(percentBack)} + ${formatAmount(
-    fixedBack,
-  )}`;
-
-  return (
-    <div
-      className={styles.totalBackCell}
-      data-tooltip-text={canShowFormula ? formulaText : undefined}
-    >
-      <span className={styles.totalBackValue}>{totalBack}</span>
-      {canShowFormula ? <span className={styles.totalBackFormula}>{formulaText}</span> : null}
-    </div>
-  );
-}
-
-const columnRenderers = {
-  date: (txn, column) => formatTransactionDate(txn.date, column.format),
-  type: (txn, _column, stylesRef) => (
-    <span
-      className={
-        txn.type === 'Income'
-          ? `${stylesRef.pill} ${stylesRef.pillIncome}`
-          : `${stylesRef.pill} ${stylesRef.pillExpense}`
-      }
-    >
-      {txn.type}
-    </span>
-  ),
-  account: (txn) => txn.account ?? '—',
-  shop: (txn) => txn.shop ?? '—',
-  notes: (txn) => txn.notes ?? '—',
-  amount: (txn, column, stylesRef) => {
-    const numeric = Math.abs(Number(txn.amount ?? 0));
-    const toneClass = getAmountToneClass(txn.type);
-    return (
-      <span className={`${stylesRef.amountValue} ${toneClass}`} data-testid={`transaction-amount-${txn.id}`}>
-        {formatAmount(numeric)}
-      </span>
-    );
-  },
-  percentBack: (txn) => formatPercent(txn.percentBack),
-  fixedBack: (txn) => formatAmount(txn.fixedBack),
-  totalBack: (txn) => <TotalBackCell transaction={txn} />,
-  finalPrice: (txn) => formatAmount(txn.finalPrice),
-  debtTag: (txn) => txn.debtTag ?? '—',
-  cycleTag: (txn) => txn.cycleTag ?? '—',
-  category: (txn) => txn.category ?? '—',
-  linkedTxn: (txn) => txn.linkedTxn ?? '—',
-  owner: (txn) => txn.owner ?? '—',
-  id: (txn) => txn.id ?? '—',
-};
-
-function renderCellContent(column, transaction) {
-  const renderer = columnRenderers[column.id];
-  if (!renderer) {
-    return transaction[column.id] ?? '—';
-  }
-  return renderer(transaction, column, styles);
+  const key = column.accessor ?? column.field ?? column.id;
+  return key ? row?.[key] : undefined;
 }
 
 export function TableBaseBody({
-  transactions,
+  rows,
   columns,
-  definitionMap,
-  selectionSet,
-  onSelectRow,
-  actionRegistry,
-  openActionId,
-  openActionSubmenu,
-  onActionTriggerEnter,
-  onActionTriggerLeave,
-  onActionFocus,
-  onActionBlur,
-  onAction,
-  onSubmenuEnter,
-  registerActionMenu,
-  isSubmenuFlipped = false,
-  hiddenColumnIds = new Set(),
+  selectable = false,
+  selection = new Set(),
+  onToggleRow,
+  getRowId,
+  showHiddenColumns = false,
   isColumnReorderMode = false,
+  renderEmptyState,
+  emptyState,
+  rowProps,
+  onRowClick,
+  onRowDoubleClick,
 }) {
-  const [tooltipState, setTooltipState] = useState({ anchor: null, content: '', isVisible: false });
+  const displayedColumns = Array.isArray(columns)
+    ? showHiddenColumns
+      ? columns
+      : columns.filter((column) => column.hidden !== true)
+    : [];
 
-  const hideTooltip = useCallback(() => {
-    setTooltipState((state) => (state.isVisible ? { anchor: null, content: '', isVisible: false } : state));
-  }, []);
+  const resolvedRows = Array.isArray(rows) ? rows : [];
 
-  const resolveTooltip = useCallback((cell) => {
-    if (!cell) {
-      return { content: '', force: false };
-    }
-    const explicitNode = cell.querySelector('[data-tooltip-text]');
-    const explicitContent = explicitNode?.getAttribute('data-tooltip-text');
-    if (explicitContent) {
-      return { content: explicitContent, force: true };
-    }
-    const textValue = cell.textContent ?? '';
-    return { content: textValue.trim(), force: false };
-  }, []);
-
-  const showTooltip = useCallback(
-    (cell) => {
-      if (!cell) {
-        hideTooltip();
-        return;
-      }
-      const { content, force } = resolveTooltip(cell);
-      if (!content) {
-        hideTooltip();
-        return;
-      }
-      const isOverflowing = cell.scrollWidth - cell.clientWidth > 1;
-      if (!force && !isOverflowing) {
-        hideTooltip();
-        return;
-      }
-      setTooltipState({ anchor: cell, content, isVisible: true });
-    },
-    [hideTooltip, resolveTooltip],
-  );
-
-  const handleCellEnter = useCallback(
-    (event) => {
-      showTooltip(event.currentTarget);
-    },
-    [showTooltip],
-  );
-
-  const handleCellLeave = useCallback(() => {
-    hideTooltip();
-  }, [hideTooltip]);
-
-  const tooltipAnchor = tooltipState.anchor;
-  const tooltipContent = tooltipState.content;
-  const tooltipVisible = tooltipState.isVisible;
+  if (resolvedRows.length === 0) {
+    const colSpan = displayedColumns.length + (selectable ? 1 : 0);
+    return (
+      <tbody>
+        <tr className={styles.emptyRow}>
+          <td className={styles.bodyCell} colSpan={Math.max(1, colSpan)}>
+            {renderEmptyState ? (
+              renderEmptyState()
+            ) : (
+              <div className={styles.emptyState}>{emptyState ?? 'No records to display.'}</div>
+            )}
+          </td>
+        </tr>
+      </tbody>
+    );
+  }
 
   return (
-    <>
-      <tbody>
-        {transactions.map((txn) => {
-          const isSelected = selectionSet.has(txn.id);
-          return (
-            <tr
-              key={txn.id}
-              className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`.trim()}
-            >
+    <tbody>
+      {resolvedRows.map((row, rowIndex) => {
+        const rowId = getRowId ? getRowId(row, rowIndex) : row?.id ?? rowIndex;
+        const isSelected = selection.has(rowId);
+        const toggleRow = (checked = !isSelected) => {
+          onToggleRow?.(rowId, checked);
+        };
+
+        const providedRowProps = rowProps?.({ row, rowIndex, rowId, isSelected }) ?? {};
+        const {
+          className: providedRowClassName,
+          style: providedRowStyle,
+          onClick: providedOnClick,
+          onDoubleClick: providedOnDoubleClick,
+          ...restRowProps
+        } = providedRowProps;
+
+        const rowClassName = classNames(
+          styles.bodyRow,
+          isSelected ? styles.rowSelected : null,
+          onRowClick ? styles.rowClickable : null,
+          providedRowClassName,
+        );
+
+        const handleRowClick = (event) => {
+          providedOnClick?.(event);
+          if (event.defaultPrevented) {
+            return;
+          }
+          onRowClick?.(row, { rowId, rowIndex, event });
+        };
+
+        const handleRowDoubleClick = (event) => {
+          providedOnDoubleClick?.(event);
+          if (event.defaultPrevented) {
+            return;
+          }
+          onRowDoubleClick?.(row, { rowId, rowIndex, event });
+        };
+
+        return (
+          <tr
+            key={rowId ?? rowIndex}
+            className={rowClassName}
+            style={providedRowStyle}
+            onClick={onRowClick || providedOnClick ? handleRowClick : providedOnClick}
+            onDoubleClick={
+              onRowDoubleClick || providedOnDoubleClick
+                ? handleRowDoubleClick
+                : providedOnDoubleClick
+            }
+            {...restRowProps}
+          >
+            {selectable ? (
               <td
-                className={`${styles.bodyCell} ${styles.stickyLeft} ${styles.checkboxCell}`}
+                className={classNames(styles.bodyCell, styles.selectionCell)}
                 style={{
-                  minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
-                  width: `${CHECKBOX_COLUMN_WIDTH}px`,
+                  minWidth: `${SELECTION_COLUMN_WIDTH}px`,
+                  width: `${SELECTION_COLUMN_WIDTH}px`,
                 }}
               >
                 <input
                   type="checkbox"
                   checked={isSelected}
-                  onChange={(event) => onSelectRow?.(txn.id, event.target.checked)}
-                  aria-label={`Select transaction ${txn.id}`}
+                  onChange={(event) => toggleRow(event.target.checked)}
+                  aria-label={`Select row ${rowIndex + 1}`}
                 />
               </td>
-              {columns.map((column) => {
-                const definition = definitionMap.get(column.id);
-                const alignClass =
-                  definition?.align === 'right'
-                    ? styles.cellAlignRight
-                    : definition?.align === 'center'
-                    ? styles.cellAlignCenter
-                    : '';
-                const { minWidth, width } = resolveColumnSizing(column, definition);
-                const isHidden = hiddenColumnIds.has(column.id);
-                const cellClassName = `${styles.bodyCell} ${alignClass} ${
-                  isHidden && isColumnReorderMode ? styles.bodyCellHidden : ''
-                }`.trim();
-                return (
-                  <td
-                    key={column.id}
-                    className={cellClassName}
-                    style={{
-                      minWidth: `${minWidth}px`,
-                      width: `${width}px`,
-                    }}
-                    data-testid={`transactions-cell-${column.id}-${txn.id}`}
-                    aria-hidden={isHidden && isColumnReorderMode ? 'true' : undefined}
-                    onMouseEnter={handleCellEnter}
-                    onMouseLeave={handleCellLeave}
-                    onFocus={handleCellEnter}
-                    onBlur={handleCellLeave}
-                    onClick={handleCellEnter}
-                  >
-                    {renderCellContent(column, txn)}
-                  </td>
-                );
-              })}
-              <td
-                className={`${styles.bodyCell} ${styles.stickyRight}`}
-                style={{
-                  left: `${CHECKBOX_COLUMN_WIDTH}px`,
-                  minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
-                  width: `${ACTIONS_COLUMN_WIDTH}px`,
-                }}
-              >
-                <div
-                  className={styles.actionsCellTrigger}
-                  ref={actionRegistry.registerTrigger(txn.id)}
-                  onMouseEnter={() => onActionTriggerEnter(txn.id)}
-                  onMouseLeave={onActionTriggerLeave}
-                  onFocus={() => onActionFocus(txn.id)}
-                  onBlur={onActionBlur}
-                >
-                  <button
-                    type="button"
-                    className={`${styles.actionsTriggerButton} ${
-                      openActionId === txn.id ? styles.actionsTriggerButtonActive : ''
-                    }`}
-                    data-testid={`transaction-actions-trigger-${txn.id}`}
-                    aria-haspopup="menu"
-                    aria-expanded={openActionId === txn.id}
-                    aria-label="Show row actions"
-                    onMouseEnter={() => onActionTriggerEnter(txn.id)}
-                  >
-                    <FiMoreHorizontal aria-hidden />
-                  </button>
-                </div>
-                <TableActionMenuPortal
-                  rowId={txn.id}
-                  anchor={actionRegistry.getTrigger(txn.id)}
-                  isOpen={openActionId === txn.id}
-                  onClose={() => onAction(null)()}
-                  registerContent={registerActionMenu}
-                  className={`${styles.actionsMenu} ${styles.actionsMenuOpen} ${
-                    isSubmenuFlipped ? styles.actionsMenuFlipped : ''
-                  }`.trim()}
-                  containerProps={{
-                    onMouseEnter: () => onActionTriggerEnter(txn.id),
-                    onMouseLeave: onActionTriggerLeave,
-                    onFocus: () => onActionFocus(txn.id),
-                    onBlur: onActionBlur,
+            ) : null}
+            {displayedColumns.map((column) => {
+              const { minWidth, width } = resolveColumnSizing(column);
+              const alignClass =
+                column.align === 'right'
+                  ? styles.cellAlignRight
+                  : column.align === 'center'
+                  ? styles.cellAlignCenter
+                  : '';
+              const isHidden = column.hidden === true;
+              const cellContext = {
+                row,
+                rowIndex,
+                column,
+                value: getCellValue(row, column),
+                rowId,
+                isSelected,
+                toggleRow,
+              };
+              const cellProps = column.getCellProps?.(cellContext) ?? {};
+              const {
+                className: providedCellClassName,
+                style: providedCellStyle,
+                children: providedChildren,
+                ...restCellProps
+              } = cellProps;
+              const content =
+                providedChildren ??
+                (typeof column.renderCell === 'function'
+                  ? column.renderCell(cellContext)
+                  : cellContext.value ?? column.placeholder ?? '—');
+              const cellClassName = classNames(
+                styles.bodyCell,
+                alignClass,
+                column.sticky === 'left' ? styles.stickyLeft : null,
+                column.sticky === 'right' ? styles.stickyRight : null,
+                isHidden && showHiddenColumns && isColumnReorderMode ? styles.hiddenColumnCell : null,
+                column.className,
+                providedCellClassName,
+              );
+
+              return (
+                <td
+                  key={column.id}
+                  className={cellClassName}
+                  style={{
+                    minWidth: `${minWidth}px`,
+                    width: `${width}px`,
+                    ...providedCellStyle,
                   }}
-                  dataTestId={`transaction-actions-menu-${txn.id}`}
+                  aria-hidden={
+                    isHidden && showHiddenColumns && isColumnReorderMode ? 'true' : undefined
+                  }
+                  {...restCellProps}
                 >
-                  <button
-                    type="button"
-                    className={styles.actionsMenuItem}
-                    onMouseEnter={onSubmenuEnter(null)}
-                    onClick={onAction({ mode: 'edit', transaction: txn })}
-                    data-testid={`transaction-action-edit-${txn.id}`}
-                  >
-                    <FiEdit2 aria-hidden />
-                    <span>Quick edit</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.actionsMenuItem} ${styles.actionsMenuDanger}`}
-                    onMouseEnter={onSubmenuEnter(null)}
-                    onClick={onAction({ mode: 'delete', transaction: txn })}
-                    data-testid={`transaction-action-delete-${txn.id}`}
-                  >
-                    <FiTrash2 aria-hidden />
-                    <span>Delete</span>
-                  </button>
-                  <div
-                    className={`${styles.actionsMenuItem} ${styles.actionsMenuNested}`}
-                    onMouseEnter={onSubmenuEnter('more')}
-                    data-testid={`transaction-action-more-${txn.id}`}
-                  >
-                    <div className={styles.actionsMenuNestedLabel}>
-                      <FiMoreHorizontal aria-hidden />
-                      <span>More actions</span>
-                    </div>
-                    <FiChevronRight className={styles.actionsMenuNestedCaret} aria-hidden />
-                    <div
-                      className={`${styles.actionsSubmenu} ${
-                        isSubmenuFlipped ? styles.actionsSubmenuFlipped : ''
-                      } ${
-                        openActionId === txn.id && openActionSubmenu === 'more'
-                          ? styles.actionsSubmenuOpen
-                          : ''
-                      }`.trim()}
-                      role="menu"
-                    >
-                      <button
-                        type="button"
-                        className={styles.actionsMenuItem}
-                        onClick={onAction({
-                          mode: 'advanced',
-                          transaction: txn,
-                          intent: 'advanced-panel',
-                        })}
-                        data-testid={`transaction-action-advanced-${txn.id}`}
-                      >
-                        <FiFilter aria-hidden />
-                        <span>Open advanced panel</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.actionsMenuItem}
-                        onClick={onAction({
-                          mode: 'advanced',
-                          transaction: txn,
-                          intent: 'duplicate-draft',
-                        })}
-                        data-testid={`transaction-action-duplicate-${txn.id}`}
-                      >
-                        <FiEdit2 aria-hidden />
-                        <span>Duplicate as draft</span>
-                      </button>
-                    </div>
-                  </div>
-                </TableActionMenuPortal>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-      <TableTooltip
-        anchor={tooltipAnchor}
-        isVisible={tooltipVisible}
-        className={styles.tooltipPortal}
-        offset={{ x: 0, y: -8 }}
-      >
-        {tooltipContent}
-      </TableTooltip>
-    </>
+                  {content}
+                </td>
+              );
+            })}
+          </tr>
+        );
+      })}
+    </tbody>
   );
 }

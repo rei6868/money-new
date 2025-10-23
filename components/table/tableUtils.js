@@ -1,8 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 
-export const CHECKBOX_COLUMN_WIDTH = 64;
-export const ACTIONS_COLUMN_WIDTH = 80;
-export const STICKY_COLUMN_BUFFER = CHECKBOX_COLUMN_WIDTH + ACTIONS_COLUMN_WIDTH;
+export const SELECTION_COLUMN_WIDTH = 64;
 export const ACTION_MENU_MIN_WIDTH = 224;
 
 function normalizeNumericWidth(value) {
@@ -10,12 +8,10 @@ function normalizeNumericWidth(value) {
   return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
 }
 
-export function resolveColumnSizing(column, definition) {
-  const minDefinitionWidth = normalizeNumericWidth(definition?.minWidth) ?? 120;
-  const defaultWidth =
-    normalizeNumericWidth(definition?.defaultWidth) ?? minDefinitionWidth;
-  const requestedWidth = normalizeNumericWidth(column?.width);
-
+export function resolveColumnSizing(column = {}) {
+  const minDefinitionWidth = normalizeNumericWidth(column.minWidth) ?? 120;
+  const defaultWidth = normalizeNumericWidth(column.defaultWidth) ?? minDefinitionWidth;
+  const requestedWidth = normalizeNumericWidth(column.width);
   const width = Math.max(requestedWidth ?? defaultWidth, minDefinitionWidth);
 
   return {
@@ -24,14 +20,16 @@ export function resolveColumnSizing(column, definition) {
   };
 }
 
-export function computeMinWidth(columns, definitionMap) {
+export function computeMinWidth(columns = []) {
   if (!Array.isArray(columns) || columns.length === 0) {
     return 0;
   }
 
   return columns.reduce((total, column) => {
-    const definition = definitionMap.get(column.id);
-    const { minWidth } = resolveColumnSizing(column, definition);
+    if (column.hidden === true) {
+      return total;
+    }
+    const { minWidth } = resolveColumnSizing(column);
     return total + minWidth;
   }, 0);
 }
@@ -126,26 +124,16 @@ export function useGlobalEscape(handler, isEnabled) {
   }, [handler, isEnabled]);
 }
 
-export function useDefinitionMap(definitions = []) {
-  return useMemo(
-    () => new Map(definitions.map((definition) => [definition.id, definition])),
-    [definitions],
-  );
-}
-
-const NUMERIC_COLUMN_IDS = new Set(['amount', 'percentBack', 'fixedBack', 'totalBack', 'finalPrice']);
-const DATE_COLUMN_IDS = new Set(['date']);
-
-export function resolveColumnSortType(columnId, definition) {
-  if (!columnId) {
-    return 'string';
+export function resolveColumnSortType(column = {}) {
+  if (column.sortType) {
+    return column.sortType;
   }
 
-  if (DATE_COLUMN_IDS.has(columnId)) {
-    return 'date';
+  if (column.dataType) {
+    return column.dataType;
   }
 
-  if (NUMERIC_COLUMN_IDS.has(columnId) || definition?.align === 'right') {
+  if (column.align === 'right') {
     return 'number';
   }
 

@@ -3,7 +3,7 @@ import { FiRotateCcw, FiX } from 'react-icons/fi';
 
 import AmountInput from '../common/AmountInput';
 import amountInputStyles from '../common/AmountInput.module.css';
-import { ConfirmationModal } from '../common/ConfirmationModal';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import SegmentedControl from '../ui/SegmentedControl';
 import DebtTabContent from './DebtTabContent';
 import ExpensesTabContent from './ExpensesTabContent';
@@ -664,13 +664,13 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
         </div>
       </div>
 
-      <ConfirmationModal
+      <ConfirmDialog
         isOpen={showUnsavedModal}
         title="Discard unsaved changes?"
         message="You have transaction details that haven't been saved yet. Closing now will discard them."
         confirmLabel="Discard"
         cancelLabel="Keep editing"
-        confirmTone="danger"
+        tone="danger"
         onConfirm={handleConfirmUnsavedClose}
         onCancel={handleCancelUnsavedClose}
       />

@@ -1,116 +1,110 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import styles from '../../styles/TransactionsHistory.module.css';
-import { formatAmountWithTrailing } from '../../lib/numberFormat';
-import {
-  ACTIONS_COLUMN_WIDTH,
-  CHECKBOX_COLUMN_WIDTH,
-  STICKY_COLUMN_BUFFER,
-  computeMinWidth,
-  resolveColumnSizing,
-  useDefinitionMap,
-} from './tableUtils';
-import { useActionMenuRegistry } from './TableActions';
+import styles from './TableBase.module.css';
 import { TableBaseHeader } from './TableBaseHeader';
 import { TableBaseBody } from './TableBaseBody';
+import { computeMinWidth, SELECTION_COLUMN_WIDTH } from './tableUtils';
 
-const ACTION_SUBMENU_WIDTH = 220;
+function classNames(...values) {
+  return values.filter(Boolean).join(' ');
+}
+
+function resolveRowId(row, index, getRowId) {
+  if (typeof getRowId === 'function') {
+    return getRowId(row, index);
+  }
+  if (row && typeof row === 'object' && 'id' in row) {
+    return row.id;
+  }
+  return index;
+}
+
+function resolvePaginationContent(pagination) {
+  if (!pagination) {
+    return null;
+  }
+  if (typeof pagination === 'function') {
+    return pagination();
+  }
+  if (typeof pagination.render === 'function') {
+    return pagination.render();
+  }
+  return pagination;
+}
 
 export function TableBase({
-  transactions,
-  selectedIds,
-  onSelectRow,
-  onSelectAll,
-  selectionSummary = null,
-  onOpenAdvanced,
-  columnDefinitions = [],
-  visibleColumns,
-  pagination,
+  columns = [],
+  rows = [],
+  getRowId,
+  selectable = false,
+  selectedRowIds,
+  defaultSelectedRowIds = [],
+  onSelectionChange,
   toolbarSlot,
-  tableTitle = 'Transactions history table',
-  allColumns = [],
-  isColumnReorderMode = false,
-  onColumnVisibilityChange,
-  onColumnOrderChange,
-  fontScale = 1,
+  pagination,
   sortState,
   onSortChange,
+  className,
+  ariaLabel = 'Data table',
+  showHiddenColumns = false,
+  isColumnReorderMode = false,
+  onColumnOrderChange,
+  fontScale = 1,
+  renderEmptyState,
+  emptyState,
+  rowProps,
+  onRowClick,
+  onRowDoubleClick,
+  renderFooter,
 }) {
-  const [openActionId, setOpenActionId] = useState(null);
-  const [openActionSubmenu, setOpenActionSubmenu] = useState(null);
-  const [isSubmenuFlipped, setIsSubmenuFlipped] = useState(false);
-  const [activeDropTarget, setActiveDropTarget] = useState(null);
-  const actionMenuCloseTimer = useRef(null);
   const headerCheckboxRef = useRef(null);
   const dragSourceRef = useRef(null);
+  const [activeDropTarget, setActiveDropTarget] = useState(null);
+  const isSelectionControlled = selectedRowIds !== undefined;
 
-  const definitionMap = useDefinitionMap(columnDefinitions);
-  const actionRegistry = useActionMenuRegistry();
+  const normalizedRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
+  const normalizedColumns = useMemo(() => (Array.isArray(columns) ? columns : []), [columns]);
 
-  const selectionSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const rowIds = useMemo(
+    () => normalizedRows.map((row, index) => resolveRowId(row, index, getRowId)),
+    [normalizedRows, getRowId],
+  );
+
+  const [internalSelection, setInternalSelection] = useState(() => new Set(defaultSelectedRowIds));
+
+  useEffect(() => {
+    if (!selectable) {
+      setInternalSelection(new Set());
+    }
+  }, [selectable]);
+
+  useEffect(() => {
+    if (!selectable || isSelectionControlled) {
+      return;
+    }
+    setInternalSelection((prev) => {
+      const validIds = new Set(rowIds);
+      const next = new Set();
+      prev.forEach((id) => {
+        if (validIds.has(id)) {
+          next.add(id);
+        }
+      });
+      return next;
+    });
+  }, [rowIds, selectable, isSelectionControlled]);
+
+  const selectionSet = useMemo(() => {
+    if (!selectable) {
+      return new Set();
+    }
+    const source = isSelectionControlled ? selectedRowIds ?? [] : Array.from(internalSelection);
+    return new Set(source);
+  }, [selectable, isSelectionControlled, selectedRowIds, internalSelection]);
+
   const allSelected =
-    transactions.length > 0 && transactions.every((txn) => selectionSet.has(txn.id));
-  const isIndeterminate = selectionSet.size > 0 && !allSelected;
-  const totalSelectionCount = selectionSummary?.count ?? selectionSet.size;
-  const shouldShowTotals = selectedIds.length > 0;
-
-  const displayColumns = useMemo(
-    () => (isColumnReorderMode ? allColumns : visibleColumns),
-    [isColumnReorderMode, allColumns, visibleColumns],
-  );
-
-  const hiddenColumnIds = useMemo(
-    () =>
-      new Set(
-        allColumns.filter((column) => column.visible === false).map((column) => column.id),
-      ),
-    [allColumns],
-  );
-
-  const formattedTotals = useMemo(() => {
-    const normalizeValue = (value) => {
-      if (value === null || value === undefined) {
-        return null;
-      }
-      const numeric = Number(value);
-      if (!Number.isFinite(numeric)) {
-        return null;
-      }
-      return formatAmountWithTrailing(numeric);
-    };
-
-    return {
-      amount: normalizeValue(selectionSummary?.amount),
-      totalBack: normalizeValue(selectionSummary?.totalBack),
-      finalPrice: normalizeValue(selectionSummary?.finalPrice),
-    };
-  }, [selectionSummary]);
-
-  const resolveTotalValue = useCallback(
-    (columnId) => {
-      switch (columnId) {
-        case 'amount':
-          return formattedTotals.amount;
-        case 'totalBack':
-          return formattedTotals.totalBack;
-        case 'finalPrice':
-          return formattedTotals.finalPrice;
-        default:
-          return null;
-      }
-    },
-    [formattedTotals],
-  );
-
-  const minTableWidth = useMemo(
-    () => computeMinWidth(displayColumns, definitionMap),
-    [displayColumns, definitionMap],
-  );
-
-  const tableMinWidth = Math.max(minTableWidth + STICKY_COLUMN_BUFFER, 0);
-  // Enforce table wrapper overflow-x: auto with table-layout: fixed while ensuring the table must have
-  // min-width greater than container on overflow. This guarantees horizontal scroll inside table container
-  // only and keeps sticky header, fixed checkbox & actions column aligned with no page-level horizontal scrolling.
+    selectable && rowIds.length > 0 && rowIds.every((id) => selectionSet.has(id));
+  const isIndeterminate = selectable && selectionSet.size > 0 && !allSelected;
 
   useEffect(() => {
     if (headerCheckboxRef.current) {
@@ -118,31 +112,71 @@ export function TableBase({
     }
   }, [isIndeterminate]);
 
-  useEffect(() => {
-    if (!openActionId) {
-      setIsSubmenuFlipped(false);
-      return undefined;
+  const setSelection = useCallback(
+    (updater) => {
+      if (!selectable) {
+        return;
+      }
+      const base = new Set(selectionSet);
+      const nextBase =
+        typeof updater === 'function' ? updater(new Set(base)) ?? base : new Set(updater);
+      const normalized = nextBase instanceof Set ? nextBase : new Set(nextBase);
+      if (!isSelectionControlled) {
+        setInternalSelection(new Set(normalized));
+      }
+      onSelectionChange?.(Array.from(normalized));
+    },
+    [selectable, selectionSet, isSelectionControlled, onSelectionChange],
+  );
+
+  const handleToggleRow = useCallback(
+    (rowId, checked) => {
+      setSelection((current) => {
+        if (checked) {
+          current.add(rowId);
+        } else {
+          current.delete(rowId);
+        }
+        return current;
+      });
+    },
+    [setSelection],
+  );
+
+  const handleToggleAll = useCallback(
+    (checked) => {
+      if (!selectable) {
+        return;
+      }
+      if (!checked) {
+        setSelection(new Set());
+        return;
+      }
+      const next = new Set();
+      rowIds.forEach((id) => {
+        next.add(id);
+      });
+      setSelection(next);
+    },
+    [selectable, rowIds, setSelection],
+  );
+
+  const displayedColumns = useMemo(() => {
+    if (showHiddenColumns) {
+      return normalizedColumns;
     }
+    return normalizedColumns.filter((column) => column.hidden !== true);
+  }, [normalizedColumns, showHiddenColumns]);
 
-    const menuNode = actionRegistry.getMenu(openActionId);
-    if (!menuNode) {
-      setIsSubmenuFlipped(false);
-      return undefined;
-    }
+  const displayColumnIds = useMemo(
+    () => displayedColumns.map((column) => column.id),
+    [displayedColumns],
+  );
 
-    const update = () => {
-      const rect = menuNode.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const shouldFlip = rect.left + rect.width + ACTION_SUBMENU_WIDTH > viewportWidth - 16;
-      setIsSubmenuFlipped(shouldFlip);
-    };
-
-    update();
-    window.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('resize', update);
-    };
-  }, [openActionId, actionRegistry]);
+  const tableMinWidth = useMemo(() => {
+    const baseWidth = computeMinWidth(displayedColumns);
+    return baseWidth + (selectable ? SELECTION_COLUMN_WIDTH : 0);
+  }, [displayedColumns, selectable]);
 
   useEffect(() => {
     if (!isColumnReorderMode) {
@@ -150,19 +184,6 @@ export function TableBase({
       setActiveDropTarget(null);
     }
   }, [isColumnReorderMode]);
-
-  useEffect(() => {
-    return () => {
-      if (actionMenuCloseTimer.current) {
-        clearTimeout(actionMenuCloseTimer.current);
-      }
-    };
-  }, []);
-
-  const visibleColumnIds = useMemo(
-    () => visibleColumns.map((column) => column.id),
-    [visibleColumns],
-  );
 
   const handleColumnDragStart = useCallback(
     (columnId) => (event) => {
@@ -176,7 +197,7 @@ export function TableBase({
         try {
           event.dataTransfer.setData('text/plain', columnId);
         } catch (error) {
-          // Ignore failures in older browsers that disallow setData on plain text.
+          // ignore
         }
       }
     },
@@ -221,18 +242,17 @@ export function TableBase({
       if (!sourceId || sourceId === columnId) {
         return;
       }
-      const order = visibleColumnIds;
-      const sourceIndex = order.indexOf(sourceId);
-      const targetIndex = order.indexOf(columnId);
+      const sourceIndex = displayColumnIds.indexOf(sourceId);
+      const targetIndex = displayColumnIds.indexOf(columnId);
       if (sourceIndex === -1 || targetIndex === -1) {
         return;
       }
-      const nextOrder = [...order];
+      const nextOrder = [...displayColumnIds];
       nextOrder.splice(sourceIndex, 1);
       nextOrder.splice(targetIndex, 0, sourceId);
       onColumnOrderChange?.(nextOrder);
     },
-    [isColumnReorderMode, visibleColumnIds, onColumnOrderChange],
+    [isColumnReorderMode, displayColumnIds, onColumnOrderChange],
   );
 
   const handleColumnDragEnd = useCallback(() => {
@@ -240,69 +260,36 @@ export function TableBase({
     setActiveDropTarget(null);
   }, []);
 
-  const handleActionTriggerEnter = useCallback((transactionId) => {
-    if (actionMenuCloseTimer.current) {
-      clearTimeout(actionMenuCloseTimer.current);
-      actionMenuCloseTimer.current = null;
-    }
-    setOpenActionId(transactionId);
-  }, []);
+  const containerClassName = classNames(styles.container, className);
+  const paginationContent = resolvePaginationContent(pagination);
 
-  const handleActionTriggerLeave = useCallback(() => {
-    if (actionMenuCloseTimer.current) {
-      clearTimeout(actionMenuCloseTimer.current);
-    }
-    actionMenuCloseTimer.current = setTimeout(() => {
-      setOpenActionId(null);
-      setOpenActionSubmenu(null);
-    }, 100);
-  }, []);
-
-  const handleActionFocus = useCallback((transactionId) => {
-    setOpenActionId(transactionId);
-  }, []);
-
-  const handleActionBlur = useCallback((event) => {
-    const nextFocus = event?.relatedTarget;
-    if (nextFocus && event.currentTarget.contains(nextFocus)) {
-      return;
-    }
-    actionMenuCloseTimer.current = setTimeout(() => {
-      setOpenActionId(null);
-      setOpenActionSubmenu(null);
-    }, 100);
-  }, []);
-
-  const handleAction = useCallback(
-    (payload) => () => {
-      if (!payload) {
-        setOpenActionId(null);
-        setOpenActionSubmenu(null);
-        return;
-      }
-      onOpenAdvanced?.(payload);
-      setOpenActionId(null);
-      setOpenActionSubmenu(null);
-    },
-    [onOpenAdvanced],
-  );
-
-  const handleSubmenuEnter = useCallback((submenuId) => () => {
-    setOpenActionSubmenu(submenuId);
-  }, []);
+  const footerContent = renderFooter?.({
+    columns: displayedColumns,
+    allColumns: normalizedColumns,
+    rows: normalizedRows,
+    selection: selectionSet,
+    allSelected,
+  });
 
   return (
     <section
-      className={styles.tableCard}
-      aria-label={tableTitle}
-      style={{ '--transactions-font-scale': fontScale }}
+      className={containerClassName}
+      aria-label={ariaLabel}
+      style={{ '--table-font-scale': fontScale }}
     >
-      {toolbarSlot}
-      <div className={styles.tableScroll} data-testid="transactions-table-container">
+      {toolbarSlot ? <div className={styles.toolbar}>{toolbarSlot}</div> : null}
+      <div className={styles.scroll}>
         <table className={styles.table} style={{ '--table-min-width': `${tableMinWidth}px` }}>
           <TableBaseHeader
-            columns={displayColumns}
-            definitionMap={definitionMap}
+            columns={normalizedColumns}
+            selectable={selectable}
+            allSelected={allSelected}
+            isIndeterminate={isIndeterminate}
+            onToggleAll={handleToggleAll}
+            headerCheckboxRef={headerCheckboxRef}
+            sortState={sortState}
+            onSortChange={onSortChange}
+            showHiddenColumns={showHiddenColumns}
             isColumnReorderMode={isColumnReorderMode}
             activeDropTarget={activeDropTarget}
             onColumnDragStart={handleColumnDragStart}
@@ -310,106 +297,26 @@ export function TableBase({
             onColumnDragOver={handleColumnDragOver}
             onColumnDrop={handleColumnDrop}
             onColumnDragEnd={handleColumnDragEnd}
-            allSelected={allSelected}
-            isIndeterminate={isIndeterminate}
-            onSelectAll={onSelectAll}
-            headerCheckboxRef={headerCheckboxRef}
-            visibleColumnIds={visibleColumnIds}
-            onColumnVisibilityChange={onColumnVisibilityChange}
-            sortState={sortState}
-            onSortChange={onSortChange}
           />
           <TableBaseBody
-            transactions={transactions}
-            columns={displayColumns}
-            definitionMap={definitionMap}
-            selectionSet={selectionSet}
-            onSelectRow={onSelectRow}
-            actionRegistry={actionRegistry}
-            openActionId={openActionId}
-            openActionSubmenu={openActionSubmenu}
-            onActionTriggerEnter={handleActionTriggerEnter}
-            onActionTriggerLeave={handleActionTriggerLeave}
-            onActionFocus={handleActionFocus}
-            onActionBlur={handleActionBlur}
-            onAction={handleAction}
-            onSubmenuEnter={handleSubmenuEnter}
-            registerActionMenu={actionRegistry.registerMenu}
-            isSubmenuFlipped={isSubmenuFlipped}
-            hiddenColumnIds={hiddenColumnIds}
+            rows={normalizedRows}
+            columns={normalizedColumns}
+            selectable={selectable}
+            selection={selectionSet}
+            onToggleRow={handleToggleRow}
+            getRowId={getRowId}
+            showHiddenColumns={showHiddenColumns}
             isColumnReorderMode={isColumnReorderMode}
+            renderEmptyState={renderEmptyState}
+            emptyState={emptyState}
+            rowProps={rowProps}
+            onRowClick={onRowClick}
+            onRowDoubleClick={onRowDoubleClick}
           />
-          {shouldShowTotals ? (
-            <tfoot>
-              <tr className={styles.totalRow}>
-                <td
-                  className={`${styles.bodyCell} ${styles.totalRowCell} ${styles.stickyLeft} ${styles.checkboxCell}`}
-                  style={{
-                    minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
-                    width: `${CHECKBOX_COLUMN_WIDTH}px`,
-                  }}
-                  title={
-                    totalSelectionCount > 0
-                      ? `${totalSelectionCount} selected`
-                      : undefined
-                  }
-                >
-                  <span className={styles.totalRowLeadLabel}>TOTAL</span>
-                </td>
-                {displayColumns.map((column) => {
-                  const definition = definitionMap.get(column.id);
-                  const alignClass =
-                    definition?.align === 'right'
-                      ? styles.cellAlignRight
-                      : definition?.align === 'center'
-                      ? styles.cellAlignCenter
-                      : '';
-                  const { minWidth, width } = resolveColumnSizing(column, definition);
-                  const isHidden = hiddenColumnIds.has(column.id);
-                  const value = resolveTotalValue(column.id);
-                  const cellClassName = `${styles.bodyCell} ${styles.totalRowCell} ${alignClass} ${
-                    isHidden && isColumnReorderMode ? styles.bodyCellHidden : ''
-                  }`.trim();
-
-                  return (
-                    <td
-                      key={`total-${column.id}`}
-                      className={cellClassName}
-                      style={{
-                        minWidth: `${minWidth}px`,
-                        width: `${width}px`,
-                      }}
-                      aria-hidden={isHidden && isColumnReorderMode ? 'true' : undefined}
-                    >
-                      {value ? (
-                        <span
-                          className={
-                            column.id === 'amount'
-                              ? `${styles.totalRowValue} ${styles.totalRowAmount}`
-                              : styles.totalRowValue
-                          }
-                        >
-                          {value}
-                        </span>
-                      ) : null}
-                    </td>
-                  );
-                })}
-                <td
-                  className={`${styles.bodyCell} ${styles.totalRowCell} ${styles.stickyRight}`}
-                  style={{
-                    left: `${CHECKBOX_COLUMN_WIDTH}px`,
-                    minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
-                    width: `${ACTIONS_COLUMN_WIDTH}px`,
-                  }}
-                  aria-hidden="true"
-                />
-              </tr>
-            </tfoot>
-          ) : null}
+          {footerContent ? <tfoot className={styles.footer}>{footerContent}</tfoot> : null}
         </table>
       </div>
-      {pagination ? <div className={styles.paginationBar}>{pagination.render()}</div> : null}
+      {paginationContent ? <div className={styles.paginationBar}>{paginationContent}</div> : null}
     </section>
   );
 }
