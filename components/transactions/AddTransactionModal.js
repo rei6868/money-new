@@ -253,13 +253,32 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
     updateField('notes', event.target.value);
   };
 
+  const focusNotesTextarea = useCallback(() => {
+    requestAnimationFrame(() => {
+      notesTextareaRef.current?.focus();
+    });
+  }, []);
+
   const handleClearNotes = useCallback(() => {
     if (!formValues.notes) {
+      if (lastClearedNotes) {
+        setLastClearedNotes('');
+      }
       return;
     }
     setLastClearedNotes(formValues.notes);
     updateField('notes', '');
-  }, [formValues.notes, updateField]);
+    focusNotesTextarea();
+  }, [formValues.notes, focusNotesTextarea, lastClearedNotes, updateField]);
+
+  const handleRestoreNotes = useCallback(() => {
+    if (!lastClearedNotes) {
+      return;
+    }
+    updateField('notes', lastClearedNotes);
+    setLastClearedNotes('');
+    focusNotesTextarea();
+  }, [focusNotesTextarea, lastClearedNotes, updateField]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -288,6 +307,11 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
         return;
       }
 
+      if (lastClearedNotes) {
+        handleRestoreNotes();
+        return;
+      }
+
       requestClose();
     };
 
@@ -296,15 +320,20 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
     return () => {
       textarea.removeEventListener('keydown', handleNotesKeyDown);
     };
-  }, [formValues.notes, handleClearNotes, isOpen, requestClose]);
+  }, [formValues.notes, handleClearNotes, handleRestoreNotes, isOpen, lastClearedNotes, requestClose]);
 
-  const handleRestoreNotes = () => {
+  useEffect(() => {
     if (!lastClearedNotes) {
       return;
     }
-    updateField('notes', lastClearedNotes);
+    if (!formValues.notes) {
+      return;
+    }
+    if (formValues.notes === lastClearedNotes) {
+      return;
+    }
     setLastClearedNotes('');
-  };
+  }, [formValues.notes, lastClearedNotes]);
 
   const handleDebtTagSelect = (tag) => {
     setSelectedDebtTag(tag || '');

@@ -56,16 +56,53 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
       setValueBeforeClear(null);
     }
   }, [stringValue, valueBeforeClear]);
+  const focusInput = () => {
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  };
+
+  const restoreLocalValue = () => {
+    if (valueBeforeClear === null) {
+      return false;
+    }
+    onChange?.(valueBeforeClear);
+    setValueBeforeClear(null);
+    focusInput();
+    return true;
+  };
+
+  const restorePreviousValue = () => {
+    if (!hasPreviousValue) {
+      return false;
+    }
+    onRestore?.(previousValue);
+    setValueBeforeClear(null);
+    focusInput();
+    return true;
+  };
 
   const handleKeyDown = (event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
       onSubmit?.();
+      return;
     }
-    if (event.key === 'Escape' && hasValue) {
+    if (event.key !== 'Escape') {
+      return;
+    }
+
+    if (hasValue) {
       event.preventDefault();
       setValueBeforeClear(stringValue);
       onClear?.();
+      focusInput();
+      return;
+    }
+
+    const restored = restoreLocalValue() || restorePreviousValue();
+    if (restored) {
+      event.preventDefault();
     }
   };
 
@@ -79,9 +116,7 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
     }
     setValueBeforeClear(stringValue);
     onClear?.();
-    requestAnimationFrame(() => {
-      inputRef.current?.focus();
-    });
+    focusInput();
   };
 
   const handleRestore = (event) => {
@@ -98,6 +133,10 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
       return;
     }
     onRestore?.(previousValue);
+    if (restoreLocalValue()) {
+      return;
+    }
+    restorePreviousValue();
   };
 
   const canRestoreLocally = valueBeforeClear !== null && !hasValue;
