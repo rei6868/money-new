@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { FiRotateCcw, FiX } from 'react-icons/fi';
 
 export const TableRestoreInput = forwardRef(function TableRestoreInput(
@@ -9,6 +9,7 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
     onClear,
     previousValue,
     onRestore,
+    valueToRestoreLocally = null,
     placeholder,
     inputProps = {},
     containerClassName,
@@ -29,58 +30,30 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
   forwardedRef,
 ) {
   const inputRef = useRef(null);
-  const [valueBeforeClear, setValueBeforeClear] = useState(null);
 
   const { onBlur: inputOnBlur, onChange: inputOnChange, ...restInputProps } = inputProps;
 
   const resolvedValue = value ?? '';
-  const stringValue =
-    typeof resolvedValue === 'string' ? resolvedValue : String(resolvedValue);
+  const stringValue = typeof resolvedValue === 'string' ? resolvedValue : String(resolvedValue);
   const trimmedValue = stringValue.trim();
   const hasValue = trimmedValue.length > 0;
 
   const resolvedPreviousValue = previousValue ?? '';
   const previousValueString =
-    typeof resolvedPreviousValue === 'string'
-      ? resolvedPreviousValue
-      : String(resolvedPreviousValue);
+    typeof resolvedPreviousValue === 'string' ? resolvedPreviousValue : String(resolvedPreviousValue);
   const hasPreviousValue = previousValueString.trim().length > 0;
+
+  const canRestoreLocally = valueToRestoreLocally !== null && !hasValue;
+  const canRestoreGlobally =
+    !canRestoreLocally && hasPreviousValue && !hasValue && previousValueString.trim() !== '';
+  const showRestore = canRestoreLocally || canRestoreGlobally;
+  const showClear = hasValue;
+  const showActions = showRestore || showClear;
 
   useImperativeHandle(forwardedRef, () => ({
     focus: () => inputRef.current?.focus(),
     blur: () => inputRef.current?.blur(),
   }));
-
-  useEffect(() => {
-    if (valueBeforeClear !== null && stringValue.trim().length > 0) {
-      setValueBeforeClear(null);
-    }
-  }, [stringValue, valueBeforeClear]);
-  const focusInput = () => {
-    requestAnimationFrame(() => {
-      inputRef.current?.focus();
-    });
-  };
-
-  const restoreLocalValue = () => {
-    if (valueBeforeClear === null) {
-      return false;
-    }
-    onChange?.(valueBeforeClear);
-    setValueBeforeClear(null);
-    focusInput();
-    return true;
-  };
-
-  const restorePreviousValue = () => {
-    if (!hasPreviousValue) {
-      return false;
-    }
-    onRestore?.(previousValue);
-    setValueBeforeClear(null);
-    focusInput();
-    return true;
-  };
 
   const handleKeyDown = (event) => {
     if (event.key === 'Enter') {
@@ -94,61 +67,27 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
 
     if (hasValue) {
       event.preventDefault();
-      setValueBeforeClear(stringValue);
       onClear?.();
-      focusInput();
       return;
     }
 
-    const restored = restoreLocalValue() || restorePreviousValue();
-    if (restored) {
+    if (showRestore) {
       event.preventDefault();
+      onRestore?.();
     }
   };
 
   const handleClear = (event) => {
     event.preventDefault();
-    if (!hasValue) {
-      if (hasPreviousValue) {
-        onClear?.();
-      }
-      return;
-    }
-    setValueBeforeClear(stringValue);
     onClear?.();
-    focusInput();
   };
 
   const handleRestore = (event) => {
     event.preventDefault();
-    if (valueBeforeClear !== null && !hasValue) {
-      const valueToRestore = valueBeforeClear;
-      onChange?.(valueToRestore);
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
-      return;
-    }
-    if (!hasPreviousValue || hasValue) {
-      return;
-    }
-    onRestore?.(previousValue);
-    if (restoreLocalValue()) {
-      return;
-    }
-    restorePreviousValue();
+    onRestore?.();
   };
 
-  const canRestoreLocally = valueBeforeClear !== null && !hasValue;
-  const canRestoreGlobally = !canRestoreLocally && hasPreviousValue && !hasValue;
-  const showRestore = canRestoreLocally || canRestoreGlobally;
-  const showClear = hasValue;
-  const showActions = showRestore || showClear;
-
   const handleBlur = (event) => {
-    if (valueBeforeClear !== null) {
-      setValueBeforeClear(null);
-    }
     inputOnBlur?.(event);
   };
 
@@ -163,9 +102,6 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
         value={stringValue}
         onKeyDown={handleKeyDown}
         onChange={(event) => {
-          if (valueBeforeClear !== null) {
-            setValueBeforeClear(null);
-          }
           inputOnChange?.(event);
           onChange?.(event.target.value);
         }}

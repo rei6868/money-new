@@ -17,7 +17,7 @@ export default function TransactionsHistoryPage() {
   const [isFetching, setIsFetching] = useState(true);
   const [draftQuery, setDraftQuery] = useState('');
   const [appliedQuery, setAppliedQuery] = useState('');
-  const [previousQuery, setPreviousQuery] = useState('');
+  const [clearedDraftQuery, setClearedDraftQuery] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [advancedPanel, setAdvancedPanel] = useState(null);
   const [columnDefinitions, setColumnDefinitions] = useState([]);
@@ -397,68 +397,40 @@ export default function TransactionsHistoryPage() {
     setShowSelectedOnly(true);
   };
 
+  const handleSearchInputChange = useCallback((value) => {
+    setDraftQuery(value);
+    setClearedDraftQuery((prev) => (prev !== null ? null : prev));
+  }, []);
+
   const handleSubmitQuery = useCallback(() => {
     const normalized = draftQuery.trim();
-    // eslint-disable-next-line no-console
-    console.log(
-      '[Page Debug] Submitting. draft:',
-      draftQuery,
-      'applied:',
-      appliedQuery,
-      'previous:',
-      previousQuery,
-    );
     if (normalized === appliedQuery.trim()) {
-      if (appliedQuery && !previousQuery) {
-        setPreviousQuery(appliedQuery);
-        // eslint-disable-next-line no-console
-        console.log('[Page Debug] No change. Ensuring previousQuery set to:', appliedQuery);
-      }
       return;
     }
 
-    if (appliedQuery) {
-      setPreviousQuery(appliedQuery);
-      // eslint-disable-next-line no-console
-      console.log('[Page Debug] Setting previousQuery to:', appliedQuery);
-    }
     setAppliedQuery(normalized);
+    setClearedDraftQuery(null);
     setCurrentPage(1);
-    // eslint-disable-next-line no-console
-    console.log('[Page Debug] Submitted. New applied:', normalized);
-  }, [draftQuery, appliedQuery, previousQuery]);
+  }, [draftQuery, appliedQuery]);
 
-  const handleClearQuery = () => {
-    // eslint-disable-next-line no-console
-    console.log(
-      '[Page Debug] Clearing. draft:',
-      draftQuery,
-      'applied:',
-      appliedQuery,
-      'previous:',
-      previousQuery,
-    );
-    if (!draftQuery && !appliedQuery) {
-      return;
+  const handleClearSearch = useCallback(() => {
+    if (draftQuery.trim().length > 0) {
+      setClearedDraftQuery(draftQuery);
+    } else {
+      setClearedDraftQuery(null);
     }
-    if (appliedQuery) {
-      setPreviousQuery(appliedQuery);
-      // eslint-disable-next-line no-console
-      console.log('[Page Debug] Setting previousQuery to:', appliedQuery);
-    }
+
     setDraftQuery('');
-    setAppliedQuery('');
-    setCurrentPage(1);
-    // eslint-disable-next-line no-console
-    console.log('[Page Debug] Cleared.');
-  };
+  }, [draftQuery]);
 
-  const handleRestoreQuery = (value) => {
-    setPreviousQuery('');
-    setDraftQuery(value);
-    setAppliedQuery(value);
-    setCurrentPage(1);
-  };
+  const handleRestoreSearch = useCallback(() => {
+    if (clearedDraftQuery !== null) {
+      setDraftQuery(clearedDraftQuery);
+      setClearedDraftQuery(null);
+    } else if (appliedQuery && draftQuery !== appliedQuery) {
+      setDraftQuery(appliedQuery);
+    }
+  }, [clearedDraftQuery, appliedQuery, draftQuery]);
 
   const handleAddTransaction = () => {
     setIsAddModalOpen(true);
@@ -621,11 +593,12 @@ export default function TransactionsHistoryPage() {
       <div className={styles.screen}>
         <TransactionsToolbar
           searchValue={draftQuery}
-          onSearchChange={setDraftQuery}
+          clearedDraftQuery={clearedDraftQuery}
+          appliedQuery={appliedQuery}
+          onSearchChange={handleSearchInputChange}
           onSubmitSearch={handleSubmitQuery}
-          onClearSearch={handleClearQuery}
-          previousQuery={previousQuery}
-          onRestoreQuery={handleRestoreQuery}
+          onClearSearch={handleClearSearch}
+          onRestoreSearch={handleRestoreSearch}
           onAddTransaction={handleAddTransaction}
           onCustomizeColumns={handleToggleReorderMode}
           isReorderMode={isReorderMode}

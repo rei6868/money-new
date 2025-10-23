@@ -6,11 +6,12 @@ import { TableRestoreInput } from '../table';
 
 export function TransactionsToolbar({
   searchValue,
+  clearedDraftQuery,
+  appliedQuery,
   onSearchChange,
   onSubmitSearch,
   onClearSearch,
-  previousQuery,
-  onRestoreQuery,
+  onRestoreSearch,
   onAddTransaction,
   onCustomizeColumns,
   isReorderMode = false,
@@ -26,11 +27,6 @@ export function TransactionsToolbar({
 }) {
   const searchInputRef = useRef(null);
   const columnSelectAllRef = useRef(null);
-
-  useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('[Toolbar Debug] previousQuery prop:', previousQuery);
-  }, [previousQuery]);
 
   const focusSearchInput = () => {
     requestAnimationFrame(() => {
@@ -61,12 +57,13 @@ export function TransactionsToolbar({
         <TableRestoreInput
           ref={searchInputRef}
           value={searchValue}
+          valueToRestoreLocally={clearedDraftQuery}
           onChange={onSearchChange}
           onSubmit={onSubmitSearch}
           onClear={onClearSearch}
-          previousValue={previousQuery ?? ''}
-          onRestore={(value) => {
-            onRestoreQuery?.(value);
+          previousValue={appliedQuery ?? ''}
+          onRestore={() => {
+            onRestoreSearch?.();
             focusSearchInput();
           }}
           placeholder="Search all transactions"
@@ -80,9 +77,11 @@ export function TransactionsToolbar({
           restoreButtonTestId="transactions-search-restore"
           clearButtonTestId="transactions-search-clear"
           clearButtonAriaLabel="Clear search"
-          restoreButtonAriaLabel={previousQuery ? `Restore search ${previousQuery}` : 'Restore search'}
+          restoreButtonAriaLabel={
+            appliedQuery ? `Restore search ${appliedQuery}` : 'Restore search'
+          }
           clearButtonTitle="Clear search"
-          restoreButtonTitle={previousQuery ? `Restore “${previousQuery}”` : undefined}
+          restoreButtonTitle={appliedQuery ? `Restore “${appliedQuery}”` : undefined}
           inputProps={{
             disabled: isCustomizeLocked,
             'aria-disabled': isCustomizeLocked ? 'true' : undefined,
