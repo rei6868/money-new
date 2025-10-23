@@ -15,10 +15,6 @@ export function TransactionsToolbar({
   onAddTransaction,
   onCustomizeColumns,
   isReorderMode = false,
-  selectedCount = 0,
-  onDeselectAll,
-  onToggleShowSelected,
-  isShowingSelectedOnly,
   onToggleAllColumns,
   allToggleableVisible,
   someToggleableVisible,
@@ -41,13 +37,6 @@ export function TransactionsToolbar({
     columnSelectAllRef.current.indeterminate =
       Boolean(someToggleableVisible) && !allToggleableVisible;
   }, [someToggleableVisible, allToggleableVisible]);
-
-  const handleToggleSelected = () => {
-    if (selectedCount === 0) {
-      return;
-    }
-    onToggleShowSelected?.();
-  };
 
   const isCustomizeLocked = isReorderMode;
 
@@ -102,27 +91,6 @@ export function TransactionsToolbar({
           Search
         </button>
 
-        {selectedCount > 0 ? (
-          <div className={styles.selectionQuickActions} data-testid="transactions-selection-inline">
-            <span className={styles.selectionQuickSummary}>{selectedCount} selected</span>
-            <button
-              type="button"
-              className={styles.secondaryButton}
-              onClick={onDeselectAll}
-              data-testid="transactions-quick-deselect"
-            >
-              De-select
-            </button>
-            <button
-              type="button"
-              className={styles.secondaryButton}
-              onClick={handleToggleSelected}
-              data-testid="transactions-quick-toggle"
-            >
-              {isShowingSelectedOnly ? 'Show all rows' : 'Show selected rows'}
-            </button>
-          </div>
-        ) : null}
       </div>
 
       <div className={styles.actionsGroup}>
