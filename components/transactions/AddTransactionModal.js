@@ -60,6 +60,9 @@ const BASE_FORM_STATE = {
   transferCategory: '',
   transferFromAccount: '',
   transferToAccount: '',
+  percentBack: '',
+  fixedBack: '',
+  noBackEng: false,
 };
 
 const createInitialFormState = () => {
@@ -73,7 +76,7 @@ const createInitialFormState = () => {
   };
 };
 
-const ACCOUNT_OPTIONS = ['Account 1', 'Account 2', 'Saving Account'];
+const ACCOUNT_OPTIONS = ['Account 1', 'Account 2', 'Saving Account', 'Sacombank'];
 const PERSON_OPTIONS = ['Person A', 'Person B', 'Mom'];
 const DEBT_CATEGORY_OPTIONS = ['Debt Category 1', 'Loan Repayment'];
 const INCOME_CATEGORY_OPTIONS = ['Salary', 'Bonus'];
@@ -345,6 +348,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
   };
 
   const isRepayMode = formValues.debtType === 'repay';
+  const isCashbackEligible = formValues.account === 'Sacombank';
   const defaultDebtTag = isLastMonth ? previousMonthTag : currentDateTag;
 
   const debtTagOptions = useMemo(() => {
@@ -594,6 +598,10 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
                 isRepayMode={isRepayMode}
                 isLastMonth={isLastMonth}
                 onToggleLastMonth={handleToggleLastMonth}
+                isCashbackEligible={isCashbackEligible}
+                percentBack={formValues.percentBack}
+                fixedBack={formValues.fixedBack}
+                noBackEng={formValues.noBackEng}
               />
             ) : null}
 
@@ -622,6 +630,10 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
                 categoryOptions={EXPENSE_CATEGORY_OPTIONS}
                 shopOptions={SHOP_OPTIONS}
                 onOpenNewItemModal={handleOpenNewItemModal}
+                isCashbackEligible={isCashbackEligible}
+                percentBack={formValues.percentBack}
+                fixedBack={formValues.fixedBack}
+                noBackEng={formValues.noBackEng}
               />
             ) : null}
 
