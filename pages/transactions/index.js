@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppLayout from '../../components/AppLayout';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
 import { TransactionsToolbar } from '../../components/transactions/TransactionsToolbar';
+import { SelectionActionBar } from '../../components/transactions/SelectionActionBar';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
 import TransactionAdvancedModal from '../../components/transactions/TransactionAdvancedModal';
@@ -602,16 +603,19 @@ export default function TransactionsHistoryPage() {
           onAddTransaction={handleAddTransaction}
           onCustomizeColumns={handleToggleReorderMode}
           isReorderMode={isReorderMode}
-          selectedCount={selectedIds.length}
-          selectionSummary={selectionSummary}
-          onDeselectAll={handleDeselectAll}
-          onToggleShowSelected={handleToggleShowSelected}
-          isShowingSelectedOnly={showSelectedOnly}
           onToggleAllColumns={handleToggleAllColumnsVisibility}
           allToggleableVisible={allToggleableVisible}
           someToggleableVisible={someToggleableVisible}
           onResetColumns={handleResetColumns}
           onDoneCustomize={handleExitReorderMode}
+        />
+
+        <SelectionActionBar
+          selectedCount={selectedIds.length}
+          selectionSummary={selectionSummary}
+          onDeselectAll={handleDeselectAll}
+          onToggleShowSelected={handleToggleShowSelected}
+          isShowingSelectedOnly={showSelectedOnly}
         />
 
         {isFetching || columnDefinitions.length === 0 ? (
