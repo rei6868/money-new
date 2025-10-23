@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FiRotateCcw, FiX } from 'react-icons/fi';
 
 import AmountInput from '../common/AmountInput';
+import amountInputStyles from '../common/AmountInput.module.css';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import SegmentedControl from '../ui/SegmentedControl';
 import DebtTabContent from './DebtTabContent';
@@ -362,10 +363,13 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
     );
   };
 
-  const amountWords = useMemo(
-    () => convertToVietnameseWordsAbbreviated(formValues.amount),
-    [formValues.amount],
-  );
+  const amountWordParts = useMemo(() => {
+    const segments = convertToVietnameseWordsAbbreviated(formValues.amount);
+    return segments.map((segment, index) => ({
+      ...segment,
+      key: `${index}-${segment.part}-${segment.isNumber ? 'n' : 't'}`,
+    }));
+  }, [formValues.amount]);
 
   const renderAmountField = ({ className = '' } = {}) => {
     const containerClasses = [styles.field, className].filter(Boolean).join(' ');
@@ -375,8 +379,17 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
           <label className={styles.fieldLabel} htmlFor="transaction-amount">
             Amount
           </label>
-          {amountWords ? (
-            <span className={styles.amountWordsPlaceholderInline}>{amountWords}</span>
+          {amountWordParts.length > 0 ? (
+            <span className={styles.amountWordsPlaceholderInline}>
+              {amountWordParts.map((part) => (
+                <span
+                  key={part.key}
+                  className={part.isNumber ? amountInputStyles.amountWordsNumber : undefined}
+                >
+                  {part.part}
+                </span>
+              ))}
+            </span>
           ) : null}
         </div>
         <AmountInput
