@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FiRotateCcw, FiX } from 'react-icons/fi';
 
+import AmountInput from '../common/AmountInput';
+import amountInputStyles from '../common/AmountInput.module.css';
 import { ConfirmationModal } from '../common/ConfirmationModal';
 import SegmentedControl from '../ui/SegmentedControl';
 import DebtTabContent from './DebtTabContent';
 import ExpensesTabContent from './ExpensesTabContent';
 import IncomeTabContent from './IncomeTabContent';
 import TransferTabContent from './TransferTabContent';
+import { convertToVietnameseWordsAbbreviated } from '../../lib/numberToWords_vi';
 import styles from './AddTransactionModal.module.css';
 
 const MONTH_TAGS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -99,6 +102,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
   const [showNewItemModal, setShowNewItemModal] = useState(false);
   const [newItemType, setNewItemType] = useState('');
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [amountHistory, setAmountHistory] = useState('');
   const currentDateTag = useMemo(() => buildMonthTag(selectedDate), [selectedDate]);
   const previousMonthTag = useMemo(() => buildMonthTag(selectedDate, -1), [selectedDate]);
   const formattedSelectedDate = useMemo(() => {
@@ -130,6 +134,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
     setShowNewItemModal(false);
     setNewItemType('');
     setShowUnsavedModal(false);
+    setAmountHistory('');
   }, []);
 
   useEffect(() => {
@@ -360,21 +365,52 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
     );
   };
 
+  const amountWordParts = useMemo(() => {
+    if (amountHistory) {
+      return [];
+    }
+
+    const segments = convertToVietnameseWordsAbbreviated(formValues.amount);
+    return segments.map((segment, index) => ({
+      ...segment,
+      key: `${index}-${segment.part}-${segment.isNumber ? 'n' : 't'}`,
+    }));
+  }, [amountHistory, formValues.amount]);
+
   const renderAmountField = ({ className = '' } = {}) => {
     const containerClasses = [styles.field, className].filter(Boolean).join(' ');
     return (
       <div className={containerClasses}>
-        <label className={styles.fieldLabel} htmlFor="transaction-amount">
-          Amount
-        </label>
-        <input
+        <div className={styles.fieldLabelRow}>
+          <label className={styles.fieldLabel} htmlFor="transaction-amount">
+            Amount
+          </label>
+          {amountHistory ? (
+            <span
+              className={`${styles.amountWordsPlaceholderInline} ${amountInputStyles.historyText}`}
+            >
+              {amountHistory}
+            </span>
+          ) : amountWordParts.length > 0 ? (
+            <span className={styles.amountWordsPlaceholderInline}>
+              {amountWordParts.map((part) => (
+                <span
+                  key={part.key}
+                  className={part.isNumber ? amountInputStyles.amountWordsNumber : undefined}
+                >
+                  {part.part}
+                </span>
+              ))}
+            </span>
+          ) : null}
+        </div>
+        <AmountInput
           id="transaction-amount"
-          type="number"
-          className={`${styles.input} ${styles.formFieldBase}`}
           value={formValues.amount}
-          onChange={(event) => updateField('amount', event.target.value)}
-          placeholder="0.00"
-          step="0.01"
+          onChange={(newValue) => updateField('amount', newValue)}
+          onHistoryChange={setAmountHistory}
+          placeholder="0"
+          className={`${styles.input} ${styles.formFieldBase}`}
         />
       </div>
     );
