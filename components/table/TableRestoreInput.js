@@ -52,10 +52,10 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
   }));
 
   useEffect(() => {
-    if (valueBeforeClear !== null && hasValue) {
+    if (valueBeforeClear !== null && stringValue.trim().length > 0) {
       setValueBeforeClear(null);
     }
-  }, [hasValue, valueBeforeClear]);
+  }, [stringValue, valueBeforeClear]);
 
   const handleKeyDown = (event) => {
     if (event.key === 'Enter') {
