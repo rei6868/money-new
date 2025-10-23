@@ -103,9 +103,11 @@
 
 .fieldLabelRow {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: baseline;
   gap: 0.6rem;
+  flex-wrap: nowrap;
+  width: 100%;
+  min-height: 1.1em;
 }
 
 .fieldLabel {
@@ -122,6 +124,19 @@
   color: var(--mf-text-muted);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  margin-left: auto;
+}
+
+.amountWordsPlaceholderInline {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--mf-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  max-width: 60%;
+  line-height: 1.1;
 }
 
 .formFieldBase {
