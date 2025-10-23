@@ -69,7 +69,7 @@ export default function ExpensesTabContent({
 
             <div className={`${styles.toggleField} ${styles.formFieldBase} ${styles.noBackEngToggle}`}>
               <span className={styles.fieldLabel} id={noBackEngLabelId}>
-                No Back - Eng
+                None Back
               </span>
               <button
                 type="button"

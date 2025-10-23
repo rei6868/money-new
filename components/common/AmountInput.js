@@ -256,6 +256,7 @@ export default function AmountInput({
   const [history, setHistory] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [inputError, setInputError] = useState('');
   const isExpressionActive = expression.length > 0;
   const inputRef = useRef(null);
   const suggestionBoxRef = useRef(null);
@@ -304,6 +305,10 @@ export default function AmountInput({
   }, [isExpressionActive, normalizedRawValue]);
 
   const handleChange = (event) => {
+    if (inputError) {
+      setInputError('');
+    }
+
     const nextDisplayValue = event.target.value;
     const sanitizedExpression = sanitizeExpressionInput(nextDisplayValue);
     const expressionTokens = tokenizeExpression(sanitizedExpression);
@@ -433,24 +438,24 @@ export default function AmountInput({
             const normalizedForEvaluation = normalizeExpression(trimmedExpression);
 
             if (!normalizedForEvaluation) {
-              setHistory('Error: Invalid expression');
-              setExpression('');
-              setDisplayExpression('');
-              setDisplayValue('');
-              setSuggestions([]);
-              setShowSuggestions(false);
-              onChange?.('');
+              setInputError('Lỗi: Phép tính không hợp lệ');
               return;
             }
 
             if (containsDivisionByZero(normalizedForEvaluation)) {
-              setHistory('Error: Cannot divide by zero');
-              setExpression('');
-              setDisplayExpression('');
-              setDisplayValue('');
-              setSuggestions([]);
-              setShowSuggestions(false);
-              onChange?.('');
+              setInputError('Lỗi: Không thể chia cho 0');
+              return;
+            }
+
+            const evaluationResult = safeEvaluate(normalizedForEvaluation);
+
+            if (evaluationResult === null) {
+              setInputError('Lỗi: Phép tính không hợp lệ');
+              return;
+            }
+
+            if (typeof evaluationResult === 'number' && evaluationResult < 0) {
+              setInputError('Kết quả không được âm');
               return;
             }
 
@@ -459,41 +464,29 @@ export default function AmountInput({
             );
             const formattedExpression = joinTokensForHistory(tokens);
 
-            const evaluationResult = safeEvaluate(normalizedForEvaluation);
+            const rawResult = parseInputValue(String(evaluationResult));
+            const formattedResult = formatDisplayValue(rawResult);
+            const historyLine = formattedExpression
+              ? `${formattedExpression} = ${formattedResult}`
+              : formattedResult
+              ? `= ${formattedResult}`
+              : '';
 
-            if (evaluationResult !== null) {
-              const rawResult = parseInputValue(String(evaluationResult));
-              const formattedResult = formatDisplayValue(rawResult);
-              const historyLine = formattedExpression
-                ? `${formattedExpression} = ${formattedResult}`
-                : formattedResult
-                ? `= ${formattedResult}`
-                : '';
+            setInputError('');
+            setHistory(historyLine);
+            setExpression('');
+            setDisplayExpression('');
+            setShowSuggestions(false);
 
-              setHistory(historyLine);
-              setExpression('');
-              setDisplayExpression('');
-              setShowSuggestions(false);
+            const normalizedResult = rawResult;
+            setDisplayValue(formattedResult);
+            onChange?.(normalizedResult);
 
-              const normalizedResult = rawResult;
-              setDisplayValue(formattedResult);
-              onChange?.(normalizedResult);
-
-              if (normalizedResult) {
-                const nextSuggestions = generateSuggestions(normalizedResult);
-                setSuggestions(nextSuggestions);
-              } else {
-                setSuggestions([]);
-              }
+            if (normalizedResult) {
+              const nextSuggestions = generateSuggestions(normalizedResult);
+              setSuggestions(nextSuggestions);
             } else {
-              const invalidExpressionLabel = formattedExpression || trimmedExpression;
-              setHistory(`Error: Invalid expression${invalidExpressionLabel ? `: ${invalidExpressionLabel}` : ''}`);
-              setExpression('');
-              setDisplayExpression('');
-              setDisplayValue('');
               setSuggestions([]);
-              setShowSuggestions(false);
-              onChange?.('');
             }
           }
         }
@@ -536,6 +529,9 @@ export default function AmountInput({
         placeholder={placeholder}
         {...rest}
       />
+      {inputError ? (
+        <p className={styles.inputErrorText}>{inputError}</p>
+      ) : null}
       {showSuggestions && !isExpressionActive && suggestions.length > 0 ? (
         <div className={styles.suggestionsContainer} ref={suggestionBoxRef}>
           {suggestions.map((suggestion) => (
