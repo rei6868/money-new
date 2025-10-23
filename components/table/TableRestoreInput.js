@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { FiRotateCcw, FiX } from 'react-icons/fi';
 
 export const TableRestoreInput = forwardRef(function TableRestoreInput(
@@ -51,6 +51,11 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
     blur: () => inputRef.current?.blur(),
   }));
 
+  useEffect(() => {
+    if (valueBeforeClear !== null && stringValue.trim().length > 0) {
+      setValueBeforeClear(null);
+    }
+  }, [stringValue, valueBeforeClear]);
   const focusInput = () => {
     requestAnimationFrame(() => {
       inputRef.current?.focus();
@@ -116,6 +121,18 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
 
   const handleRestore = (event) => {
     event.preventDefault();
+    if (valueBeforeClear !== null && !hasValue) {
+      const valueToRestore = valueBeforeClear;
+      onChange?.(valueToRestore);
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+      return;
+    }
+    if (!hasPreviousValue || hasValue) {
+      return;
+    }
+    onRestore?.(previousValue);
     if (restoreLocalValue()) {
       return;
     }
