@@ -8,6 +8,7 @@ import DebtTabContent from './DebtTabContent';
 import ExpensesTabContent from './ExpensesTabContent';
 import IncomeTabContent from './IncomeTabContent';
 import TransferTabContent from './TransferTabContent';
+import { convertToVietnameseWordsAbbreviated } from '../../lib/numberToWords_vi';
 import styles from './AddTransactionModal.module.css';
 
 const MONTH_TAGS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -361,19 +362,31 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
     );
   };
 
+  const amountWords = useMemo(
+    () => convertToVietnameseWordsAbbreviated(formValues.amount),
+    [formValues.amount],
+  );
+
   const renderAmountField = ({ className = '' } = {}) => {
     const containerClasses = [styles.field, className].filter(Boolean).join(' ');
     return (
-      <AmountInput
-        id="transaction-amount"
-        label="Amount"
-        value={formValues.amount}
-        onChange={(newValue) => updateField('amount', newValue)}
-        placeholder="0"
-        className={`${styles.input} ${styles.formFieldBase}`}
-        labelClassName={styles.fieldLabel}
-        wrapperClassName={containerClasses}
-      />
+      <div className={containerClasses}>
+        <div className={styles.fieldLabelRow}>
+          <label className={styles.fieldLabel} htmlFor="transaction-amount">
+            Amount
+          </label>
+          {amountWords ? (
+            <span className={styles.amountWordsPlaceholderInline}>{amountWords}</span>
+          ) : null}
+        </div>
+        <AmountInput
+          id="transaction-amount"
+          value={formValues.amount}
+          onChange={(newValue) => updateField('amount', newValue)}
+          placeholder="0"
+          className={`${styles.input} ${styles.formFieldBase}`}
+        />
+      </div>
     );
   };
 

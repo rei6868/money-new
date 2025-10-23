@@ -11,11 +11,3 @@
   width: 100%;
 }
 
-.amountWordsPlaceholder {
-  min-height: 1.125rem;
-  margin-bottom: 0.25rem;
-  font-size: 0.75rem;
-  color: var(--mf-text-muted);
-  line-height: 1.2;
-  word-break: break-word;
-}
