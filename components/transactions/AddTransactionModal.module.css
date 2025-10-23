@@ -200,9 +200,8 @@
 
 .debtGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 1.4rem;
-  row-gap: 1.4rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.4rem;
   align-items: stretch;
 }
 
@@ -359,6 +358,42 @@
 
 .switchButtonActive .switchThumb {
   transform: translateX(24px);
+}
+
+.cashbackSection {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  border-radius: 16px;
+  border: 1px dashed rgba(99, 102, 241, 0.35);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.cashbackInputRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.percentBackInput {
+  text-align: right;
+}
+
+.fixedBackInput {
+  text-align: right;
+}
+
+.noBackEngToggle {
+  min-height: 100%;
+}
+
+.cashbackHint {
+  font-size: 0.82rem;
+  color: var(--mf-text-muted);
+  line-height: 1.45;
 }
 
 .debtNotesField {

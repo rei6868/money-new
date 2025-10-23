@@ -1,3 +1,4 @@
+import AmountInput from '../common/AmountInput';
 import ReusableDropdown from '../common/ReusableDropdown';
 import styles from './AddTransactionModal.module.css';
 
@@ -19,8 +20,14 @@ export default function DebtTabContent({
   isRepayMode,
   isLastMonth,
   onToggleLastMonth,
+  isCashbackEligible,
+  percentBack,
+  fixedBack,
+  noBackEng,
 }) {
   const lastMonthLabelId = 'debt-last-month-toggle-label';
+  const noBackEngLabelId = 'debt-no-back-eng-label';
+  const hasPositiveAmount = Number(formValues.amount) > 0;
 
   return (
     <div className={styles.debtSection}>
@@ -87,6 +94,67 @@ export default function DebtTabContent({
         />
 
         {renderAmountField({ className: styles.gridField })}
+
+        {isCashbackEligible ? (
+          <div className={`${styles.cashbackSection} ${styles.fullRow}`}>
+            <div className={styles.cashbackInputRow}>
+              <div className={styles.field}>
+                <label className={styles.fieldLabel} htmlFor="transaction-percent-back">
+                  % Back
+                </label>
+                <input
+                  id="transaction-percent-back"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  inputMode="decimal"
+                  className={`${styles.input} ${styles.formFieldBase} ${styles.percentBackInput}`}
+                  value={percentBack}
+                  onChange={(event) => updateField('percentBack', event.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div className={styles.field}>
+                <label className={styles.fieldLabel} htmlFor="transaction-fixed-back">
+                  Fix Back
+                </label>
+                <AmountInput
+                  id="transaction-fixed-back"
+                  value={fixedBack}
+                  onChange={(newValue) => updateField('fixedBack', newValue)}
+                  placeholder="0"
+                  className={`${styles.input} ${styles.formFieldBase} ${styles.fixedBackInput}`}
+                />
+              </div>
+
+              <div className={`${styles.toggleField} ${styles.formFieldBase} ${styles.noBackEngToggle}`}>
+                <span className={styles.fieldLabel} id={noBackEngLabelId}>
+                  None Back
+                </span>
+                <button
+                  type="button"
+                  className={`${styles.switchButton} ${noBackEng ? styles.switchButtonActive : ''}`}
+                  onClick={() => updateField('noBackEng', !noBackEng)}
+                  role="switch"
+                  aria-checked={noBackEng}
+                  aria-labelledby={noBackEngLabelId}
+                >
+                  <span className={styles.switchTrack}>
+                    <span className={styles.switchThumb} />
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.cashbackHint}>
+              {hasPositiveAmount
+                ? 'Suggested rate: X%. Raw=Y, Final=Z. Cap info.'
+                : 'Enter Amount > 0 to calculate cashback.'}
+            </div>
+          </div>
+        ) : null}
 
         <ReusableDropdown
           label={debtTagLabel}
