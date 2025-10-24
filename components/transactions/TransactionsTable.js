@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { FiMinus, FiPlus, FiRefreshCw, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { TableBase } from '../table';
@@ -57,7 +58,8 @@ function usePaginationRenderer(pagination, fontScaleState) {
               disabled={!canDecrease}
               aria-label="Decrease table font size"
             >
-              −
+              <FiMinus aria-hidden />
+              <span className={styles.fontScaleButtonText}>−</span>
             </button>
             <span className={styles.fontScaleValue} aria-live="polite">
               {formattedScale}
@@ -69,7 +71,8 @@ function usePaginationRenderer(pagination, fontScaleState) {
               disabled={!canIncrease}
               aria-label="Increase table font size"
             >
-              +
+              <FiPlus aria-hidden />
+              <span className={styles.fontScaleButtonText}>+</span>
             </button>
             <button
               type="button"
@@ -78,7 +81,8 @@ function usePaginationRenderer(pagination, fontScaleState) {
               disabled={isDefault}
               aria-label="Reset table font size"
             >
-              Reset
+              <FiRefreshCw aria-hidden />
+              <span className={styles.fontScaleButtonText}>Reset</span>
             </button>
           </div>
           <div className={styles.paginationControls}>
@@ -89,7 +93,8 @@ function usePaginationRenderer(pagination, fontScaleState) {
               disabled={pagination.currentPage === 1}
               aria-label="Previous page"
             >
-              Prev
+              <FiChevronLeft aria-hidden />
+              <span className={styles.paginationButtonText}>Prev</span>
             </button>
             <span className={styles.paginationStatus}>
               Page {pagination.currentPage} of {pagination.totalPages}
@@ -101,7 +106,8 @@ function usePaginationRenderer(pagination, fontScaleState) {
               disabled={pagination.currentPage === pagination.totalPages}
               aria-label="Next page"
             >
-              Next
+              <FiChevronRight aria-hidden />
+              <span className={styles.paginationButtonText}>Next</span>
             </button>
           </div>
         </>

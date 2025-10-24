@@ -205,7 +205,7 @@ export function TableBaseBody({
               className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`.trim()}
             >
               <td
-                className={`${styles.bodyCell} ${styles.stickyLeft} ${styles.checkboxCell}`}
+                className={`${styles.bodyCell} ${styles.stickyLeft} ${styles.checkboxCell} ${styles.stickyLeftNoShadow}`}
                 style={{
                   minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
                   width: `${CHECKBOX_COLUMN_WIDTH}px`,

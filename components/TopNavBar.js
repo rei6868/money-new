@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { FiLogOut, FiMoreHorizontal, FiMoon, FiSun } from 'react-icons/fi';
+import { useRouter } from 'next/router';
+import { FiLogOut, FiMoreHorizontal, FiMoon, FiSun, FiChevronDown } from 'react-icons/fi';
 
 import styles from './TopNavBar.module.css';
 
@@ -27,6 +28,7 @@ export function TopNavBar({
   theme = 'light',
   settingsLink,
 }) {
+  const router = useRouter();
   const activeSet = useMemo(() => normalizeActiveKeys(activeKeys), [activeKeys]);
   const [overflowKeys, setOverflowKeys] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -166,16 +168,25 @@ export function TopNavBar({
     }
   }, [overflowKeys.length, isDropdownOpen]);
 
+  const overflowItems = flattenedNavItems.filter((item) => overflowKeySet.has(item.key));
+
+  const activePageLabel = useMemo(() => {
+    const activePage = flattenedNavItems.find((item) => activeSet.has(item.key));
+    return activePage?.label || 'Money Flow';
+  }, [flattenedNavItems, activeSet]);
+
   if (flattenedNavItems.length === 0) {
     return null;
   }
-
-  const overflowItems = flattenedNavItems.filter((item) => overflowKeySet.has(item.key));
 
   const handleToggleDropdown = () => {
     if (overflowItems.length === 0) {
       return;
     }
+    setIsDropdownOpen((prev) => !prev);
+  };
+
+  const handleMobileToggleDropdown = () => {
     setIsDropdownOpen((prev) => !prev);
   };
 
@@ -216,6 +227,16 @@ export function TopNavBar({
         <span className={styles.brandMark}>MF</span>
         <span className={styles.brandText}>Money Flow</span>
       </Link>
+      <button
+        type="button"
+        className={styles.mobileTrigger}
+        onClick={handleMobileToggleDropdown}
+        aria-haspopup="menu"
+        aria-expanded={isDropdownOpen}
+      >
+        <span className={styles.mobileLabel}>{activePageLabel}</span>
+        <FiChevronDown className={styles.mobileChevron} aria-hidden="true" />
+      </button>
       <div className={styles.navListWrapper} ref={listContainerRef}>
         <ul className={styles.navList}>
           {flattenedNavItems.map((item) => renderNavLink(item))}
@@ -239,10 +260,10 @@ export function TopNavBar({
             <FiMoreHorizontal aria-hidden="true" />
             <span className={styles.visuallyHidden}>Open overflow navigation links</span>
           </button>
-          {isDropdownOpen && overflowItems.length > 0 ? (
+          {isDropdownOpen ? (
             <div className={styles.moreMenu} role="menu">
               <ul className={styles.moreMenuList}>
-                {overflowItems.map((item) => renderNavLink(item, { inOverflow: true }))}
+                {(overflowItems.length > 0 ? overflowItems : flattenedNavItems).map((item) => renderNavLink(item, { inOverflow: true }))}
               </ul>
             </div>
           ) : null}

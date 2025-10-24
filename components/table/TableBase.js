@@ -295,7 +295,10 @@ export function TableBase({
     <section
       className={styles.tableCard}
       aria-label={tableTitle}
-      style={{ '--transactions-font-scale': fontScale }}
+      style={{ 
+        '--transactions-font-scale': fontScale,
+        '--pagination-bar-height': pagination ? '60px' : '0px'
+      }}
     >
       {toolbarSlot}
       <div className={styles.tableScroll} data-testid="transactions-table-container">

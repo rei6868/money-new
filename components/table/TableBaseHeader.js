@@ -10,32 +10,22 @@ import {
   resolveColumnSortType,
 } from './tableUtils';
 
-function SortIcon({ direction, dataType }) {
+function SortIcon({ direction }) {
   const isActive = direction === 'asc' || direction === 'desc';
   const iconClassName = `${styles.sortIcon} ${isActive ? styles.sortIconActive : ''}`.trim();
-  const arrowClassName = `${styles.sortIconArrow} ${
-    direction === 'desc' ? styles.sortIconArrowDesc : ''
-  } ${direction ? '' : styles.sortIconArrowIdle}`.trim();
 
-  const glyphClassName =
-    dataType === 'number' ? styles.sortIconDigits : styles.sortIconLetters;
+  let icon;
+  if (direction === 'asc') {
+    icon = '↑';
+  } else if (direction === 'desc') {
+    icon = '↓';
+  } else {
+    icon = '↕';
+  }
 
   return (
     <span className={iconClassName} aria-hidden="true">
-      <span className={glyphClassName}>
-        {dataType === 'number' ? (
-          <>
-            <span>0</span>
-            <span>9</span>
-          </>
-        ) : (
-          <>
-            <span>a</span>
-            <span>z</span>
-          </>
-        )}
-      </span>
-      <span className={arrowClassName} />
+      {icon}
     </span>
   );
 }
@@ -154,7 +144,7 @@ export function TableBaseHeader({
               disabled={isColumnReorderMode}
               aria-label={tooltipContent}
             >
-              <SortIcon direction={sortDirection ?? undefined} dataType={iconType} />
+              <SortIcon direction={sortDirection ?? undefined} />
             </button>
           </Tooltip>
         </div>
@@ -248,14 +238,20 @@ export function TableBaseHeader({
         {columns.map((column) => renderHeaderCell(column))}
         <th
           scope="col"
-          aria-label="Actions"
+          aria-label="Task"
           className={`${styles.headerCell} ${styles.actionsHeader} ${styles.stickyRight}`}
           style={{
             left: `${CHECKBOX_COLUMN_WIDTH}px`,
             minWidth: `${STICKY_COLUMN_BUFFER - CHECKBOX_COLUMN_WIDTH}px`,
             width: `${STICKY_COLUMN_BUFFER - CHECKBOX_COLUMN_WIDTH}px`,
           }}
-        />
+        >
+          <div className={styles.headerShell}>
+            <span className={styles.headerStaticLabel}>
+              <span className={styles.headerLabelText}>Task</span>
+            </span>
+          </div>
+        </th>
       </tr>
       {isColumnReorderMode ? (
         <tr className={styles.customizeHeaderRow}>
