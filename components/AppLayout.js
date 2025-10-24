@@ -384,20 +384,7 @@ export default function AppLayout({ title, subtitle, children }) {
             settingsLink={{ key: 'settings', label: 'Settings', href: '/settings' }}
           />
         </div>
-        <header className={styles.topBar}>
-          <div className={styles.pageHeading}>
-            {title ? (
-              <h1 className={styles.pageTitle} data-testid="layout-title">
-                {title}
-              </h1>
-            ) : null}
-            {subtitle ? (
-              <p className={styles.pageSubtitle} data-testid="layout-subtitle">
-                {subtitle}
-              </p>
-            ) : null}
-          </div>
-        </header>
+
 
         <main className={styles.mainContent} data-testid="layout-main">
           {children}

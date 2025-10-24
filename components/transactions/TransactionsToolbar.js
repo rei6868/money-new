@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { FiPlus, FiRefreshCw, FiSettings } from 'react-icons/fi';
+import { FiPlus, FiRefreshCw, FiSettings, FiSearch } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { TableRestoreInput } from '../table';
@@ -87,8 +87,10 @@ export function TransactionsToolbar({
           onClick={onSubmitSearch}
           data-testid="transactions-search-submit"
           disabled={isCustomizeLocked}
+          aria-label="Search transactions"
         >
-          Search
+          <FiSearch className={styles.searchSubmitIcon} aria-hidden />
+          <span className={styles.searchSubmitText}>Search</span>
         </button>
 
       </div>
@@ -139,7 +141,9 @@ export function TransactionsToolbar({
             aria-pressed={isReorderMode}
           >
             <FiSettings aria-hidden />
-            {isReorderMode ? 'Done customizing' : 'Customize columns'}
+            <span className={styles.customizeButtonText}>
+              {isReorderMode ? 'Done customizing' : 'Customize columns'}
+            </span>
           </button>
         </div>
 
@@ -149,9 +153,10 @@ export function TransactionsToolbar({
           onClick={onAddTransaction}
           data-testid="transactions-add-button"
           disabled={isCustomizeLocked}
+          aria-label="Add new transaction"
         >
           <FiPlus aria-hidden />
-          Add transaction
+          <span className={styles.addButtonText}>Add transaction</span>
         </button>
       </div>
     </section>
