@@ -1,0 +1,9 @@
+/* Body-specific styles - currently minimal as most styles are in TableBase.module.css */
+
+/* Note text styling */
+.noteText {
+  color: var(--mf-text-secondary);
+  font-style: italic;
+}
+
+/* Additional body-specific styles can be added here as needed */

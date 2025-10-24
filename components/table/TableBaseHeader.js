@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import styles from '../../styles/TransactionsHistory.module.css';
+import headerStyles from './TableBaseHeader.module.css';
+import styles from './TableBase.module.css';
 import { Tooltip } from '../ui/Tooltip';
 import {
   ACTIONS_COLUMN_WIDTH,
@@ -12,7 +13,7 @@ import {
 
 function SortIcon({ direction }) {
   const isActive = direction === 'asc' || direction === 'desc';
-  const iconClassName = `${styles.sortIcon} ${isActive ? styles.sortIconActive : ''}`.trim();
+  const iconClassName = `${headerStyles.sortIcon} ${isActive ? headerStyles.sortIconActive : ''}`.trim();
 
   let icon;
   if (direction === 'asc') {
@@ -75,17 +76,17 @@ export function TableBaseHeader({
     const definition = definitionMap.get(column.id);
     const alignClass =
       definition?.align === 'right'
-        ? styles.headerAlignRight
+        ? headerStyles.headerAlignRight
         : definition?.align === 'center'
-        ? styles.headerAlignCenter
+        ? headerStyles.headerAlignCenter
         : '';
     const headerTitle = definition?.label ?? column.id;
     const isHidden = column.visible === false;
     const isDropping = isColumnReorderMode && activeDropTarget === column.id;
-    const headerClassName = `${styles.headerCell} ${alignClass} ${
-      isColumnReorderMode ? styles.headerReorderActive : ''
-    } ${isDropping ? styles.headerReorderTarget : ''} ${
-      isHidden && isColumnReorderMode ? styles.headerCellHidden : ''
+    const headerClassName = `${headerStyles.headerCell} ${alignClass} ${
+      isColumnReorderMode ? headerStyles.headerReorderActive : ''
+    } ${isDropping ? headerStyles.headerReorderTarget : ''} ${
+      isHidden && isColumnReorderMode ? headerStyles.headerCellHidden : ''
     }`.trim();
     const isDraggable = isColumnReorderMode && column.visible !== false;
     const isSorted = sortState?.columnId === column.id && sortState.direction;
@@ -98,9 +99,24 @@ export function TableBaseHeader({
         : 'Sorted Descending'
       : `Sort by ${headerTitle}`;
     const ariaSort = sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : 'none';
-    const sortButtonClassName = `${styles.headerSortButton} ${
-      sortDirection ? styles.headerSortActive : ''
+    const sortButtonClassName = `${headerStyles.headerSortButton} ${
+      sortDirection ? headerStyles.headerSortActive : ''
     }`.trim();
+
+    // Toggle switch logic for customization mode
+    const isVisible = column.visible !== false;
+    const totalVisibleColumns = visibleIdSet.size;
+    const isToggleable = column.id !== 'notes';
+    const isLastVisible = isVisible && totalVisibleColumns <= 1;
+    const isInteractive = isToggleable && !isLastVisible;
+
+    const handleToggleChange = (event) => {
+      if (!isInteractive) {
+        event.preventDefault();
+        return;
+      }
+      onColumnVisibilityChange?.(column.id, event.target.checked);
+    };
 
     const { minWidth, width } = resolveColumnSizing(column, definition);
 
@@ -119,8 +135,8 @@ export function TableBaseHeader({
         scope="col"
         className={headerClassName}
         style={{
-          minWidth: `${minWidth}px`,
-          width: `${width}px`,
+          minWidth: isColumnReorderMode ? 'max-content' : `${minWidth}px`,
+          width: isColumnReorderMode ? 'auto' : `${width}px`,
         }}
         draggable={isDraggable}
         onDragStart={isDraggable && onColumnDragStart ? onColumnDragStart(column.id) : undefined}
@@ -132,10 +148,31 @@ export function TableBaseHeader({
         onDrop={isColumnReorderMode && onColumnDrop ? onColumnDrop(column.id) : undefined}
         aria-sort={ariaSort}
       >
-        <div className={styles.headerShell}>
-          <span className={styles.headerStaticLabel}>
-            <span className={styles.headerLabelText}>{headerTitle}</span>
-          </span>
+        <div className={headerStyles.headerShell}>
+          <div className={headerStyles.headerContent}>
+            <span className={headerStyles.headerStaticLabel}>
+              <span className={headerStyles.headerLabelText}>{headerTitle}</span>
+            </span>
+            {isColumnReorderMode && (
+              <label
+                className={headerStyles.columnToggleSwitch}
+                title="Show/hide this column"
+                data-disabled={isInteractive ? undefined : 'true'}
+              >
+                <input
+                  type="checkbox"
+                  checked={isVisible}
+                  onChange={handleToggleChange}
+                  aria-label={`Show or hide ${headerTitle} column`}
+                  aria-disabled={isInteractive ? undefined : 'true'}
+                  data-testid={`transactions-columns-toggle-${column.id}`}
+                />
+                <span className={headerStyles.columnToggleTrack}>
+                  <span className={headerStyles.columnToggleThumb} />
+                </span>
+              </label>
+            )}
+          </div>
           <Tooltip content={tooltipContent}>
             <button
               type="button"
@@ -152,78 +189,24 @@ export function TableBaseHeader({
     );
   };
 
-  const renderToggleCell = (column) => {
-    const definition = definitionMap.get(column.id);
-    const headerTitle = definition?.label ?? column.id;
-    const isVisible = column.visible !== false;
-    const totalVisibleColumns = visibleIdSet.size;
-    const isToggleable = column.id !== 'notes';
-    const isLastVisible = isVisible && totalVisibleColumns <= 1;
-    const isInteractive = isToggleable && !isLastVisible;
 
-    const baseClass = `${styles.columnToggleHeaderCell} ${
-      isVisible ? styles.columnToggleVisible : styles.columnToggleHidden
-    }`;
-
-    const { minWidth, width } = resolveColumnSizing(column, definition);
-
-    const handleToggleChange = (event) => {
-      if (!isInteractive) {
-        event.preventDefault();
-        return;
-      }
-      onColumnVisibilityChange?.(column.id, event.target.checked);
-    };
-
-    return (
-      <th
-        key={`toggle-${column.id}`}
-        scope="col"
-        className={baseClass}
-        style={{
-          minWidth: `${minWidth}px`,
-          width: `${width}px`,
-        }}
-      >
-        <div className={styles.columnToggleContent}>
-          <label
-            className={styles.columnToggleSwitch}
-            title="Show/hide this column"
-            data-disabled={isInteractive ? undefined : 'true'}
-          >
-            <input
-              type="checkbox"
-              checked={isVisible}
-              onChange={handleToggleChange}
-              aria-label={`Show or hide ${headerTitle} column`}
-              aria-disabled={isInteractive ? undefined : 'true'}
-              data-testid={`transactions-columns-toggle-${column.id}`}
-            />
-            <span className={styles.columnToggleTrack}>
-              <span className={styles.columnToggleThumb} />
-            </span>
-          </label>
-        </div>
-      </th>
-    );
-  };
 
   const headerStyle = isColumnReorderMode
     ? { '--table-header-main-height': `${mainHeaderHeight}px` }
     : undefined;
 
   return (
-    <thead className={styles.tableHeader} style={headerStyle}>
+    <thead className={headerStyles.tableHeader} style={headerStyle}>
       <tr ref={headerRowRef}>
         <th
           scope="col"
-          className={`${styles.headerCell} ${styles.stickyLeft} ${styles.checkboxCell} ${styles.stickyLeftNoShadow}`}
+          className={`${headerStyles.headerCell} ${styles.stickyLeft} ${styles.checkboxCell} ${styles.stickyLeftNoShadow}`}
           style={{
             minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
             width: `${CHECKBOX_COLUMN_WIDTH}px`,
           }}
         >
-          <div className={styles.headerCheckboxInner}>
+          <div className={headerStyles.headerCheckboxInner}>
             <input
               ref={headerCheckboxRef}
               type="checkbox"
@@ -239,42 +222,21 @@ export function TableBaseHeader({
         <th
           scope="col"
           aria-label="Task"
-          className={`${styles.headerCell} ${styles.actionsHeader} ${styles.stickyRight}`}
+          className={`${headerStyles.headerCell} ${headerStyles.actionsHeader} ${styles.stickyRight}`}
           style={{
             left: `${CHECKBOX_COLUMN_WIDTH}px`,
             minWidth: `${STICKY_COLUMN_BUFFER - CHECKBOX_COLUMN_WIDTH}px`,
             width: `${STICKY_COLUMN_BUFFER - CHECKBOX_COLUMN_WIDTH}px`,
           }}
         >
-          <div className={styles.headerShell}>
-            <span className={styles.headerStaticLabel}>
-              <span className={styles.headerLabelText}>Task</span>
+          <div className={headerStyles.headerShell}>
+            <span className={headerStyles.headerStaticLabel}>
+              <span className={headerStyles.headerLabelText}>Task</span>
             </span>
           </div>
         </th>
       </tr>
-      {isColumnReorderMode ? (
-        <tr className={styles.customizeHeaderRow}>
-          <th
-            aria-hidden="true"
-            className={`${styles.columnToggleHeaderCell} ${styles.stickyLeft} ${styles.checkboxCell} ${styles.stickyLeftNoShadow}`}
-            style={{
-              minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
-              width: `${CHECKBOX_COLUMN_WIDTH}px`,
-            }}
-          />
-          {columns.map((column) => renderToggleCell(column))}
-          <th
-            aria-hidden="true"
-            className={`${styles.columnToggleHeaderCell} ${styles.actionsHeader} ${styles.stickyRight}`}
-            style={{
-              left: `${CHECKBOX_COLUMN_WIDTH}px`,
-              minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
-              width: `${ACTIONS_COLUMN_WIDTH}px`,
-            }}
-          />
-        </tr>
-      ) : null}
+
     </thead>
   );
 }

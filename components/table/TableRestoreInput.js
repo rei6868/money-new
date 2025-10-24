@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react';
-import { FiRotateCcw, FiX } from 'react-icons/fi';
+import { FiRotateCcw, FiX, FiSearch } from 'react-icons/fi';
 
 export const TableRestoreInput = forwardRef(function TableRestoreInput(
   {
@@ -26,6 +26,8 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
     clearButtonTestId,
     restoreButtonTestId,
     containerProps = {},
+    onIconClick,
+    iconDisabled = false,
   },
   forwardedRef,
 ) {
@@ -108,8 +110,19 @@ export const TableRestoreInput = forwardRef(function TableRestoreInput(
         onBlur={handleBlur}
         data-testid={inputTestId}
       />
-      {showActions ? (
+      {showActions || onIconClick ? (
         <div className={actionsClassName}>
+          {onIconClick && !showRestore && !showClear ? (
+            <button
+              type="button"
+              className={iconButtonClassName}
+              onClick={onIconClick}
+              disabled={iconDisabled}
+              aria-label="Search"
+            >
+              <FiSearch aria-hidden />
+            </button>
+          ) : null}
           {showRestore ? (
             <button
               type="button"

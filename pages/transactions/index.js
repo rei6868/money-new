@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppLayout from '../../components/AppLayout';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
 import { TransactionsToolbar } from '../../components/transactions/TransactionsToolbar';
-import { SelectionActionBar } from '../../components/transactions/SelectionActionBar';
+
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
 import TransactionAdvancedModal from '../../components/transactions/TransactionAdvancedModal';
@@ -339,12 +339,22 @@ export default function TransactionsHistoryPage() {
         return;
       }
 
+      // Preserve scroll position
+      const tableContainer = document.querySelector('[data-testid="transactions-table-container"]');
+      const scrollLeft = tableContainer?.scrollLeft || 0;
+
       if (!columnId || !direction) {
         if (sortState.columnId === null && sortState.direction === null) {
           return;
         }
         setSortState({ columnId: null, direction: null });
         setCurrentPage(1);
+        // Restore scroll position after state update
+        setTimeout(() => {
+          if (tableContainer) {
+            tableContainer.scrollLeft = scrollLeft;
+          }
+        }, 0);
         return;
       }
 
@@ -354,6 +364,12 @@ export default function TransactionsHistoryPage() {
 
       setSortState({ columnId, direction });
       setCurrentPage(1);
+      // Restore scroll position after state update
+      setTimeout(() => {
+        if (tableContainer) {
+          tableContainer.scrollLeft = scrollLeft;
+        }
+      }, 0);
     },
     [isReorderMode, sortState],
   );
@@ -582,6 +598,14 @@ export default function TransactionsHistoryPage() {
     setIsReorderMode(false);
   }, []);
 
+  const handleResetFilters = useCallback(() => {
+    setDraftQuery('');
+    setAppliedQuery('');
+    setClearedDraftQuery(null);
+    setCurrentPage(1);
+    setSortState({ columnId: null, direction: null });
+  }, []);
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
@@ -608,15 +632,14 @@ export default function TransactionsHistoryPage() {
           someToggleableVisible={someToggleableVisible}
           onResetColumns={handleResetColumns}
           onDoneCustomize={handleExitReorderMode}
-        />
-
-        <SelectionActionBar
           selectedCount={selectedIds.length}
-          selectionSummary={selectionSummary}
           onDeselectAll={handleDeselectAll}
           onToggleShowSelected={handleToggleShowSelected}
           isShowingSelectedOnly={showSelectedOnly}
+          onResetFilters={handleResetFilters}
         />
+
+
 
         {isFetching || columnDefinitions.length === 0 ? (
           <div className={styles.tableCard} data-testid="transactions-loading">
@@ -655,6 +678,7 @@ export default function TransactionsHistoryPage() {
             onColumnOrderChange={handleColumnOrderChange}
             sortState={sortState}
             onSortChange={handleSortStateChange}
+            isShowingSelectedOnly={showSelectedOnly}
           />
         )}
       </div>

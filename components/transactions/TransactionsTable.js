@@ -32,8 +32,13 @@ function usePaginationRenderer(pagination, fontScaleState) {
     const formattedScale = `${Math.round(fontScale * 100)}%`;
 
     return {
-      render: () => (
+      render: (props = {}) => (
         <>
+          {props.selectedCount > 0 && (
+            <span className={styles.selectionCount}>
+              {props.selectedCount} selected
+            </span>
+          )}
           <div className={styles.pageSizeGroup}>
             <label htmlFor="transactions-page-size">Rows per page</label>
             <select
@@ -181,6 +186,7 @@ export function TransactionsTable(props) {
       fontScale={fontScale}
       sortState={sortState}
       onSortChange={onSortChange}
+      isShowingSelectedOnly={props.isShowingSelectedOnly}
     />
   );
 }

@@ -20,6 +20,11 @@ export function TransactionsToolbar({
   someToggleableVisible,
   onResetColumns,
   onDoneCustomize,
+  selectedCount = 0,
+  onDeselectAll,
+  onToggleShowSelected,
+  isShowingSelectedOnly,
+  onResetFilters,
 }) {
   const searchInputRef = useRef(null);
   const columnSelectAllRef = useRef(null);
@@ -59,6 +64,8 @@ export function TransactionsToolbar({
           containerClassName={styles.searchGroup}
           inputClassName={styles.searchInput}
           iconButtonClassName={styles.searchIconButton}
+          onIconClick={onSubmitSearch}
+          iconDisabled={!searchValue?.trim()}
           restoreButtonClassName={styles.searchRestoreButton}
           clearButtonClassName={styles.searchClearButton}
           actionsClassName={styles.searchInputActions}
@@ -86,17 +93,50 @@ export function TransactionsToolbar({
           className={styles.searchSubmitButton}
           onClick={onSubmitSearch}
           data-testid="transactions-search-submit"
-          disabled={isCustomizeLocked}
+          disabled={isCustomizeLocked || !searchValue?.trim()}
           aria-label="Search transactions"
         >
           <FiSearch className={styles.searchSubmitIcon} aria-hidden />
           <span className={styles.searchSubmitText}>Search</span>
         </button>
 
+        <button
+          type="button"
+          className={styles.secondaryButton}
+          onClick={onResetFilters}
+          data-testid="transactions-reset-filters"
+          disabled={isCustomizeLocked}
+          aria-label="Reset search and filters"
+        >
+          <FiRefreshCw aria-hidden />
+          <span className={styles.resetButtonText}>Reset</span>
+        </button>
+
       </div>
 
       <div className={styles.actionsGroup}>
         <div className={styles.customizeActionsGroup}>
+          {selectedCount > 0 && (
+            <>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => onToggleShowSelected?.()}
+                data-testid="transactions-selection-toggle-show"
+              >
+                {isShowingSelectedOnly ? 'Show all' : 'Show selected'}
+              </button>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => onDeselectAll?.()}
+                data-testid="transactions-selection-deselect"
+              >
+                Deselect all
+              </button>
+            </>
+          )}
+
           {isReorderMode ? (
             <div className={styles.toolbarCustomizeControls}>
               <label className={styles.customizeSelectAll}>
