@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import {
@@ -18,6 +18,7 @@ import {
   FiChevronDown,
   FiChevronLeft,
   FiChevronRight,
+  FiMenu,
 } from 'react-icons/fi';
 
 import { useAuth } from '../context/AuthContext';
@@ -134,6 +135,10 @@ export default function AppLayout({ title, subtitle, children }) {
   const { logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(() => getInitialSidebarState());
   const [theme, setTheme] = useState(() => getInitialTheme());
+  const [activeFlyout, setActiveFlyout] = useState(null);
+  const [flyoutPosition, setFlyoutPosition] = useState({ top: 0 });
+  const navGroupRefs = useRef({});
+  const flyoutCloseTimer = useRef(null);
 
   const [expandedGroups, setExpandedGroups] = useState(() => {
     const currentPath = router.pathname;
@@ -163,16 +168,18 @@ export default function AppLayout({ title, subtitle, children }) {
   }, [isCollapsed]);
 
   useEffect(() => {
-    setExpandedGroups((prev) => {
-      const next = new Set(prev);
-      NAV_ITEMS.forEach((item) => {
-        if (item.children?.some((child) => isPathActive(router.pathname, child.href))) {
-          next.add(item.key);
-        }
+    if (!isCollapsed) {
+      setExpandedGroups((prev) => {
+        const next = new Set(prev);
+        NAV_ITEMS.forEach((item) => {
+          if (item.children?.some((child) => isPathActive(router.pathname, child.href))) {
+            next.add(item.key);
+          }
+        });
+        return Array.from(next);
       });
-      return Array.from(next);
-    });
-  }, [router.pathname]);
+    }
+  }, [router.pathname, isCollapsed]);
 
   const activeKeys = useMemo(() => {
     const currentPath = router.pathname;
@@ -201,9 +208,39 @@ export default function AppLayout({ title, subtitle, children }) {
   }, [activeKeys, isSettingsActive]);
 
   const handleToggleGroup = (groupKey) => {
-    setExpandedGroups((prev) =>
-      prev.includes(groupKey) ? prev.filter((item) => item !== groupKey) : [...prev, groupKey],
-    );
+    // Only handle accordion toggle in expanded mode
+    if (!isCollapsed) {
+      setExpandedGroups((prev) =>
+        prev.includes(groupKey) ? prev.filter((item) => item !== groupKey) : [...prev, groupKey],
+      );
+    }
+  };
+
+  const handleMouseEnterGroup = (groupKey) => {
+    if (isCollapsed) {
+      if (flyoutCloseTimer.current) {
+        clearTimeout(flyoutCloseTimer.current);
+        flyoutCloseTimer.current = null;
+      }
+      const buttonElement = navGroupRefs.current[groupKey];
+      if (buttonElement) {
+        const rect = buttonElement.getBoundingClientRect();
+        setFlyoutPosition({ top: rect.top });
+      }
+      setActiveFlyout(groupKey);
+    }
+  };
+
+  const handleMouseLeaveGroup = () => {
+    if (isCollapsed) {
+      flyoutCloseTimer.current = setTimeout(() => {
+        setActiveFlyout(null);
+      }, 150);
+    }
+  };
+
+  const handleCloseFlyout = () => {
+    setActiveFlyout(null);
   };
 
   const handleLogout = () => {
@@ -217,7 +254,28 @@ export default function AppLayout({ title, subtitle, children }) {
 
   const handleCollapse = () => {
     setIsCollapsed((prev) => !prev);
+    setActiveFlyout(null); // Close any open flyouts when toggling collapse
   };
+
+  const handleFlyoutMouseEnter = () => {
+    if (flyoutCloseTimer.current) {
+      clearTimeout(flyoutCloseTimer.current);
+      flyoutCloseTimer.current = null;
+    }
+  };
+
+  const handleFlyoutMouseLeave = () => {
+    if (isCollapsed) {
+      flyoutCloseTimer.current = setTimeout(() => {
+        setActiveFlyout(null);
+      }, 150);
+    }
+  };
+
+  // Close flyout when route changes
+  useEffect(() => {
+    setActiveFlyout(null);
+  }, [router.pathname]);
 
   const renderNavLink = (item) => {
     const Icon = item.icon;
@@ -245,48 +303,99 @@ export default function AppLayout({ title, subtitle, children }) {
     const Icon = item.icon;
     const isExpanded = expandedGroups.includes(item.key);
     const parentActive = activeKeys.has(item.key);
+    const isFlyoutOpen = isCollapsed && activeFlyout === item.key;
 
     return (
-      <div key={item.key} className={styles.navGroup}>
+      <div 
+        key={item.key} 
+        className={styles.navGroup}
+        onMouseEnter={() => handleMouseEnterGroup(item.key)}
+        onMouseLeave={handleMouseLeaveGroup}
+      >
         <button
+          ref={(el) => { navGroupRefs.current[item.key] = el; }}
           type="button"
           className={`${styles.navGroupTrigger} ${parentActive ? styles.navLinkActive : ''}`}
           onClick={() => handleToggleGroup(item.key)}
-          aria-expanded={isExpanded}
-          aria-controls={`sidebar-submenu-${item.key}`}
+          aria-expanded={isCollapsed ? isFlyoutOpen : isExpanded}
+          aria-controls={isCollapsed ? `sidebar-flyout-${item.key}` : `sidebar-submenu-${item.key}`}
           data-testid={`sidebar-group-${item.key}`}
           title={item.label}
           aria-label={item.label}
         >
           <span className={styles.iconSlot}>
             <Icon />
+            {isCollapsed && (
+              <span className={styles.collapsedIndicator} aria-hidden="true" />
+            )}
           </span>
           <span className={styles.linkLabel}>{item.label}</span>
           <FiChevronDown className={`${styles.chevron} ${isExpanded ? styles.chevronOpen : ''}`} />
         </button>
-        <div
-          id={`sidebar-submenu-${item.key}`}
-          className={`${styles.subNav} ${isExpanded ? styles.subNavOpen : ''}`}
-          role="group"
-        >
-          {item.children.map((child) => {
-            const childActive = activeKeys.has(child.key);
-            return (
-              <Link
-                key={child.key}
-                href={child.href}
-                className={`${styles.subNavLink} ${childActive ? styles.navLinkActive : ''}`}
-                data-testid={`sidebar-link-${child.key}`}
-                title={child.label}
-                aria-current={childActive ? 'page' : undefined}
-                aria-label={child.label}
-              >
-                <span className={styles.bullet} aria-hidden />
-                <span className={styles.linkLabel}>{child.label}</span>
-              </Link>
-            );
-          })}
-        </div>
+        
+        {/* Regular accordion submenu for expanded state */}
+        {!isCollapsed && (
+          <div
+            id={`sidebar-submenu-${item.key}`}
+            className={`${styles.subNav} ${isExpanded ? styles.subNavOpen : ''}`}
+            role="group"
+          >
+            {item.children.map((child) => {
+              const childActive = activeKeys.has(child.key);
+              return (
+                <Link
+                  key={child.key}
+                  href={child.href}
+                  className={`${styles.subNavLink} ${childActive ? styles.navLinkActive : ''}`}
+                  data-testid={`sidebar-link-${child.key}`}
+                  title={child.label}
+                  aria-current={childActive ? 'page' : undefined}
+                  aria-label={child.label}
+                >
+                  <span className={styles.bullet} aria-hidden />
+                  <span className={styles.linkLabel}>{child.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+        
+        {/* Flyout menu for collapsed state */}
+        {isCollapsed && isFlyoutOpen && (
+          <div
+            id={`sidebar-flyout-${item.key}`}
+            className={styles.flyoutMenu}
+            role="group"
+            aria-label={`${item.label} submenu`}
+            style={{
+              top: `${flyoutPosition.top}px`
+            }}
+            onMouseEnter={handleFlyoutMouseEnter}
+            onMouseLeave={handleFlyoutMouseLeave}
+          >
+            <div className={styles.flyoutHeader}>
+              <span className={styles.flyoutTitle}>{item.label}</span>
+            </div>
+            <div className={styles.flyoutContent}>
+              {item.children.map((child) => {
+                const childActive = activeKeys.has(child.key);
+                return (
+                  <Link
+                    key={child.key}
+                    href={child.href}
+                    className={`${styles.flyoutLink} ${childActive ? styles.flyoutLinkActive : ''}`}
+                    data-testid={`sidebar-flyout-link-${child.key}`}
+                    title={child.label}
+                    aria-current={childActive ? 'page' : undefined}
+                    onClick={handleCloseFlyout}
+                  >
+                    {child.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -298,20 +407,6 @@ export default function AppLayout({ title, subtitle, children }) {
         className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ''}`}
       >
         <div className={styles.brandSection}>
-          <Link
-            href="/transactions"
-            className={styles.brandLink}
-            aria-label="Money Flow home"
-            data-testid="sidebar-brand"
-          >
-            <div className={styles.brandAvatar} aria-hidden>
-              <span className={styles.brandInitials}>MF</span>
-            </div>
-            <div className={styles.brandCopy}>
-              <span className={styles.brandName}>Money Flow</span>
-              <span className={styles.brandTagline}>Cash intelligence hub</span>
-            </div>
-          </Link>
           <button
             type="button"
             className={styles.collapseTrigger}
@@ -320,8 +415,18 @@ export default function AppLayout({ title, subtitle, children }) {
             data-testid="sidebar-collapse-toggle"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {isCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
+            <FiMenu />
           </button>
+          <Link
+            href="/transactions"
+            className={styles.brandLink}
+            aria-label="Money Flow home"
+            data-testid="sidebar-brand"
+          >
+            <div className={styles.brandCopy}>
+              <span className={styles.brandName}>Money Flow</span>
+            </div>
+          </Link>
         </div>
 
         <nav className={styles.nav} role="navigation" aria-label="Primary">

@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { FiChevronRight, FiEdit2, FiFilter, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi';
 
-import styles from '../../styles/TransactionsHistory.module.css';
+import styles from './TableBase.module.css';
+import bodyStyles from './TableBaseBody.module.css';
 import { formatAmount, formatPercent } from '../../lib/numberFormat';
 import { ACTIONS_COLUMN_WIDTH, CHECKBOX_COLUMN_WIDTH, resolveColumnSizing } from './tableUtils';
 import { TableActionMenuPortal } from './TableActions';
@@ -138,6 +139,7 @@ export function TableBaseBody({
   isSubmenuFlipped = false,
   hiddenColumnIds = new Set(),
   isColumnReorderMode = false,
+  visibleColumnsCount = 0,
 }) {
   const [tooltipState, setTooltipState] = useState({ anchor: null, content: '', isVisible: false });
 
@@ -197,7 +199,18 @@ export function TableBaseBody({
   return (
     <>
       <tbody>
-        {transactions.map((txn) => {
+        {transactions.length === 0 ? (
+          <tr>
+            <td 
+              colSpan={visibleColumnsCount + 2} 
+              className={styles.noDataCell}
+              style={{ textAlign: 'center', padding: '2rem', color: 'var(--mf-text-muted)' }}
+            >
+              No data found
+            </td>
+          </tr>
+        ) : (
+          transactions.map((txn) => {
           const isSelected = selectionSet.has(txn.id);
           return (
             <tr
@@ -370,7 +383,8 @@ export function TableBaseBody({
               </td>
             </tr>
           );
-        })}
+          })
+        )}
       </tbody>
       <TableTooltip
         anchor={tooltipAnchor}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import styles from '../../styles/TransactionsHistory.module.css';
+import styles from './TableBase.module.css';
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
 import {
   ACTIONS_COLUMN_WIDTH,
@@ -35,6 +35,7 @@ export function TableBase({
   fontScale = 1,
   sortState,
   onSortChange,
+  isShowingSelectedOnly = false,
 }) {
   const [openActionId, setOpenActionId] = useState(null);
   const [openActionSubmenu, setOpenActionSubmenu] = useState(null);
@@ -43,6 +44,7 @@ export function TableBase({
   const actionMenuCloseTimer = useRef(null);
   const headerCheckboxRef = useRef(null);
   const dragSourceRef = useRef(null);
+  const tableScrollRef = useRef(null);
 
   const definitionMap = useDefinitionMap(columnDefinitions);
   const actionRegistry = useActionMenuRegistry();
@@ -52,7 +54,24 @@ export function TableBase({
     transactions.length > 0 && transactions.every((txn) => selectionSet.has(txn.id));
   const isIndeterminate = selectionSet.size > 0 && !allSelected;
   const totalSelectionCount = selectionSummary?.count ?? selectionSet.size;
-  const shouldShowTotals = selectedIds.length > 0;
+  const shouldShowTotals = totalSelectionCount > 0;
+
+  const [savedScrollLeft, setSavedScrollLeft] = useState(0);
+
+  const handleSortChange = (columnId, direction) => {
+    if (tableScrollRef.current) {
+      const scrollLeft = tableScrollRef.current.scrollLeft;
+      setSavedScrollLeft(scrollLeft);
+      onSortChange(columnId, direction);
+    }
+  };
+
+  useEffect(() => {
+    if (savedScrollLeft > 0 && tableScrollRef.current) {
+      tableScrollRef.current.scrollLeft = savedScrollLeft;
+      setSavedScrollLeft(0);
+    }
+  }, [transactions, savedScrollLeft]);
 
   const displayColumns = useMemo(
     () => (isColumnReorderMode ? allColumns : visibleColumns),
@@ -108,9 +127,6 @@ export function TableBase({
   );
 
   const tableMinWidth = Math.max(minTableWidth + STICKY_COLUMN_BUFFER, 0);
-  // Enforce table wrapper overflow-x: auto with table-layout: fixed while ensuring the table must have
-  // min-width greater than container on overflow. This guarantees horizontal scroll inside table container
-  // only and keeps sticky header, fixed checkbox & actions column aligned with no page-level horizontal scrolling.
 
   useEffect(() => {
     if (headerCheckboxRef.current) {
@@ -301,7 +317,7 @@ export function TableBase({
       }}
     >
       {toolbarSlot}
-      <div className={styles.tableScroll} data-testid="transactions-table-container">
+      <div ref={tableScrollRef} className={styles.tableScroll} data-testid="transactions-table-container">
         <table className={styles.table} style={{ '--table-min-width': `${tableMinWidth}px` }}>
           <TableBaseHeader
             columns={displayColumns}
@@ -320,7 +336,7 @@ export function TableBase({
             visibleColumnIds={visibleColumnIds}
             onColumnVisibilityChange={onColumnVisibilityChange}
             sortState={sortState}
-            onSortChange={onSortChange}
+            onSortChange={handleSortChange}
           />
           <TableBaseBody
             transactions={transactions}
@@ -341,10 +357,11 @@ export function TableBase({
             isSubmenuFlipped={isSubmenuFlipped}
             hiddenColumnIds={hiddenColumnIds}
             isColumnReorderMode={isColumnReorderMode}
+            visibleColumnsCount={displayColumns.length}
           />
           {shouldShowTotals ? (
             <tfoot>
-              <tr className={styles.totalRow}>
+              <tr className={`${styles.totalRow} ${!shouldShowTotals ? 'hidden' : ''}`}>
                 <td
                   className={`${styles.bodyCell} ${styles.totalRowCell} ${styles.stickyLeft} ${styles.checkboxCell}`}
                   style={{
@@ -412,7 +429,11 @@ export function TableBase({
           ) : null}
         </table>
       </div>
-      {pagination ? <div className={styles.paginationBar}>{pagination.render()}</div> : null}
+      {pagination ? (
+        <div className={`${styles.paginationBar} ${isShowingSelectedOnly ? styles.footerUnstick : ''}`}>
+          {pagination.render({ selectedCount: selectionSet.size })}
+        </div>
+      ) : null}
     </section>
   );
 }
