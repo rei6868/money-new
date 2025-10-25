@@ -307,6 +307,7 @@ export function TableBase({
             definitionMap={definitionMap}
             isColumnReorderMode={isColumnReorderMode}
             activeDropTarget={activeDropTarget}
+            transactions={transactions}
             onColumnDragStart={handleColumnDragStart}
             onColumnDragEnter={handleColumnDragEnter}
             onColumnDragOver={handleColumnDragOver}

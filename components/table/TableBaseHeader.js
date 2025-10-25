@@ -31,11 +31,61 @@ function SortIcon({ direction }) {
   );
 }
 
+function isSortValueEmpty(value, sortType) {
+  if (value === null || value === undefined) {
+    return true;
+  }
+
+  if (sortType === 'number') {
+    const normalized =
+      typeof value === 'string' ? value.trim() : value;
+    if (normalized === '' || normalized === '0') {
+      return true;
+    }
+    const numericValue = Number(normalized);
+    if (!Number.isFinite(numericValue)) {
+      return true;
+    }
+    return numericValue === 0;
+  }
+
+  if (sortType === 'date') {
+    if (typeof value === 'number') {
+      if (value === 0) {
+        return true;
+      }
+      const parsedFromNumber = new Date(value);
+      return Number.isNaN(parsedFromNumber.getTime());
+    }
+    const normalized = typeof value === 'string' ? value.trim() : value;
+    if (!normalized || normalized === '0') {
+      return true;
+    }
+    if (normalized instanceof Date) {
+      return Number.isNaN(normalized.getTime());
+    }
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime());
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed === '' || trimmed === '0';
+  }
+
+  if (typeof value === 'number') {
+    return value === 0;
+  }
+
+  return false;
+}
+
 export function TableBaseHeader({
   columns,
   definitionMap,
   isColumnReorderMode = false,
   activeDropTarget,
+  transactions = [],
   onColumnDragStart,
   onColumnDragEnter,
   onColumnDragOver,
@@ -72,6 +122,26 @@ export function TableBaseHeader({
 
   const visibleIdSet = useMemo(() => new Set(visibleColumnIds), [visibleColumnIds]);
 
+  const sortDisabledMap = useMemo(() => {
+    if (!Array.isArray(columns) || columns.length === 0) {
+      return new Map();
+    }
+
+    const transactionList = Array.isArray(transactions) ? transactions : [];
+    return new Map(
+      columns.map((column) => {
+        const definition = definitionMap.get(column.id);
+        const sortType = resolveColumnSortType(column.id, definition);
+        const isDisabled =
+          transactionList.length === 0 ||
+          transactionList.every((transaction = {}) =>
+            isSortValueEmpty(transaction?.[column.id], sortType),
+          );
+        return [column.id, isDisabled];
+      }),
+    );
+  }, [columns, definitionMap, transactions]);
+
   const renderHeaderCell = (column) => {
     const definition = definitionMap.get(column.id);
     const alignClass =
@@ -92,8 +162,10 @@ export function TableBaseHeader({
     const isSorted = sortState?.columnId === column.id && sortState.direction;
     const sortDirection = isSorted ? sortState.direction : null;
     const sortType = resolveColumnSortType(column.id, definition);
-    const iconType = sortType === 'number' || sortType === 'date' ? 'number' : 'string';
-    const tooltipContent = isSorted
+    const isSortDisabled = sortDisabledMap.get(column.id) ?? false;
+    const tooltipContent = isSortDisabled
+      ? `Sorting unavailable – no data in ${headerTitle}`
+      : isSorted
       ? sortDirection === 'asc'
         ? 'Sorted Ascending'
         : 'Sorted Descending'
@@ -178,7 +250,7 @@ export function TableBaseHeader({
               type="button"
               className={sortButtonClassName}
               onClick={handleSortClick}
-              disabled={isColumnReorderMode}
+              disabled={isColumnReorderMode || isSortDisabled}
               aria-label={tooltipContent}
             >
               <SortIcon direction={sortDirection ?? undefined} />
