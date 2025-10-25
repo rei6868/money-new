@@ -17,6 +17,7 @@ import { TableBaseBody } from './TableBaseBody';
 const ACTION_SUBMENU_WIDTH = 220;
 
 export function TableBase({
+  tableScrollRef,
   transactions,
   selectedIds,
   onSelectRow,
@@ -44,7 +45,6 @@ export function TableBase({
   const actionMenuCloseTimer = useRef(null);
   const headerCheckboxRef = useRef(null);
   const dragSourceRef = useRef(null);
-  const tableScrollRef = useRef(null);
 
   const definitionMap = useDefinitionMap(columnDefinitions);
   const actionRegistry = useActionMenuRegistry();
@@ -55,23 +55,6 @@ export function TableBase({
   const isIndeterminate = selectionSet.size > 0 && !allSelected;
   const totalSelectionCount = selectionSummary?.count ?? selectionSet.size;
   const shouldShowTotals = totalSelectionCount > 0;
-
-  const [savedScrollLeft, setSavedScrollLeft] = useState(0);
-
-  const handleSortChange = (columnId, direction) => {
-    if (tableScrollRef.current) {
-      const scrollLeft = tableScrollRef.current.scrollLeft;
-      setSavedScrollLeft(scrollLeft);
-      onSortChange(columnId, direction);
-    }
-  };
-
-  useEffect(() => {
-    if (savedScrollLeft > 0 && tableScrollRef.current) {
-      tableScrollRef.current.scrollLeft = savedScrollLeft;
-      setSavedScrollLeft(0);
-    }
-  }, [transactions, savedScrollLeft]);
 
   const displayColumns = useMemo(
     () => (isColumnReorderMode ? allColumns : visibleColumns),
@@ -336,7 +319,7 @@ export function TableBase({
             visibleColumnIds={visibleColumnIds}
             onColumnVisibilityChange={onColumnVisibilityChange}
             sortState={sortState}
-            onSortChange={handleSortChange}
+            onSortChange={onSortChange}
           />
           <TableBaseBody
             transactions={transactions}
@@ -430,7 +413,7 @@ export function TableBase({
         </table>
       </div>
       {pagination ? (
-        <div className={`${styles.paginationBar} ${isShowingSelectedOnly ? styles.footerUnstick : ''}`}>
+        <div className={styles.paginationBar}>
           {pagination.render({ selectedCount: selectionSet.size })}
         </div>
       ) : null}

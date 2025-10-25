@@ -26,7 +26,6 @@
   overscroll-behavior: contain;
   flex: 1 1 auto;
   min-height: 0;
-  max-height: calc(100vh - var(--pagination-bar-height, 60px) - 200px);
 }
 
 .table {
@@ -98,6 +97,12 @@
 
 .stickyLeftNoShadow {
   box-shadow: none;
+}
+
+/* Remove shadow from second sticky column to prevent gap */
+:global(th):nth-child(2).stickyLeft,
+:global(td):nth-child(2).stickyLeft {
+  box-shadow: none !important;
 }
 
 .stickyRight {
@@ -478,8 +483,6 @@ th.checkboxCell {
   background: var(--mf-sidebar-bg);
   flex-shrink: 0;
   min-height: var(--pagination-bar-height);
-  position: sticky;
-  bottom: 0;
   z-index: 120;
 }
 
