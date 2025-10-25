@@ -1,5 +1,7 @@
+// pages/api/people/index.ts - FIXED VERSION
 import type { NextApiRequest, NextApiResponse } from "next";
 import { asc } from "drizzle-orm";
+import { randomUUID } from "crypto";
 
 import { db } from "../../../lib/db/client";
 import { people, type NewPerson } from "../../../src/db/schema/people";
@@ -27,7 +29,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "POST") {
     try {
-      const payload = req.body as NewPerson;
+      const body = req.body || {};
+      
+      // ✅ VALIDATE required fields
+      if (!body.fullName || !body.status) {
+        res.status(400).json({ 
+          error: "Validation failed", 
+          details: "fullName and status are required" 
+        });
+        return;
+      }
+
+      // ✅ BUILD INSERT PAYLOAD with auto UUID
+      const payload: NewPerson = {
+        personId: randomUUID(), // ← AUTO GENERATE UUID
+        fullName: body.fullName,
+        status: body.status,
+        contactInfo: body.contactInfo || null,
+        groupId: body.groupId || null,
+        imgUrl: body.imgUrl || null,
+        note: body.note || null,
+      };
+
       const created = await database.insert(people).values(payload).returning();
       res.status(201).json(created[0]);
     } catch (error) {

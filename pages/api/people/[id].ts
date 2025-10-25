@@ -1,3 +1,4 @@
+// pages/api/people/[id].ts - FIXED VERSION
 import type { NextApiRequest, NextApiResponse } from "next";
 import { eq } from "drizzle-orm";
 
@@ -39,10 +40,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "PUT" || req.method === "PATCH") {
     try {
-      const { personId: _ignoredPersonId, ...rest } = req.body as Partial<NewPerson>;
+      // ✅ FIX: Validate & sanitize update payload
+      const body = req.body || {};
+      
+      // ✅ BUILD UPDATE OBJECT (chỉ update field có trong body)
+      const updates: Partial<NewPerson> = {};
+      
+      if (body.fullName !== undefined) updates.fullName = body.fullName;
+      if (body.status !== undefined) updates.status = body.status;
+      if (body.contactInfo !== undefined) updates.contactInfo = body.contactInfo;
+      if (body.groupId !== undefined) updates.groupId = body.groupId;
+      if (body.imgUrl !== undefined) updates.imgUrl = body.imgUrl;
+      if (body.note !== undefined) updates.note = body.note;
+      
+      // ✅ AUTO UPDATE timestamp
+      updates.updatedAt = new Date();
+
+      // ✅ CHECK: Có gì để update không?
+      if (Object.keys(updates).length === 0) {
+        res.status(400).json({ error: "No valid fields to update" });
+        return;
+      }
+
       const updated = await database
         .update(people)
-        .set(rest)
+        .set(updates)
         .where(eq(people.personId, personId))
         .returning();
 
