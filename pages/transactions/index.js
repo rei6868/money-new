@@ -9,6 +9,7 @@ import styles from '../../styles/TransactionsHistory.module.css';
 import TransactionAdvancedModal from '../../components/transactions/TransactionAdvancedModal';
 import AddTransactionModal from '../../components/transactions/AddTransactionModal';
 import { ConfirmationModal } from '../../components/common/ConfirmationModal';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
 
@@ -644,7 +645,7 @@ export default function TransactionsHistoryPage() {
 
         {isFetching || columnDefinitions.length === 0 ? (
           <div className={styles.tableCard} data-testid="transactions-loading">
-            <div className={styles.emptyState}>Loading transactions...</div>
+            <LoadingSpinner label="Loading transactions…" />
           </div>
         ) : (
           <TransactionsTable
