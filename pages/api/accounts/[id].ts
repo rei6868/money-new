@@ -1,258 +1,165 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { eq } from "drizzle-orm";
 
-import { getDb } from "../../../lib/db/client";
-import { accounts, accountStatusEnum, type NewAccount } from "../../../src/db/schema/accounts";
-import { people } from "../../../src/db/schema/people";
-
-type DbClient = NonNullable<ReturnType<typeof getDb>>;
-
-type AccountWithOwner = typeof accounts.$inferSelect & {
-  ownerName: string | null;
-};
-
-const respondJson = (res: NextApiResponse, status: number, payload: unknown): void => {
-  res.setHeader("Content-Type", "application/json");
-  res.status(status).json(payload);
-};
-
-const toSingle = (value: string | string[] | undefined): string | undefined => {
-  if (Array.isArray(value)) {
-    return value[0];
-  }
-  return value;
-};
-
-const normalizeString = (value: unknown): string | undefined => {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-};
-
-const parseRequestBody = (raw: unknown): Record<string, unknown> | null => {
-  if (raw == null) {
-    return {};
-  }
-  if (typeof raw === "string") {
-    if (raw.trim().length === 0) {
-      return {};
-    }
-    try {
-      const parsed = JSON.parse(raw);
-      return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : null;
-    } catch (error) {
-      console.error("Failed to parse JSON payload for /api/accounts/[id]", error);
-      return null;
-    }
-  }
-  if (typeof raw === "object") {
-    return raw as Record<string, unknown>;
-  }
-  return null;
-};
-
-const accountSelection = {
-  accountId: accounts.accountId,
-  accountName: accounts.accountName,
-  imgUrl: accounts.imgUrl,
-  accountType: accounts.accountType,
-  ownerId: accounts.ownerId,
-  parentAccountId: accounts.parentAccountId,
-  assetRef: accounts.assetRef,
-  openingBalance: accounts.openingBalance,
-  currentBalance: accounts.currentBalance,
-  status: accounts.status,
-  totalIn: accounts.totalIn,
-  totalOut: accounts.totalOut,
-  createdAt: accounts.createdAt,
-  updatedAt: accounts.updatedAt,
-  notes: accounts.notes,
-  ownerName: people.fullName,
-};
-
-const selectAccountById = async (db: DbClient, accountId: string): Promise<AccountWithOwner | null> => {
-  const [account] = await db
-    .select(accountSelection)
-    .from(accounts)
-    .leftJoin(people, eq(accounts.ownerId, people.personId))
-    .where(eq(accounts.accountId, accountId))
-    .limit(1);
-  return account ?? null;
-};
+import { db } from "../../../lib/db/client";
+import { accounts, accountTypeEnum, accountStatusEnum, type NewAccount } from "../../../src/db/schema/accounts";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const db = getDb();
-  if (!db) {
-    respondJson(res, 503, { error: "Database connection is not configured" });
+  const database = db;
+
+  if (!database) {
+    console.error("Database connection is not configured");
+    res.status(500).json({ error: "Database connection is not configured" });
     return;
   }
 
-  const accountId = toSingle(req.query.id);
+  const { id } = req.query;
+  const accountId = Array.isArray(id) ? id[0] : id;
+
   if (!accountId) {
-    respondJson(res, 400, { error: "Account id is required" });
+    res.status(400).json({ message: "Account id is required" });
     return;
   }
 
   if (req.method === "GET") {
     try {
-      const account = await selectAccountById(db, accountId);
-      if (!account) {
-        respondJson(res, 404, { error: "Account not found" });
+      const result = await database.select().from(accounts).where(eq(accounts.accountId, accountId));
+      if (result.length === 0) {
+        res.status(404).json({ message: "Account not found" });
         return;
       }
-      respondJson(res, 200, account);
+      res.status(200).json(result[0]);
     } catch (error) {
-      console.error(`Failed to fetch account ${accountId}`, error);
-      const details = error instanceof Error ? error.message : "Unknown error";
-      respondJson(res, 500, { error: "Failed to fetch account", details });
+      console.error(`Failed to fetch account with id ${accountId}`, error);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ error: message });
     }
     return;
   }
 
   if (req.method === "PUT" || req.method === "PATCH") {
-    const parsedBody = parseRequestBody(req.body);
-    if (parsedBody === null) {
-      respondJson(res, 400, { error: "Validation failed", details: "Invalid JSON payload" });
-      return;
-    }
-
-    const forbiddenFields = ["openingBalance", "totalIn", "totalOut", "currentBalance"];
-    const attemptedForbidden = forbiddenFields.filter((field) => field in parsedBody);
-    if (attemptedForbidden.length > 0) {
-      respondJson(res, 400, {
-        error: "Validation failed",
-        details: `Fields ${attemptedForbidden.join(", ")} cannot be updated via this endpoint`,
-      });
-      return;
-    }
-
-    const updates: Partial<NewAccount> = {};
-    const { accountName, accountType, ownerId, status, parentAccountId, assetRef, imgUrl, notes } =
-      parsedBody;
-
-    const normalizedAccountName = normalizeString(accountName);
-    if (normalizedAccountName) {
-      updates.accountName = normalizedAccountName;
-    }
-
-    const normalizedAccountType = normalizeString(accountType);
-    if (accountType !== undefined) {
-      if (!normalizedAccountType) {
-        respondJson(res, 400, { error: "Validation failed", details: "accountType must be a non-empty string" });
-        return;
-      }
-      updates.accountType = normalizedAccountType;
-    }
-
-    const normalizedOwnerId = normalizeString(ownerId);
-    if (ownerId !== undefined) {
-      if (!normalizedOwnerId) {
-        respondJson(res, 400, { error: "Validation failed", details: "ownerId must be a non-empty string" });
-        return;
-      }
-      updates.ownerId = normalizedOwnerId;
-    }
-
-    const normalizedStatus = normalizeString(status);
-    if (status !== undefined) {
-      if (!normalizedStatus) {
-        respondJson(res, 400, { error: "Validation failed", details: "status must be a non-empty string" });
-        return;
-      }
-      const allowedStatuses = accountStatusEnum.enumValues;
-      if (!(allowedStatuses as string[]).includes(normalizedStatus)) {
-        respondJson(res, 400, {
-          error: "Invalid status value",
-          details: `Status must be one of: ${allowedStatuses.join(", ")}`,
-        });
-        return;
-      }
-      updates.status = normalizedStatus;
-    }
-
-    if (parentAccountId !== undefined) {
-      const normalizedParent = normalizeString(parentAccountId);
-      updates.parentAccountId = normalizedParent ?? null;
-    }
-
-    if (assetRef !== undefined) {
-      const normalizedAssetRef = normalizeString(assetRef);
-      updates.assetRef = normalizedAssetRef ?? null;
-    }
-
-    if (imgUrl !== undefined) {
-      const normalizedImg = normalizeString(imgUrl);
-      updates.imgUrl = normalizedImg ?? null;
-    }
-
-    if (notes !== undefined) {
-      if (typeof notes === "string") {
-        const trimmedNotes = notes.trim();
-        updates.notes = trimmedNotes.length > 0 ? trimmedNotes : null;
-      } else if (notes === null) {
-        updates.notes = null;
-      } else {
-        respondJson(res, 400, { error: "Validation failed", details: "notes must be a string or null" });
-        return;
-      }
-    }
-
-    if (Object.keys(updates).length === 0) {
-      respondJson(res, 400, { error: "No updates provided" });
-      return;
-    }
-
-    updates.updatedAt = new Date();
-
     try {
-      const [updated] = await db
+      const body = req.body || {};
+      
+      // ✅ BUILD UPDATE OBJECT (chỉ update field có trong body)
+      const updates: any = {}; // Use any to avoid type issues with decimal strings
+      
+      // String fields
+      if (body.accountName !== undefined) updates.accountName = body.accountName;
+      if (body.imgUrl !== undefined) updates.imgUrl = body.imgUrl;
+      if (body.ownerId !== undefined) updates.ownerId = body.ownerId;
+      if (body.parentAccountId !== undefined) updates.parentAccountId = body.parentAccountId;
+      if (body.assetRef !== undefined) updates.assetRef = body.assetRef;
+      if (body.notes !== undefined) updates.notes = body.notes;
+
+      // Enum fields with validation
+      if (body.accountType !== undefined) {
+        const allowedTypes = accountTypeEnum.enumValues as readonly string[];
+        if (!allowedTypes.includes(body.accountType)) {
+          res.status(400).json({ 
+            error: "Validation failed", 
+            details: `accountType must be one of: ${allowedTypes.join(", ")}` 
+          });
+          return;
+        }
+        updates.accountType = body.accountType;
+      }
+
+      if (body.status !== undefined) {
+        const allowedStatuses = accountStatusEnum.enumValues as readonly string[];
+        if (!allowedStatuses.includes(body.status)) {
+          res.status(400).json({ 
+            error: "Validation failed", 
+            details: `status must be one of: ${allowedStatuses.join(", ")}` 
+          });
+          return;
+        }
+        updates.status = body.status;
+      }
+
+      // Numeric fields with validation
+      if (body.openingBalance !== undefined) {
+        const value = parseFloat(body.openingBalance);
+        if (isNaN(value)) {
+          res.status(400).json({ error: "openingBalance must be a valid number" });
+          return;
+        }
+        updates.openingBalance = value.toFixed(2);
+      }
+
+      if (body.currentBalance !== undefined) {
+        const value = parseFloat(body.currentBalance);
+        if (isNaN(value)) {
+          res.status(400).json({ error: "currentBalance must be a valid number" });
+          return;
+        }
+        updates.currentBalance = value.toFixed(2);
+      }
+
+      if (body.totalIn !== undefined) {
+        const value = parseFloat(body.totalIn);
+        if (isNaN(value)) {
+          res.status(400).json({ error: "totalIn must be a valid number" });
+          return;
+        }
+        updates.totalIn = value.toFixed(2);
+      }
+
+      if (body.totalOut !== undefined) {
+        const value = parseFloat(body.totalOut);
+        if (isNaN(value)) {
+          res.status(400).json({ error: "totalOut must be a valid number" });
+          return;
+        }
+        updates.totalOut = value.toFixed(2);
+      }
+
+      // ✅ AUTO UPDATE timestamp
+      updates.updatedAt = new Date();
+
+      // ✅ CHECK: Có gì để update không?
+      const updateKeys = Object.keys(updates).filter(key => key !== 'updatedAt');
+      if (updateKeys.length === 0) {
+        res.status(400).json({ error: "No valid fields to update" });
+        return;
+      }
+
+      const updated = await database
         .update(accounts)
         .set(updates)
         .where(eq(accounts.accountId, accountId))
-        .returning({ accountId: accounts.accountId });
+        .returning();
 
-      if (!updated) {
-        respondJson(res, 404, { error: "Account not found" });
+      if (updated.length === 0) {
+        res.status(404).json({ message: "Account not found" });
         return;
       }
 
-      const account = await selectAccountById(db, accountId);
-      if (!account) {
-        respondJson(res, 200, { accountId });
-        return;
-      }
-      respondJson(res, 200, account);
+      res.status(200).json(updated[0]);
     } catch (error) {
-      console.error(`Failed to update account ${accountId}`, error);
-      const details = error instanceof Error ? error.message : "Unknown error";
-      respondJson(res, 400, { error: "Failed to update account", details });
+      console.error(`Failed to update account with id ${accountId}`, error);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ error: message });
     }
     return;
   }
 
   if (req.method === "DELETE") {
     try {
-      const deleted = await db
-        .delete(accounts)
-        .where(eq(accounts.accountId, accountId))
-        .returning({ accountId: accounts.accountId });
-
+      const deleted = await database.delete(accounts).where(eq(accounts.accountId, accountId)).returning();
       if (deleted.length === 0) {
-        respondJson(res, 404, { error: "Account not found" });
+        res.status(404).json({ message: "Account not found" });
         return;
       }
-
-      res.status(204).end();
+      res.status(200).json(deleted[0]);
     } catch (error) {
-      console.error(`Failed to delete account ${accountId}`, error);
-      const details = error instanceof Error ? error.message : "Unknown error";
-      respondJson(res, 400, { error: "Failed to delete account", details });
+      console.error(`Failed to delete account with id ${accountId}`, error);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ error: message });
     }
     return;
   }
 
   res.setHeader("Allow", ["GET", "PUT", "PATCH", "DELETE"]);
-  respondJson(res, 405, { error: "Method not allowed" });
+  res.status(405).json({ error: "Method not allowed" });
 }
