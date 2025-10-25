@@ -342,6 +342,7 @@ export default function AppLayout({ title, subtitle, children }) {
           >
             {item.children.map((child) => {
               const childActive = activeKeys.has(child.key);
+              const ChildIcon = child.icon ?? item.icon;
               return (
                 <Link
                   key={child.key}
@@ -352,7 +353,11 @@ export default function AppLayout({ title, subtitle, children }) {
                   aria-current={childActive ? 'page' : undefined}
                   aria-label={child.label}
                 >
-                  <span className={styles.bullet} aria-hidden />
+                  {ChildIcon && (
+                    <span className={`${styles.iconSlot} ${styles.subNavIconSlot}`}>
+                      <ChildIcon />
+                    </span>
+                  )}
                   <span className={styles.linkLabel}>{child.label}</span>
                 </Link>
               );
@@ -379,6 +384,7 @@ export default function AppLayout({ title, subtitle, children }) {
             <div className={styles.flyoutContent}>
               {item.children.map((child) => {
                 const childActive = activeKeys.has(child.key);
+                const ChildIcon = child.icon ?? item.icon;
                 return (
                   <Link
                     key={child.key}
@@ -389,7 +395,12 @@ export default function AppLayout({ title, subtitle, children }) {
                     aria-current={childActive ? 'page' : undefined}
                     onClick={handleCloseFlyout}
                   >
-                    {child.label}
+                    {ChildIcon && (
+                      <span className={`${styles.iconSlot} ${styles.flyoutIconSlot}`}>
+                        <ChildIcon />
+                      </span>
+                    )}
+                    <span className={styles.linkLabel}>{child.label}</span>
                   </Link>
                 );
               })}

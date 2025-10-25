@@ -189,11 +189,14 @@
 }
 
 .subNav {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.25rem;
-  padding-left: 2.65rem;
+  padding: 0.35rem 0;
+  padding-left: 2.4rem;
   margin-top: 0.35rem;
   max-height: 0;
+  overflow: hidden;
   transition: max-height 0.3s ease;
 }
 
@@ -204,8 +207,8 @@
 .subNavLink {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.55rem 0.65rem 0.55rem 0.35rem;
+  gap: 0.55rem;
+  padding: 0.55rem 0.65rem 0.55rem 0.25rem;
   border-radius: 12px;
   color: var(--mf-text-secondary);
   text-decoration: none;
@@ -222,18 +225,28 @@
   background: var(--mf-accent-soft);
   color: var(--mf-accent-strong);
   margin: 0 -1rem;
-  padding-left: 3.65rem;
+  padding-left: 3.4rem;
   padding-right: 1rem;
   border-radius: 0;
   width: calc(100% + 2rem);
 }
 
-.bullet {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.45;
+.subNavIconSlot {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  font-size: 1.1rem;
+  color: inherit;
+}
+
+.flyoutIconSlot {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  font-size: 1.1rem;
+  color: inherit;
 }
 
 .sidebarFooter {
@@ -420,6 +433,7 @@
 .flyoutLink {
   display: flex;
   align-items: center;
+  gap: 0.65rem;
   padding: 0.65rem 0.85rem;
   border-radius: 12px;
   color: var(--mf-text-secondary);
@@ -440,8 +454,8 @@
   color: var(--mf-accent-strong);
   font-weight: 600;
   margin: 0 -0.5rem;
-  padding-left: 1.35rem;
-  padding-right: 1.35rem;
+  padding-left: 0.85rem;
+  padding-right: 0.85rem;
   border-radius: 0;
   width: calc(100% + 1rem);
 }
