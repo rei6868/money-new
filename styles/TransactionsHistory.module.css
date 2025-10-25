@@ -40,6 +40,7 @@
 .toolbarCard {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'left actions';
   align-items: center;
   gap: 0.75rem 1.1rem;
   padding: 0.85rem 1.05rem;
@@ -58,6 +59,7 @@
   min-width: 0;
   flex: 1 1 auto;
   flex-wrap: nowrap;
+  grid-area: left;
 }
 
 .searchGroup {
@@ -513,6 +515,7 @@
   flex-wrap: nowrap;
   gap: 0.75rem;
   min-width: 0;
+  grid-area: actions;
 }
 
 .customizeActionsGroup {
@@ -612,6 +615,7 @@
   gap: 0.6rem;
   font-size: calc(var(--transactions-font-scale, 1) * 0.9rem);
   color: var(--mf-text-secondary);
+  min-width: 0;
 }
 
 .pageSizeSelect {
@@ -681,8 +685,28 @@
 .paginationControls {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  flex-wrap: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.paginationMeta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 0.75rem;
   flex-wrap: wrap;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.fontScaleMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
 }
 
 .paginationButton {
@@ -1692,9 +1716,14 @@
 
   .pageSizeGroup,
   .fontScaleGroup,
-  .paginationControls {
+  .paginationControls,
+  .paginationMeta {
     flex: 1 1 100%;
     justify-content: center;
+  }
+
+  .paginationMeta {
+    gap: 0.5rem;
   }
 
   .pageSizeSelect {
@@ -1770,6 +1799,54 @@
 
   .searchGroup {
     min-width: 200px;
+  }
+
+  .toolbarCard[data-reorder-mode='true'] {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'left'
+      'actions';
+    row-gap: 0.6rem;
+  }
+
+  .toolbarCard[data-reorder-mode='true'] .toolbarLeft {
+    width: 100%;
+  }
+
+  .toolbarCard[data-reorder-mode='true'] .searchGroup {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .toolbarCard[data-reorder-mode='true'] .actionsGroup {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .toolbarCard[data-reorder-mode='true'] .customizeActionsGroup {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .toolbarCard[data-reorder-mode='true'] .toolbarCustomizeControls {
+    padding-right: 0;
+    margin-right: 0;
+    border-right: none;
+    width: 100%;
+  }
+
+  .toolbarCard[data-reorder-mode='true'] .customizeToolbarActions {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.35rem;
+  }
+
+  .paginationMeta {
+    gap: 0.4rem;
   }
 
   .selectionQuickActions {

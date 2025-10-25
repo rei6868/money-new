@@ -6,7 +6,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--table-muted, #64748b);
   padding: 0.75rem 1rem;
   background: transparent;
@@ -47,8 +47,13 @@
 }
 
 .headerLabel span {
-  white-space: normal;
   word-break: break-word;
+}
+
+.headerLabelText {
+  font-size: 0.72rem;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .headerReorder {
@@ -103,7 +108,13 @@
 }
 
 .columnToggle input:checked + .toggleTrack {
-  background: rgba(99, 102, 241, 0.55);
+  background: rgba(99, 102, 241, 0.7);
+}
+
+@media (max-width: 640px) {
+  .headerLabelText {
+    white-space: normal;
+  }
 }
 
 .toggleThumb {

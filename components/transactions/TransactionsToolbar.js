@@ -47,7 +47,11 @@ export function TransactionsToolbar({
   const isCustomizeLocked = isReorderMode;
 
   return (
-    <section className={styles.toolbarCard} aria-label="Transactions controls">
+    <section
+      className={styles.toolbarCard}
+      aria-label="Transactions controls"
+      data-reorder-mode={isReorderMode ? 'true' : 'false'}
+    >
       <div className={styles.toolbarLeft}>
         <TableRestoreInput
           ref={searchInputRef}

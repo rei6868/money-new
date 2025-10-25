@@ -480,7 +480,7 @@ const TableBaseInner = (
                     );
                   })}
                   <td
-                    className={`${styles.bodyCell} ${styles.actionsCell} ${styles.stickyRight}`}
+                    className={`${styles.bodyCell} ${styles.actionsCell}`}
                     style={{
                       minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
                       width: `${ACTIONS_COLUMN_WIDTH}px`,
@@ -491,13 +491,13 @@ const TableBaseInner = (
               </tfoot>
             ) : null}
           </table>
-          {isFetching ? (
-            <div className={styles.loadingOverlay} role="status" aria-live="polite">
-              <div className={styles.loadingSpinner} aria-hidden />
-              <span className={styles.loadingLabel}>Refreshing data…</span>
-            </div>
-          ) : null}
         </div>
+        {isFetching ? (
+          <div className={styles.loadingOverlay} role="status" aria-live="polite">
+            <div className={styles.loadingSpinner} aria-hidden />
+            <span className={styles.loadingLabel}>Refreshing data…</span>
+          </div>
+        ) : null}
         {shouldRenderPagination ? (
           <div
             className={`${styles.paginationBar} ${

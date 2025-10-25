@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { FiLogOut, FiMoreHorizontal, FiMoon, FiSun, FiChevronDown, FiMenu } from 'react-icons/fi';
+import { FiLogOut, FiMoreHorizontal, FiMoon, FiSun, FiChevronDown } from 'react-icons/fi';
 
 import styles from './TopNavBar.module.css';
 
@@ -181,7 +181,7 @@ export function TopNavBar({
 
   const activePageLabel = useMemo(() => {
     const activePage = flattenedNavItems.find((item) => activeSet.has(item.key));
-    return activePage?.label || 'Money Flow';
+    return activePage?.label || 'Menu';
   }, [flattenedNavItems, activeSet]);
 
   const closeDropdown = useCallback(() => {
@@ -236,9 +236,13 @@ export function TopNavBar({
 
   return (
     <nav className={styles.navBar} aria-label="Primary navigation">
-      <Link href="/transactions" className={styles.brandLink} onClick={closeDropdown}>
+      <Link
+        href="/transactions"
+        className={styles.brandLink}
+        onClick={closeDropdown}
+        aria-label="Money Flow home"
+      >
         <span className={styles.brandMark}>MF</span>
-        <span className={styles.brandText}>Money Flow</span>
       </Link>
       <div className={styles.mobileMenuWrapper} ref={mobileDropdownRef}>
         <button
@@ -249,7 +253,6 @@ export function TopNavBar({
           aria-expanded={isMobileDropdown}
           aria-label="Open navigation menu"
         >
-          <FiMenu className={styles.mobileMenuIcon} aria-hidden="true" />
           <span className={styles.mobileLabel}>{activePageLabel}</span>
           <FiChevronDown className={styles.mobileChevron} aria-hidden="true" />
         </button>

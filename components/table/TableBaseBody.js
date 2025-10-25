@@ -204,7 +204,7 @@ export function TableBaseBody({
 
   const renderRowActions = (transaction, isSelected) => (
     <td
-      className={`${styles.bodyCell} ${styles.actionsCell} ${styles.stickyRight}`}
+      className={`${styles.bodyCell} ${styles.actionsCell}`}
       style={{
         minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
         width: `${ACTIONS_COLUMN_WIDTH}px`,

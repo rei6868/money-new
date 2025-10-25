@@ -243,7 +243,7 @@ export function TableBaseHeader({
         <div className={shellClassName}>
           <div className={headerStyles.headerContent}>
             <div className={headerStyles.headerLabel}>
-              <span>{title}</span>
+              <span className={headerStyles.headerLabelText}>{title}</span>
             </div>
           </div>
           {isColumnReorderMode ? (
@@ -298,7 +298,7 @@ export function TableBaseHeader({
         <th
           scope="col"
           aria-label="Task"
-          className={`${headerStyles.headerCell} ${styles.actionsCell} ${styles.stickyRight}`}
+          className={`${headerStyles.headerCell} ${styles.actionsCell}`}
           style={{
             minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
             width: `${ACTIONS_COLUMN_WIDTH}px`,
