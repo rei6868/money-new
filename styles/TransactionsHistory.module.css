@@ -41,8 +41,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.85rem 1.25rem;
-  padding: 0.95rem 1.2rem;
+  gap: 0.75rem 1.1rem;
+  padding: 0.85rem 1.05rem;
   border-radius: 18px;
   border: 1px solid var(--mf-border-subtle);
   background: var(--mf-sidebar-bg);
@@ -54,7 +54,7 @@
 .toolbarLeft {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
   min-width: 0;
   flex: 1 1 auto;
   flex-wrap: nowrap;
@@ -69,8 +69,8 @@
   border: 1px solid transparent;
   background: rgba(148, 163, 184, 0.15);
   transition: border 0.2s ease, box-shadow 0.2s ease;
-  min-width: min(220px, 55vw);
-  flex: 1 1 220px;
+  min-width: min(200px, 60vw);
+  flex: 1 1 200px;
   z-index: 1;
 }
 
@@ -1614,23 +1614,19 @@
 
 @media (max-width: 1024px) {
   .toolbarCard {
-    grid-template-columns: 1fr;
-    align-items: stretch;
-    gap: 0.75rem;
-    padding: 0.85rem 1rem;
-  }
-
-  .toolbarCard > * {
-    width: 100%;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.65rem 0.85rem;
+    padding: 0.8rem 0.9rem;
   }
 
   .toolbarLeft {
-    gap: 0.6rem;
-    flex-wrap: wrap;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
   }
 
   .searchGroup {
-    flex: 1 1 100%;
+    flex: 1 1 auto;
     min-width: 0;
     max-width: none;
   }
@@ -1676,17 +1672,22 @@
 
   .toolbarLeft {
     gap: 0.4rem;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .actionsGroup {
-    gap: 0.4rem;
-    flex-wrap: wrap;
+    gap: 0.35rem;
+    flex-wrap: nowrap;
   }
 
   .customizeActionsGroup {
-    gap: 0.4rem;
-    flex-wrap: wrap;
+    gap: 0.35rem;
+    flex-wrap: nowrap;
+  }
+
+  .searchGroup {
+    min-width: 160px;
+    padding: 0.5rem 0.7rem;
   }
 
   .pageSizeGroup,
@@ -1791,6 +1792,10 @@
 
   .toolbarLeft {
     gap: 0.35rem;
+  }
+
+  .searchGroup {
+    min-width: 140px;
   }
 
   .actionsGroup {

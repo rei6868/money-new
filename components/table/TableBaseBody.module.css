@@ -4,7 +4,8 @@
 
 .row :global(.stickyLeft),
 .row :global(.stickyRight) {
-  background-color: inherit;
+  background-color: var(--table-sticky-surface, #f8fafc);
+  transition: background-color 0.2s ease;
 }
 
 .row:hover {
@@ -108,6 +109,12 @@
 .actionsButtonActive {
   background: rgba(99, 102, 241, 0.2);
   color: rgba(79, 70, 229, 1);
+}
+
+.actionsButton[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: transparent;
 }
 
 .actionsMenu {

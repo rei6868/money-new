@@ -1,4 +1,5 @@
 .navBar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -101,6 +102,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  margin-left: auto;
 }
 
 .iconButton {
@@ -167,10 +169,18 @@
   width: 100%;
 }
 
-.mobileTrigger {
+
+.mobileMenuWrapper {
   display: none;
   align-items: center;
-  gap: 0.5rem;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.mobileTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   padding: 0.45rem 0.75rem;
   border: none;
   border-radius: 14px;
@@ -192,6 +202,31 @@
   letter-spacing: 0.01em;
 }
 
+.mobileMenuIcon {
+  font-size: 1.1rem;
+}
+
+.mobileMenu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  padding: 0.6rem;
+  border-radius: 14px;
+  background: var(--mf-sidebar-bg);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: var(--mf-elevation-md);
+  z-index: 1100;
+}
+
+.mobileMenuList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
 @media (max-width: 900px) {
   .navBar {
     flex-wrap: wrap;
@@ -205,7 +240,6 @@
   }
 
   .navActions {
-    margin-left: auto;
     order: 2;
   }
 
@@ -245,8 +279,21 @@
   border: 0;
 }
 
-@media (max-width: 1024px) {
-  .mobileTrigger {
+@media (max-width: 820px) {
+  .navListWrapper {
+    display: none;
+  }
+
+  .mobileMenuWrapper {
+    display: inline-flex;
+    margin-left: auto;
+  }
+
+  .navActions {
+    margin-left: 0;
+  }
+
+  .moreWrapper {
     display: none;
   }
 }

@@ -213,10 +213,30 @@ export function TableBaseBody({
       <div
         className={bodyStyles.actionsTrigger}
         ref={actionRegistry.registerTrigger(transaction.id)}
-        onMouseEnter={() => onActionTriggerEnter(transaction.id)}
-        onMouseLeave={onActionTriggerLeave}
-        onFocus={() => onActionFocus(transaction.id)}
-        onBlur={onActionBlur}
+        onMouseEnter={() => {
+          if (isColumnReorderMode) {
+            return;
+          }
+          onActionTriggerEnter(transaction.id);
+        }}
+        onMouseLeave={() => {
+          if (isColumnReorderMode) {
+            return;
+          }
+          onActionTriggerLeave();
+        }}
+        onFocus={() => {
+          if (isColumnReorderMode) {
+            return;
+          }
+          onActionFocus(transaction.id);
+        }}
+        onBlur={(event) => {
+          if (isColumnReorderMode) {
+            return;
+          }
+          onActionBlur(event);
+        }}
         data-selected={isSelected ? 'true' : undefined}
       >
         <button
@@ -228,6 +248,17 @@ export function TableBaseBody({
           aria-haspopup="menu"
           aria-expanded={openActionId === transaction.id}
           aria-label="Show row actions"
+          disabled={isColumnReorderMode}
+          onClick={() => {
+            if (isColumnReorderMode) {
+              return;
+            }
+            if (openActionId === transaction.id) {
+              onAction(null)();
+            } else {
+              onActionTriggerEnter(transaction.id);
+            }
+          }}
         >
           <FiMoreHorizontal aria-hidden />
         </button>
@@ -235,7 +266,7 @@ export function TableBaseBody({
       <TableActionMenuPortal
         rowId={transaction.id}
         anchor={actionRegistry.getTrigger(transaction.id)}
-        isOpen={openActionId === transaction.id}
+        isOpen={!isColumnReorderMode && openActionId === transaction.id}
         onClose={() => onAction(null)()}
         registerContent={registerActionMenu}
         className={`${bodyStyles.actionsMenu} ${
@@ -355,6 +386,7 @@ export function TableBaseBody({
                       checked={isSelected}
                       onChange={(event) => onSelectRow?.(transaction.id, event.target.checked)}
                       aria-label={`Select transaction ${transaction.id}`}
+                      disabled={isColumnReorderMode}
                     />
                   </div>
                 </td>

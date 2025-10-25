@@ -189,12 +189,43 @@ export function TableBaseHeader({
     const showActiveState = isSorted && !isSortDisabledForData;
     const glyphDirection = isSortDisabledForData ? null : sortDirection;
 
+    const effectiveMinWidth = isColumnReorderMode ? Math.max(minWidth, 160) : minWidth;
+    const effectiveWidth = isColumnReorderMode ? Math.max(width, effectiveMinWidth) : width;
+
+    const columnToggleControl = isColumnReorderMode ? (
+      <label
+        className={headerStyles.columnToggle}
+        title={canToggle ? `Toggle ${title}` : 'At least one column must stay visible'}
+        data-disabled={canToggle ? undefined : 'true'}
+        data-align="end"
+      >
+        <input
+          type="checkbox"
+          checked={isVisible}
+          onChange={handleToggleChange}
+          aria-label={`Show or hide ${title} column`}
+          aria-disabled={canToggle ? undefined : 'true'}
+          data-testid={`transactions-columns-toggle-${id}`}
+        />
+        <span className={headerStyles.toggleTrack}>
+          <span className={headerStyles.toggleThumb} />
+        </span>
+      </label>
+    ) : null;
+
+    const shellClassName = [
+      headerStyles.headerShell,
+      isColumnReorderMode ? headerStyles.headerShellReorder : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+
     return (
       <th
         key={id}
         scope="col"
         className={headerClassName}
-        style={{ minWidth: `${minWidth}px`, width: `${width}px` }}
+        style={{ minWidth: `${effectiveMinWidth}px`, width: `${effectiveWidth}px` }}
         draggable={isColumnReorderMode && isVisible}
         onDragStart={
           isColumnReorderMode && isVisible && onColumnDragStart
@@ -209,40 +240,29 @@ export function TableBaseHeader({
         onDrop={isColumnReorderMode && onColumnDrop ? onColumnDrop(id) : undefined}
         aria-sort={ariaSort}
       >
-        <div className={headerStyles.headerShell}>
-          <div className={headerStyles.headerLabel}>
-            <span>{title}</span>
-            {isColumnReorderMode ? (
-              <label
-                className={headerStyles.columnToggle}
-                title={canToggle ? `Toggle ${title}` : 'At least one column must stay visible'}
-                data-disabled={canToggle ? undefined : 'true'}
-              >
-                <input
-                  type="checkbox"
-                  checked={isVisible}
-                  onChange={handleToggleChange}
-                  aria-label={`Show or hide ${title} column`}
-                  aria-disabled={canToggle ? undefined : 'true'}
-                  data-testid={`transactions-columns-toggle-${id}`}
-                />
-                <span className={headerStyles.toggleTrack}>
-                  <span className={headerStyles.toggleThumb} />
-                </span>
-              </label>
-            ) : null}
+        <div className={shellClassName}>
+          <div className={headerStyles.headerContent}>
+            <div className={headerStyles.headerLabel}>
+              <span>{title}</span>
+            </div>
           </div>
-          <Tooltip content={tooltipLabel}>
-            <button
-              type="button"
-              className={`${headerStyles.sortButton} ${showActiveState ? headerStyles.sortButtonActive : ''}`.trim()}
-              onClick={handleSortClick}
-              disabled={isColumnReorderMode || isSortDisabledForData}
-              aria-label={tooltipLabel}
-            >
-              <SortGlyph direction={glyphDirection ?? undefined} isLoading={isLoading} />
-            </button>
-          </Tooltip>
+          {isColumnReorderMode ? (
+            columnToggleControl
+          ) : (
+            <Tooltip content={tooltipLabel}>
+              <button
+                type="button"
+                className={`${headerStyles.sortButton} ${
+                  showActiveState ? headerStyles.sortButtonActive : ''
+                }`.trim()}
+                onClick={handleSortClick}
+                disabled={isSortDisabledForData}
+                aria-label={tooltipLabel}
+              >
+                <SortGlyph direction={glyphDirection ?? undefined} isLoading={isLoading} />
+              </button>
+            </Tooltip>
+          )}
         </div>
       </th>
     );
@@ -269,6 +289,7 @@ export function TableBaseHeader({
                 checked={allSelected}
                 onChange={(event) => onSelectAll?.(event.target.checked)}
                 data-testid="transaction-select-all"
+                disabled={isColumnReorderMode}
               />
             </div>
           </div>
