@@ -20,40 +20,40 @@
 .sidebar {
   position: relative;
   z-index: 240;
-  width: 220px;
+  width: 172px;
   flex-shrink: 0;
   background: var(--mf-sidebar-bg);
   border-right: 1px solid var(--mf-border-subtle);
-  padding: 1.75rem 1rem;
+  padding: 1.05rem 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: 0.9rem;
   transition: width 0.28s ease, transform 0.28s ease;
   box-shadow: var(--mf-sidebar-shadow);
 }
 
 .sidebarCollapsed {
-  width: 80px;
+  width: 60px;
 }
 
 .brandSection {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.65rem;
 }
 
 .brandLink {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.5rem;
   color: inherit;
   text-decoration: none;
   flex: 1 1 auto;
 }
 
 .brandAvatar {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 16px;
   background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
   display: grid;
@@ -70,12 +70,12 @@
 }
 
 .brandName {
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   font-weight: 600;
 }
 
 .brandTagline {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--mf-text-muted);
 }
 
@@ -83,9 +83,9 @@
   border: none;
   background: var(--mf-control-ghost);
   color: var(--mf-text-secondary);
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -100,7 +100,7 @@
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.25rem;
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -114,16 +114,17 @@
 .navGroupTrigger {
   display: flex;
   align-items: center;
-  gap: 0.95rem;
-  padding: 0.75rem 0.9rem;
+  gap: 0.55rem;
+  padding: 0.6rem 0.7rem;
   border: none;
   background: transparent;
   color: var(--mf-text-secondary);
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
   border-radius: 16px;
+  min-width: 0;
 }
 
 .navLink {
@@ -141,19 +142,19 @@
 .navGroupTrigger.navLinkActive {
   background: var(--mf-accent-soft);
   color: var(--mf-accent-strong);
-  margin: 0 -1rem;
-  padding-left: 1.9rem;
-  padding-right: 1rem;
-  border-radius: 0;
-  width: calc(100% + 2rem);
+  margin: 0;
+  padding-left: 1.2rem;
+  padding-right: 0.85rem;
+  border-radius: 16px;
+  width: 100%;
 }
 
 .iconSlot {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   display: grid;
   place-items: center;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   position: relative;
 }
 
@@ -175,7 +176,10 @@
 
 .linkLabel {
   flex: 1 1 auto;
+  min-width: 0;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
@@ -221,11 +225,11 @@
 .subNavLink.navLinkActive {
   background: var(--mf-accent-soft);
   color: var(--mf-accent-strong);
-  margin: 0 -1rem;
-  padding-left: 3.65rem;
-  padding-right: 1rem;
+  margin: 0 -0.85rem;
+  padding-left: 3.35rem;
+  padding-right: 0.85rem;
   border-radius: 0;
-  width: calc(100% + 2rem);
+  width: calc(100% + 1.7rem);
 }
 
 .bullet {
@@ -238,7 +242,7 @@
 
 .sidebarFooter {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.3rem;
   margin-top: auto;
 }
 
@@ -262,10 +266,10 @@
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
-  padding: 1.5rem clamp(1.5rem, 4vw, 2.65rem) 2.85rem;
+  padding: 1.25rem clamp(1.1rem, 4vw, 2rem) 2.1rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.35rem;
   overflow: hidden;
   height: 0;
   /* main content/container overflow-x: hidden to guarantee no page-level horizontal scrolling */
@@ -287,7 +291,7 @@
   display: flex;
   align-items: center;
   margin: 0;
-  padding: 0.75rem 0;
+  padding: 0.65rem 0;
   border-radius: 0;
   position: relative;
 }
@@ -306,10 +310,10 @@
 .sidebarCollapsed .navGroupTrigger.navLinkActive {
   background: var(--mf-accent-soft);
   color: var(--mf-accent-strong);
-  margin: 0 -1rem;
-  padding: 0.75rem 1rem;
+  margin: 0 -0.85rem;
+  padding: 0.65rem 0.85rem;
   border-radius: 0;
-  width: calc(100% + 2rem);
+  width: calc(100% + 1.7rem);
   justify-content: center;
 }
 
@@ -357,7 +361,7 @@
 /* Flyout menu styles */
 .flyoutMenu {
   position: fixed;
-  left: calc(80px + 8px);
+  left: calc(68px + 8px);
   min-width: 220px;
   max-width: min(280px, calc(100vw - 100px));
   border-radius: 16px;
@@ -383,7 +387,7 @@
 
 @media (max-width: 1200px) {
   .flyoutMenu {
-    left: calc(70px + 8px);
+    left: calc(60px + 8px);
   }
 }
 
@@ -455,11 +459,11 @@
 
 @media (max-width: 1200px) {
   .sidebar {
-    width: 200px;
+    width: 176px;
   }
 
   .sidebarCollapsed {
-    width: 70px;
+    width: 60px;
   }
 }
 
@@ -478,19 +482,19 @@
 
   .topNavBarContainer {
     display: flex;
-    padding: 1.1rem clamp(1.1rem, 6vw, 1.9rem) 0;
+    padding: 0.85rem clamp(0.85rem, 6vw, 1.6rem) 0;
   }
 }
 
 @media (max-width: 768px) {
   .mainContent {
-    padding: 1.25rem clamp(1.1rem, 6vw, 1.9rem) 2.25rem;
+    padding: 1.1rem clamp(1rem, 6vw, 1.75rem) 1.8rem;
   }
 }
 
 @media (max-width: 520px) {
   .mainContent {
-    gap: 1.25rem;
-    padding: 1rem clamp(1.1rem, 6vw, 1.9rem) 2rem;
+    gap: 1.2rem;
+    padding: 0.9rem clamp(0.9rem, 6vw, 1.6rem) 1.6rem;
   }
 }

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
 import { FiLogOut, FiMoreHorizontal, FiMoon, FiSun, FiChevronDown } from 'react-icons/fi';
 
 import styles from './TopNavBar.module.css';
@@ -28,13 +27,13 @@ export function TopNavBar({
   theme = 'light',
   settingsLink,
 }) {
-  const router = useRouter();
   const activeSet = useMemo(() => normalizeActiveKeys(activeKeys), [activeKeys]);
   const [overflowKeys, setOverflowKeys] = useState([]);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [dropdownMode, setDropdownMode] = useState(null);
   const listContainerRef = useRef(null);
   const moreButtonRef = useRef(null);
-  const dropdownRef = useRef(null);
+  const overflowDropdownRef = useRef(null);
+  const mobileDropdownRef = useRef(null);
   const itemRefs = useRef(new Map());
   const itemWidthMapRef = useRef(new Map());
 
@@ -105,6 +104,9 @@ export function TopNavBar({
     if (runningWidth <= availableWidth) {
       if (overflowKeys.length !== 0) {
         setOverflowKeys([]);
+        if (dropdownMode === 'overflow') {
+          setDropdownMode(null);
+        }
       }
       return;
     }
@@ -116,13 +118,19 @@ export function TopNavBar({
 
     const nextOverflow = flattenedNavItems.slice(visibleCount).map((item) => item.key);
     setOverflowKeys(nextOverflow);
-  }, [flattenedNavItems, measureItemWidths, overflowKeys.length]);
+    if (nextOverflow.length === 0 && dropdownMode === 'overflow') {
+      setDropdownMode(null);
+    }
+  }, [flattenedNavItems, measureItemWidths, overflowKeys.length, dropdownMode]);
 
   useEffect(() => {
     recalculateOverflow();
   }, [recalculateOverflow, theme]);
 
   const overflowKeySet = useMemo(() => new Set(overflowKeys), [overflowKeys]);
+  const isDropdownOpen = dropdownMode !== null;
+  const isOverflowDropdown = dropdownMode === 'overflow';
+  const isMobileDropdown = dropdownMode === 'mobile';
 
   useEffect(() => {
     const container = listContainerRef.current;
@@ -148,46 +156,51 @@ export function TopNavBar({
     }
 
     const handlePointerDown = (event) => {
-      if (!dropdownRef.current) {
+      const overflowNode = overflowDropdownRef.current;
+      const mobileNode = mobileDropdownRef.current;
+      const activeNode = dropdownMode === 'overflow' ? overflowNode : mobileNode;
+      if (activeNode && activeNode.contains(event.target)) {
         return;
       }
-      if (!dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
-      }
+      setDropdownMode(null);
     };
 
     document.addEventListener('pointerdown', handlePointerDown);
     return () => {
       document.removeEventListener('pointerdown', handlePointerDown);
     };
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, dropdownMode]);
 
   useEffect(() => {
-    if (overflowKeys.length === 0 && isDropdownOpen) {
-      setIsDropdownOpen(false);
+    if (overflowKeys.length === 0 && dropdownMode === 'overflow') {
+      setDropdownMode(null);
     }
-  }, [overflowKeys.length, isDropdownOpen]);
+  }, [overflowKeys.length, dropdownMode]);
 
   const overflowItems = flattenedNavItems.filter((item) => overflowKeySet.has(item.key));
 
   const activePageLabel = useMemo(() => {
     const activePage = flattenedNavItems.find((item) => activeSet.has(item.key));
-    return activePage?.label || 'Money Flow';
+    return activePage?.label || 'Menu';
   }, [flattenedNavItems, activeSet]);
+
+  const closeDropdown = useCallback(() => {
+    setDropdownMode(null);
+  }, []);
 
   if (flattenedNavItems.length === 0) {
     return null;
   }
 
-  const handleToggleDropdown = () => {
+  const handleToggleOverflow = () => {
     if (overflowItems.length === 0) {
       return;
     }
-    setIsDropdownOpen((prev) => !prev);
+    setDropdownMode((prev) => (prev === 'overflow' ? null : 'overflow'));
   };
 
   const handleMobileToggleDropdown = () => {
-    setIsDropdownOpen((prev) => !prev);
+    setDropdownMode((prev) => (prev === 'mobile' ? null : 'mobile'));
   };
 
   const renderNavLink = (item, { inOverflow = false } = {}) => {
@@ -199,7 +212,7 @@ export function TopNavBar({
         href={item.href}
         className={className}
         data-overflow={inOverflow ? 'true' : undefined}
-        onClick={() => setIsDropdownOpen(false)}
+        onClick={closeDropdown}
       >
         {item.label}
       </Link>
@@ -223,20 +236,34 @@ export function TopNavBar({
 
   return (
     <nav className={styles.navBar} aria-label="Primary navigation">
-      <Link href="/transactions" className={styles.brandLink} onClick={() => setIsDropdownOpen(false)}>
-        <span className={styles.brandMark}>MF</span>
-        <span className={styles.brandText}>Money Flow</span>
-      </Link>
-      <button
-        type="button"
-        className={styles.mobileTrigger}
-        onClick={handleMobileToggleDropdown}
-        aria-haspopup="menu"
-        aria-expanded={isDropdownOpen}
+      <Link
+        href="/transactions"
+        className={styles.brandLink}
+        onClick={closeDropdown}
+        aria-label="Money Flow home"
       >
-        <span className={styles.mobileLabel}>{activePageLabel}</span>
-        <FiChevronDown className={styles.mobileChevron} aria-hidden="true" />
-      </button>
+        <span className={styles.brandMark}>MF</span>
+      </Link>
+      <div className={styles.mobileMenuWrapper} ref={mobileDropdownRef}>
+        <button
+          type="button"
+          className={styles.mobileTrigger}
+          onClick={handleMobileToggleDropdown}
+          aria-haspopup="menu"
+          aria-expanded={isMobileDropdown}
+          aria-label="Open navigation menu"
+        >
+          <span className={styles.mobileLabel}>{activePageLabel}</span>
+          <FiChevronDown className={styles.mobileChevron} aria-hidden="true" />
+        </button>
+        {isMobileDropdown ? (
+          <div className={styles.mobileMenu} role="menu">
+            <ul className={styles.mobileMenuList}>
+              {flattenedNavItems.map((item) => renderNavLink(item, { inOverflow: true }))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
       <div className={styles.navListWrapper} ref={listContainerRef}>
         <ul className={styles.navList}>
           {flattenedNavItems.map((item) => renderNavLink(item))}
@@ -246,24 +273,26 @@ export function TopNavBar({
         <div
           className={styles.moreWrapper}
           data-active={overflowItems.length > 0 ? 'true' : 'false'}
-          ref={dropdownRef}
+          ref={overflowDropdownRef}
         >
           <button
             type="button"
             className={`${styles.iconButton} ${styles.moreTrigger}`}
             aria-haspopup="menu"
-            aria-expanded={isDropdownOpen}
-            onClick={handleToggleDropdown}
+            aria-expanded={isOverflowDropdown}
+            onClick={handleToggleOverflow}
             ref={moreButtonRef}
             disabled={overflowItems.length === 0}
           >
             <FiMoreHorizontal aria-hidden="true" />
             <span className={styles.visuallyHidden}>Open overflow navigation links</span>
           </button>
-          {isDropdownOpen ? (
+          {isOverflowDropdown ? (
             <div className={styles.moreMenu} role="menu">
               <ul className={styles.moreMenuList}>
-                {(overflowItems.length > 0 ? overflowItems : flattenedNavItems).map((item) => renderNavLink(item, { inOverflow: true }))}
+                {(overflowItems.length > 0 ? overflowItems : flattenedNavItems).map((item) =>
+                  renderNavLink(item, { inOverflow: true }),
+                )}
               </ul>
             </div>
           ) : null}

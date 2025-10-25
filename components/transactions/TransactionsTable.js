@@ -39,23 +39,21 @@ function usePaginationRenderer(pagination, fontScaleState) {
               {props.selectedCount} selected
             </span>
           )}
-          <div className={styles.pageSizeGroup}>
-            <label htmlFor="transactions-page-size">Rows per page</label>
-            <select
-              id="transactions-page-size"
-              className={styles.pageSizeSelect}
-              value={pagination.pageSize}
-              onChange={(event) => pagination.onPageSizeChange(Number(event.target.value))}
+          <div
+            className={styles.paginationControls}
+            role="group"
+            aria-label="Table pagination and font controls"
+          >
+            <button
+              type="button"
+              className={styles.paginationButton}
+              onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
+              disabled={pagination.currentPage === 1}
+              aria-label="Previous page"
             >
-              {pagination.pageSizeOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className={styles.fontScaleGroup} role="group" aria-label="Table font size controls">
-            <span className={styles.fontScaleLabel}>Font size</span>
+              <FiChevronLeft aria-hidden />
+              <span className={styles.paginationButtonText}>Prev</span>
+            </button>
             <button
               type="button"
               className={styles.fontScaleButton}
@@ -66,9 +64,31 @@ function usePaginationRenderer(pagination, fontScaleState) {
               <FiMinus aria-hidden />
               <span className={styles.fontScaleButtonText}>−</span>
             </button>
-            <span className={styles.fontScaleValue} aria-live="polite">
-              {formattedScale}
-            </span>
+            <div className={styles.pageSizeGroup}>
+              <label htmlFor="transactions-page-size">Rows per page</label>
+              <select
+                id="transactions-page-size"
+                className={styles.pageSizeSelect}
+                value={pagination.pageSize}
+                onChange={(event) => pagination.onPageSizeChange(Number(event.target.value))}
+              >
+                {pagination.pageSizeOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              className={`${styles.fontScaleButton} ${styles.fontScaleReset}`.trim()}
+              onClick={onReset}
+              disabled={isDefault}
+              aria-label="Reset table font size"
+            >
+              <FiRefreshCw aria-hidden />
+              <span className={styles.fontScaleButtonText}>Reset</span>
+            </button>
             <button
               type="button"
               className={styles.fontScaleButton}
@@ -81,31 +101,6 @@ function usePaginationRenderer(pagination, fontScaleState) {
             </button>
             <button
               type="button"
-              className={`${styles.fontScaleButton} ${styles.fontScaleReset}`.trim()}
-              onClick={onReset}
-              disabled={isDefault}
-              aria-label="Reset table font size"
-            >
-              <FiRefreshCw aria-hidden />
-              <span className={styles.fontScaleButtonText}>Reset</span>
-            </button>
-          </div>
-          <div className={styles.paginationControls}>
-            <button
-              type="button"
-              className={styles.paginationButton}
-              onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
-              disabled={pagination.currentPage === 1}
-              aria-label="Previous page"
-            >
-              <FiChevronLeft aria-hidden />
-              <span className={styles.paginationButtonText}>Prev</span>
-            </button>
-            <span className={styles.paginationStatus}>
-              Page {pagination.currentPage} of {pagination.totalPages}
-            </span>
-            <button
-              type="button"
               className={styles.paginationButton}
               onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
               disabled={pagination.currentPage === pagination.totalPages}
@@ -115,6 +110,17 @@ function usePaginationRenderer(pagination, fontScaleState) {
               <span className={styles.paginationButtonText}>Next</span>
             </button>
           </div>
+          <div className={styles.paginationMeta}>
+            <div className={styles.fontScaleMeta}>
+              <span className={styles.fontScaleLabel}>Font size</span>
+              <span className={styles.fontScaleValue} aria-live="polite">
+                {formattedScale}
+              </span>
+            </div>
+            <span className={styles.paginationStatus}>
+              Page {pagination.currentPage} of {pagination.totalPages}
+            </span>
+          </div>
         </>
       ),
     };
@@ -123,6 +129,7 @@ function usePaginationRenderer(pagination, fontScaleState) {
 
 export function TransactionsTable(props) {
   const {
+    tableScrollRef,
     transactions,
     selectedIds,
     onSelectRow,
@@ -138,6 +145,7 @@ export function TransactionsTable(props) {
     onColumnOrderChange,
     sortState,
     onSortChange,
+    isFetching = false,
   } = props;
 
   const [fontScale, setFontScale] = useState(FONT_SCALE_DEFAULT);
@@ -170,6 +178,7 @@ export function TransactionsTable(props) {
 
   return (
     <TableBase
+      tableScrollRef={tableScrollRef}
       transactions={transactions}
       selectedIds={selectedIds}
       onSelectRow={onSelectRow}
@@ -187,6 +196,7 @@ export function TransactionsTable(props) {
       sortState={sortState}
       onSortChange={onSortChange}
       isShowingSelectedOnly={props.isShowingSelectedOnly}
+      isFetching={isFetching}
     />
   );
 }

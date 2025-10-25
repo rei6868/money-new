@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 
-export const CHECKBOX_COLUMN_WIDTH = 64;
-export const ACTIONS_COLUMN_WIDTH = 80;
-export const STICKY_COLUMN_BUFFER = CHECKBOX_COLUMN_WIDTH + ACTIONS_COLUMN_WIDTH;
+export const CHECKBOX_COLUMN_WIDTH = 48;
+export const ACTIONS_COLUMN_WIDTH = 60;
+export const STICKY_COLUMN_BUFFER = CHECKBOX_COLUMN_WIDTH;
 export const ACTION_MENU_MIN_WIDTH = 224;
 
 function normalizeNumericWidth(value) {
