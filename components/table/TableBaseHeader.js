@@ -206,16 +206,18 @@ export function TableBaseHeader({
             width: `${CHECKBOX_COLUMN_WIDTH}px`,
           }}
         >
-          <div className={headerStyles.headerCheckboxInner}>
-            <input
-              ref={headerCheckboxRef}
-              type="checkbox"
-              aria-label="Select all rows"
-              aria-checked={isIndeterminate ? 'mixed' : allSelected ? 'true' : 'false'}
-              checked={allSelected}
-              onChange={(event) => onSelectAll?.(event.target.checked)}
-              data-testid="transaction-select-all"
-            />
+          <div className={styles.checkboxCellInner}>
+            <div className={headerStyles.headerCheckboxInner}>
+              <input
+                ref={headerCheckboxRef}
+                type="checkbox"
+                aria-label="Select all rows"
+                aria-checked={isIndeterminate ? 'mixed' : allSelected ? 'true' : 'false'}
+                checked={allSelected}
+                onChange={(event) => onSelectAll?.(event.target.checked)}
+                data-testid="transaction-select-all"
+              />
+            </div>
           </div>
         </th>
         {columns.map((column) => renderHeaderCell(column))}
