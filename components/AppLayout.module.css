@@ -105,9 +105,15 @@
   min-height: 0;
 }
 
+
 .navGroup,
 .navLink {
   border-radius: 16px;
+}
+
+.navGroup {
+  position: relative;
+  z-index: 0;
 }
 
 .navLink,
@@ -195,6 +201,8 @@
   margin-top: 0.35rem;
   max-height: 0;
   transition: max-height 0.3s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .subNavOpen {
@@ -205,7 +213,7 @@
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  padding: 0.55rem 0.65rem 0.55rem 0.35rem;
+  padding: 0.55rem 0.75rem 0.55rem 0.35rem;
   border-radius: 12px;
   color: var(--mf-text-secondary);
   text-decoration: none;
@@ -222,18 +230,20 @@
   background: var(--mf-accent-soft);
   color: var(--mf-accent-strong);
   margin: 0 -1rem;
-  padding-left: 3.65rem;
+  padding-left: 2.25rem;
   padding-right: 1rem;
   border-radius: 0;
   width: calc(100% + 2rem);
 }
 
-.bullet {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.45;
+.subNavIconSlot {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  color: inherit;
 }
 
 .sidebarFooter {
@@ -420,6 +430,7 @@
 .flyoutLink {
   display: flex;
   align-items: center;
+  gap: 0.65rem;
   padding: 0.65rem 0.85rem;
   border-radius: 12px;
   color: var(--mf-text-secondary);
@@ -444,6 +455,20 @@
   padding-right: 1.35rem;
   border-radius: 0;
   width: calc(100% + 1rem);
+}
+
+.flyoutIconSlot {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  color: inherit;
+}
+
+.flyoutLinkLabel {
+  flex: 1 1 auto;
 }
 
 .flyoutLinkActive:hover {

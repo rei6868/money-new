@@ -352,7 +352,9 @@ export default function AppLayout({ title, subtitle, children }) {
                   aria-current={childActive ? 'page' : undefined}
                   aria-label={child.label}
                 >
-                  <span className={styles.bullet} aria-hidden />
+                  <span className={styles.subNavIconSlot} aria-hidden="true">
+                    <Icon />
+                  </span>
                   <span className={styles.linkLabel}>{child.label}</span>
                 </Link>
               );
@@ -389,7 +391,10 @@ export default function AppLayout({ title, subtitle, children }) {
                     aria-current={childActive ? 'page' : undefined}
                     onClick={handleCloseFlyout}
                   >
-                    {child.label}
+                    <span className={styles.flyoutIconSlot} aria-hidden="true">
+                      <Icon />
+                    </span>
+                    <span className={styles.flyoutLinkLabel}>{child.label}</span>
                   </Link>
                 );
               })}
