@@ -4,20 +4,11 @@ import { useRouter } from 'next/router';
 import {
   FiGrid,
   FiRepeat,
-  FiGift,
-  FiTrendingUp,
-  FiUsers,
-  FiShoppingBag,
-  FiTag,
-  FiCreditCard,
-  FiUploadCloud,
   FiSettings,
   FiLogOut,
   FiMoon,
   FiSun,
   FiChevronDown,
-  FiChevronLeft,
-  FiChevronRight,
   FiMenu,
 } from 'react-icons/fi';
 
@@ -38,54 +29,6 @@ const NAV_ITEMS = [
     label: 'Transactions History',
     href: '/transactions',
     icon: FiRepeat,
-  },
-  {
-    key: 'cashback',
-    label: 'Cashback',
-    icon: FiGift,
-    children: [
-      { key: 'cashback-flow', label: 'Cashback Flow', href: '/cashback/flow' },
-      { key: 'cashback-movements', label: 'Movements', href: '/cashback/movements' },
-    ],
-  },
-  {
-    key: 'debt',
-    label: 'Debt',
-    icon: FiTrendingUp,
-    children: [
-      { key: 'debt-list', label: 'Debt List', href: '/debt/list' },
-      { key: 'debt-movements', label: 'Debt Movements', href: '/debt/movements' },
-    ],
-  },
-  {
-    key: 'people',
-    label: 'People',
-    href: '/people',
-    icon: FiUsers,
-  },
-  {
-    key: 'shop',
-    label: 'Shop',
-    href: '/shop',
-    icon: FiShoppingBag,
-  },
-  {
-    key: 'category',
-    label: 'Category',
-    href: '/category',
-    icon: FiTag,
-  },
-  {
-    key: 'subscription',
-    label: 'Subscription',
-    href: '/subscription',
-    icon: FiCreditCard,
-  },
-  {
-    key: 'batch-input',
-    label: 'Batch Input',
-    href: '/batch-input',
-    icon: FiUploadCloud,
   },
 ];
 

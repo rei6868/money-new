@@ -38,30 +38,26 @@
 }
 
 .toolbarCard {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.1rem 1.5rem;
-  border-radius: 22px;
+  gap: 0.85rem 1.25rem;
+  padding: 0.95rem 1.2rem;
+  border-radius: 18px;
   border: 1px solid var(--mf-border-subtle);
   background: var(--mf-sidebar-bg);
   box-shadow: var(--mf-elevation-sm);
   width: 100%;
   max-width: 100%;
-  /*
-    Prevent page-level horizontal scrolling: keep controls full width without
-    pushing the layout. The main content/container overflow-x: hidden already
-    guards the outer shell.
-  */
 }
 
 .toolbarLeft {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
 }
 
 .searchGroup {
@@ -73,7 +69,8 @@
   border: 1px solid transparent;
   background: rgba(148, 163, 184, 0.15);
   transition: border 0.2s ease, box-shadow 0.2s ease;
-  min-width: min(320px, 80vw);
+  min-width: min(220px, 55vw);
+  flex: 1 1 220px;
   z-index: 1;
 }
 
@@ -223,6 +220,12 @@
   transition: background 0.2s ease, color 0.2s ease;
 }
 
+.toolbarIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .iconButton:hover {
   background: rgba(148, 163, 184, 0.2);
   color: var(--mf-text-primary);
@@ -306,6 +309,19 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.iconPrimaryButton {
+  padding: 0.65rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  justify-content: center;
+}
+
+.iconPrimaryButton svg {
+  width: 20px;
+  height: 20px;
+}
+
 .primaryButton:hover {
   transform: translateY(-2px);
   box-shadow: 0 18px 36px rgba(79, 70, 229, 0.38);
@@ -316,6 +332,18 @@
   cursor: not-allowed;
   box-shadow: none;
   transform: none;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Table structure styles moved to TableBase.module.css */
@@ -375,7 +403,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .customizeToggleGrid {
@@ -482,7 +510,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.75rem;
   min-width: 0;
 }
@@ -491,7 +519,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.75rem;
   min-width: 0;
   flex: 1 1 auto;
@@ -501,32 +529,12 @@
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   padding-right: 0.75rem;
   margin-right: 0.75rem;
   border-right: 1px solid rgba(148, 163, 184, 0.18);
   justify-content: flex-end;
   min-width: 0;
-}
-
-@media (max-width: 768px) {
-  .actionsGroup {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .toolbarCustomizeControls {
-    padding-right: 0;
-    margin-right: 0;
-    border-right: none;
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .customizeActionsGroup {
-    width: 100%;
-    justify-content: flex-start;
-  }
 }
 
 .tableActionsGroup {
@@ -1558,7 +1566,7 @@
     border-radius: 20px;
   }
 
-  .primaryButton {
+  .primaryButton:not(.iconPrimaryButton) {
     width: 100%;
     justify-content: center;
   }
@@ -1606,39 +1614,40 @@
 
 @media (max-width: 1024px) {
   .toolbarCard {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
+    grid-template-columns: 1fr;
+    align-items: stretch;
     gap: 0.75rem;
     padding: 0.85rem 1rem;
   }
 
+  .toolbarCard > * {
+    width: 100%;
+  }
+
   .toolbarLeft {
-    display: flex;
-    align-items: center;
-    flex-wrap: nowrap;
-    gap: 0.5rem;
-    flex: 1 1 auto;
-    min-width: 0;
-    order: 1;
+    gap: 0.6rem;
+    flex-wrap: wrap;
   }
 
   .searchGroup {
-    flex: 1 1 auto;
+    flex: 1 1 100%;
     min-width: 0;
     max-width: none;
-    order: 1;
   }
 
-  .searchSubmitButton {
+  .searchSubmitButton,
+  .filterButton,
+  .secondaryButton {
     padding: 0.6rem;
     min-width: 44px;
     justify-content: center;
     flex-shrink: 0;
-    order: 2;
+    border-radius: 999px;
   }
 
-  .searchSubmitText {
+  .searchSubmitText,
+  .customizeButtonText,
+  .resetButtonText {
     display: none;
   }
 
@@ -1646,58 +1655,17 @@
     display: block;
   }
 
-  .filterButton {
-    padding: 0.6rem;
-    min-width: 44px;
-    justify-content: center;
-    flex-shrink: 0;
-    order: 3;
-  }
-
-  .customizeButtonText {
-    display: none;
-  }
-
-  .primaryButton {
-    padding: 0.6rem;
-    min-width: 44px;
-    justify-content: center;
-    flex-shrink: 0;
-    order: 4;
-  }
-
-  .addButtonText {
-    display: none;
-  }
-
-  .resetButtonText {
-    display: none;
-  }
-
-  .secondaryButton {
-    padding: 0.6rem;
-    min-width: 44px;
-    justify-content: center;
-    flex-shrink: 0;
-    font-size: 0.8rem;
-    order: 5;
-  }
-
-  .actionsGroup {
-    display: flex;
-    align-items: center;
-    flex-wrap: nowrap;
-    gap: 0.5rem;
-    flex-shrink: 0;
-    order: 2;
-  }
-
+  .actionsGroup,
   .customizeActionsGroup {
-    display: flex;
-    align-items: center;
-    flex-wrap: nowrap;
     gap: 0.5rem;
-    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .toolbarIconButton {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
   }
 }
 
@@ -1708,21 +1676,35 @@
 
   .toolbarLeft {
     gap: 0.4rem;
+    flex-wrap: wrap;
   }
 
   .actionsGroup {
     gap: 0.4rem;
+    flex-wrap: wrap;
   }
 
   .customizeActionsGroup {
     gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .pageSizeGroup,
+  .fontScaleGroup,
+  .paginationControls {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+
+  .pageSizeSelect {
+    min-width: 88px;
   }
 
   .paginationBar {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 0.5rem;
     padding: 0.65rem 0.85rem;
   }
@@ -1824,6 +1806,11 @@
   .primaryButton {
     min-width: 40px;
     padding: 0.55rem;
+  }
+
+  .toolbarIconButton {
+    width: 40px;
+    height: 40px;
   }
 }
 

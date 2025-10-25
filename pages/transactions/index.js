@@ -642,7 +642,7 @@ export default function TransactionsHistoryPage() {
 
 
 
-        {isFetching || columnDefinitions.length === 0 ? (
+        {columnDefinitions.length === 0 ? (
           <div className={styles.tableCard} data-testid="transactions-loading">
             <div className={styles.emptyState}>Loading transactions...</div>
           </div>
@@ -683,6 +683,7 @@ export default function TransactionsHistoryPage() {
             sortState={sortState}
             onSortChange={handleSortStateChange}
             isShowingSelectedOnly={showSelectedOnly}
+            isFetching={isFetching}
           />
         )}
       </div>

@@ -1,10 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { FiChevronRight, FiEdit2, FiFilter, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi';
 
 import styles from './TableBase.module.css';
 import bodyStyles from './TableBaseBody.module.css';
 import { formatAmount, formatPercent } from '../../lib/numberFormat';
-import { ACTIONS_COLUMN_WIDTH, CHECKBOX_COLUMN_WIDTH, resolveColumnSizing } from './tableUtils';
+import { ACTIONS_COLUMN_WIDTH, CHECKBOX_COLUMN_WIDTH } from './tableUtils';
 import { TableActionMenuPortal } from './TableActions';
 import { TableTooltip } from './TableTooltip';
 
@@ -43,12 +43,12 @@ function formatTransactionDate(value, format = 'DD/MM/YY') {
 
 function getAmountToneClass(type) {
   if (type === 'Income') {
-    return styles.amountIncome;
+    return bodyStyles.amountIncome;
   }
   if (type === 'Transfer') {
-    return styles.amountTransfer;
+    return bodyStyles.amountTransfer;
   }
-  return styles.amountExpense;
+  return bodyStyles.amountExpense;
 }
 
 function TotalBackCell({ transaction }) {
@@ -66,36 +66,38 @@ function TotalBackCell({ transaction }) {
 
   return (
     <div
-      className={styles.totalBackCell}
+      className={bodyStyles.totalBackCell}
       data-tooltip-text={canShowFormula ? formulaText : undefined}
     >
-      <span className={styles.totalBackValue}>{totalBack}</span>
-      {canShowFormula ? <span className={styles.totalBackFormula}>{formulaText}</span> : null}
+      <span className={bodyStyles.totalBackValue}>{totalBack}</span>
+      {canShowFormula ? <span className={bodyStyles.totalBackFormula}>{formulaText}</span> : null}
     </div>
   );
 }
 
 const columnRenderers = {
-  date: (txn, column) => formatTransactionDate(txn.date, column.format),
-  type: (txn, _column, stylesRef) => (
+  date: (txn, descriptor) => formatTransactionDate(txn.date, descriptor.column.format),
+  type: (txn) => (
     <span
       className={
         txn.type === 'Income'
-          ? `${stylesRef.pill} ${stylesRef.pillIncome}`
-          : `${stylesRef.pill} ${stylesRef.pillExpense}`
+          ? `${bodyStyles.pill} ${bodyStyles.pillIncome}`
+          : `${bodyStyles.pill} ${bodyStyles.pillExpense}`
       }
     >
-      {txn.type}
+      {txn.type ?? '—'}
     </span>
   ),
   account: (txn) => txn.account ?? '—',
   shop: (txn) => txn.shop ?? '—',
   notes: (txn) => txn.notes ?? '—',
-  amount: (txn, column, stylesRef) => {
+  amount: (txn) => {
     const numeric = Math.abs(Number(txn.amount ?? 0));
-    const toneClass = getAmountToneClass(txn.type);
     return (
-      <span className={`${stylesRef.amountValue} ${toneClass}`} data-testid={`transaction-amount-${txn.id}`}>
+      <span
+        className={`${bodyStyles.amountValue} ${getAmountToneClass(txn.type)}`}
+        data-testid={`transaction-amount-${txn.id}`}
+      >
         {formatAmount(numeric)}
       </span>
     );
@@ -112,18 +114,17 @@ const columnRenderers = {
   id: (txn) => txn.id ?? '—',
 };
 
-function renderCellContent(column, transaction) {
-  const renderer = columnRenderers[column.id];
-  if (!renderer) {
-    return transaction[column.id] ?? '—';
+function resolveCellContent(descriptor, transaction) {
+  const renderer = columnRenderers[descriptor.id];
+  if (renderer) {
+    return renderer(transaction, descriptor);
   }
-  return renderer(transaction, column, styles);
+  return transaction[descriptor.id] ?? '—';
 }
 
 export function TableBaseBody({
   transactions,
   columns,
-  definitionMap,
   selectionSet,
   onSelectRow,
   actionRegistry,
@@ -139,15 +140,20 @@ export function TableBaseBody({
   isSubmenuFlipped = false,
   hiddenColumnIds = new Set(),
   isColumnReorderMode = false,
-  visibleColumnsCount = 0,
+  isShowingSelectedOnly = false,
 }) {
   const [tooltipState, setTooltipState] = useState({ anchor: null, content: '', isVisible: false });
+
+  const visibleColumnCount = useMemo(
+    () => columns.filter((descriptor) => descriptor.column.visible !== false).length,
+    [columns],
+  );
 
   const hideTooltip = useCallback(() => {
     setTooltipState((state) => (state.isVisible ? { anchor: null, content: '', isVisible: false } : state));
   }, []);
 
-  const resolveTooltip = useCallback((cell) => {
+  const resolveTooltipContent = useCallback((cell) => {
     if (!cell) {
       return { content: '', force: false };
     }
@@ -166,7 +172,7 @@ export function TableBaseBody({
         hideTooltip();
         return;
       }
-      const { content, force } = resolveTooltip(cell);
+      const { content, force } = resolveTooltipContent(cell);
       if (!content) {
         hideTooltip();
         return;
@@ -178,7 +184,7 @@ export function TableBaseBody({
       }
       setTooltipState({ anchor: cell, content, isVisible: true });
     },
-    [hideTooltip, resolveTooltip],
+    [hideTooltip, resolveTooltipContent],
   );
 
   const handleCellEnter = useCallback(
@@ -196,202 +202,203 @@ export function TableBaseBody({
   const tooltipContent = tooltipState.content;
   const tooltipVisible = tooltipState.isVisible;
 
+  const renderRowActions = (transaction, isSelected) => (
+    <td
+      className={`${styles.bodyCell} ${styles.actionsCell} ${styles.stickyRight}`}
+      style={{
+        minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
+        width: `${ACTIONS_COLUMN_WIDTH}px`,
+      }}
+    >
+      <div
+        className={bodyStyles.actionsTrigger}
+        ref={actionRegistry.registerTrigger(transaction.id)}
+        onMouseEnter={() => onActionTriggerEnter(transaction.id)}
+        onMouseLeave={onActionTriggerLeave}
+        onFocus={() => onActionFocus(transaction.id)}
+        onBlur={onActionBlur}
+        data-selected={isSelected ? 'true' : undefined}
+      >
+        <button
+          type="button"
+          className={`${bodyStyles.actionsButton} ${
+            openActionId === transaction.id ? bodyStyles.actionsButtonActive : ''
+          }`.trim()}
+          data-testid={`transaction-actions-trigger-${transaction.id}`}
+          aria-haspopup="menu"
+          aria-expanded={openActionId === transaction.id}
+          aria-label="Show row actions"
+        >
+          <FiMoreHorizontal aria-hidden />
+        </button>
+      </div>
+      <TableActionMenuPortal
+        rowId={transaction.id}
+        anchor={actionRegistry.getTrigger(transaction.id)}
+        isOpen={openActionId === transaction.id}
+        onClose={() => onAction(null)()}
+        registerContent={registerActionMenu}
+        className={`${bodyStyles.actionsMenu} ${
+          isSubmenuFlipped ? bodyStyles.actionsMenuFlipped : ''
+        }`.trim()}
+        containerProps={{
+          onMouseEnter: () => onActionTriggerEnter(transaction.id),
+          onMouseLeave: onActionTriggerLeave,
+          onFocus: () => onActionFocus(transaction.id),
+          onBlur: onActionBlur,
+        }}
+        dataTestId={`transaction-actions-menu-${transaction.id}`}
+      >
+        <button
+          type="button"
+          className={bodyStyles.actionsMenuItem}
+          onMouseEnter={onSubmenuEnter(null)}
+          onClick={onAction({ mode: 'edit', transaction })}
+          data-testid={`transaction-action-edit-${transaction.id}`}
+        >
+          <FiEdit2 aria-hidden />
+          <span>Quick edit</span>
+        </button>
+        <button
+          type="button"
+          className={`${bodyStyles.actionsMenuItem} ${bodyStyles.actionsMenuDanger}`.trim()}
+          onMouseEnter={onSubmenuEnter(null)}
+          onClick={onAction({ mode: 'delete', transaction })}
+          data-testid={`transaction-action-delete-${transaction.id}`}
+        >
+          <FiTrash2 aria-hidden />
+          <span>Delete</span>
+        </button>
+        <div
+          className={`${bodyStyles.actionsMenuItem} ${bodyStyles.actionsMenuNested}`.trim()}
+          onMouseEnter={onSubmenuEnter('more')}
+          data-testid={`transaction-action-more-${transaction.id}`}
+        >
+          <div className={bodyStyles.actionsNestedLabel}>
+            <FiMoreHorizontal aria-hidden />
+            <span>More actions</span>
+          </div>
+          <FiChevronRight className={bodyStyles.actionsNestedCaret} aria-hidden />
+          <div
+            className={`${bodyStyles.actionsSubmenu} ${
+              isSubmenuFlipped ? bodyStyles.actionsSubmenuFlipped : ''
+            } ${
+              openActionId === transaction.id && openActionSubmenu === 'more'
+                ? bodyStyles.actionsSubmenuOpen
+                : ''
+            }`.trim()}
+            role="menu"
+          >
+            <button
+              type="button"
+              className={bodyStyles.actionsMenuItem}
+              onClick={onAction({
+                mode: 'advanced',
+                transaction,
+                intent: 'advanced-panel',
+              })}
+              data-testid={`transaction-action-advanced-${transaction.id}`}
+            >
+              <FiFilter aria-hidden />
+              <span>Open advanced panel</span>
+            </button>
+            <button
+              type="button"
+              className={bodyStyles.actionsMenuItem}
+              onClick={onAction({
+                mode: 'advanced',
+                transaction,
+                intent: 'duplicate-draft',
+              })}
+              data-testid={`transaction-action-duplicate-${transaction.id}`}
+            >
+              <FiEdit2 aria-hidden />
+              <span>Duplicate as draft</span>
+            </button>
+          </div>
+        </div>
+      </TableActionMenuPortal>
+    </td>
+  );
+
   return (
     <>
-      <tbody>
+      <tbody data-testid={isShowingSelectedOnly ? 'transactions-body-selected' : 'transactions-body'}>
         {transactions.length === 0 ? (
           <tr>
-            <td 
-              colSpan={visibleColumnsCount + 2} 
-              className={styles.noDataCell}
-              style={{ textAlign: 'center', padding: '2rem', color: 'var(--mf-text-muted)' }}
+            <td
+              colSpan={visibleColumnCount + 2}
+              className={bodyStyles.emptyCell}
+              data-testid="transactions-empty"
             >
               No data found
             </td>
           </tr>
         ) : (
-          transactions.map((txn) => {
-          const isSelected = selectionSet.has(txn.id);
-          return (
-            <tr
-              key={txn.id}
-              className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`.trim()}
-            >
-              <td
-                className={`${styles.bodyCell} ${styles.stickyLeft} ${styles.checkboxCell} ${styles.stickyLeftNoShadow}`}
-                style={{
-                  minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
-                  width: `${CHECKBOX_COLUMN_WIDTH}px`,
-                }}
+          transactions.map((transaction) => {
+            const isSelected = selectionSet.has(transaction.id);
+            return (
+              <tr
+                key={transaction.id}
+                className={`${bodyStyles.row} ${isSelected ? bodyStyles.rowSelected : ''}`.trim()}
               >
-                <div className={styles.checkboxCellInner}>
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={(event) => onSelectRow?.(txn.id, event.target.checked)}
-                    aria-label={`Select transaction ${txn.id}`}
-                  />
-                </div>
-              </td>
-              {columns.map((column) => {
-                const definition = definitionMap.get(column.id);
-                const alignClass =
-                  definition?.align === 'right'
-                    ? styles.cellAlignRight
-                    : definition?.align === 'center'
-                    ? styles.cellAlignCenter
-                    : '';
-                const { minWidth, width } = resolveColumnSizing(column, definition);
-                const isHidden = hiddenColumnIds.has(column.id);
-                const cellClassName = `${styles.bodyCell} ${alignClass} ${
-                  isHidden && isColumnReorderMode ? styles.bodyCellHidden : ''
-                }`.trim();
-                return (
-                  <td
-                    key={column.id}
-                    className={cellClassName}
-                    style={{
-                      minWidth: `${minWidth}px`,
-                      width: `${width}px`,
-                    }}
-                    data-testid={`transactions-cell-${column.id}-${txn.id}`}
-                    aria-hidden={isHidden && isColumnReorderMode ? 'true' : undefined}
-                    onMouseEnter={handleCellEnter}
-                    onMouseLeave={handleCellLeave}
-                    onFocus={handleCellEnter}
-                    onBlur={handleCellLeave}
-                    onClick={handleCellEnter}
-                  >
-                    {renderCellContent(column, txn)}
-                  </td>
-                );
-              })}
-              <td
-                className={`${styles.bodyCell} ${styles.stickyRight}`}
-                style={{
-                  left: `${CHECKBOX_COLUMN_WIDTH}px`,
-                  minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
-                  width: `${ACTIONS_COLUMN_WIDTH}px`,
-                }}
-              >
-                <div
-                  className={styles.actionsCellTrigger}
-                  ref={actionRegistry.registerTrigger(txn.id)}
-                  onMouseEnter={() => onActionTriggerEnter(txn.id)}
-                  onMouseLeave={onActionTriggerLeave}
-                  onFocus={() => onActionFocus(txn.id)}
-                  onBlur={onActionBlur}
-                >
-                  <button
-                    type="button"
-                    className={`${styles.actionsTriggerButton} ${
-                      openActionId === txn.id ? styles.actionsTriggerButtonActive : ''
-                    }`}
-                    data-testid={`transaction-actions-trigger-${txn.id}`}
-                    aria-haspopup="menu"
-                    aria-expanded={openActionId === txn.id}
-                    aria-label="Show row actions"
-                    onMouseEnter={() => onActionTriggerEnter(txn.id)}
-                  >
-                    <FiMoreHorizontal aria-hidden />
-                  </button>
-                </div>
-                <TableActionMenuPortal
-                  rowId={txn.id}
-                  anchor={actionRegistry.getTrigger(txn.id)}
-                  isOpen={openActionId === txn.id}
-                  onClose={() => onAction(null)()}
-                  registerContent={registerActionMenu}
-                  className={`${styles.actionsMenu} ${styles.actionsMenuOpen} ${
-                    isSubmenuFlipped ? styles.actionsMenuFlipped : ''
-                  }`.trim()}
-                  containerProps={{
-                    onMouseEnter: () => onActionTriggerEnter(txn.id),
-                    onMouseLeave: onActionTriggerLeave,
-                    onFocus: () => onActionFocus(txn.id),
-                    onBlur: onActionBlur,
+                <td
+                  className={`${styles.bodyCell} ${styles.checkboxCell} ${styles.stickyLeft}`}
+                  style={{
+                    minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
+                    width: `${CHECKBOX_COLUMN_WIDTH}px`,
                   }}
-                  dataTestId={`transaction-actions-menu-${txn.id}`}
                 >
-                  <button
-                    type="button"
-                    className={styles.actionsMenuItem}
-                    onMouseEnter={onSubmenuEnter(null)}
-                    onClick={onAction({ mode: 'edit', transaction: txn })}
-                    data-testid={`transaction-action-edit-${txn.id}`}
-                  >
-                    <FiEdit2 aria-hidden />
-                    <span>Quick edit</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.actionsMenuItem} ${styles.actionsMenuDanger}`}
-                    onMouseEnter={onSubmenuEnter(null)}
-                    onClick={onAction({ mode: 'delete', transaction: txn })}
-                    data-testid={`transaction-action-delete-${txn.id}`}
-                  >
-                    <FiTrash2 aria-hidden />
-                    <span>Delete</span>
-                  </button>
-                  <div
-                    className={`${styles.actionsMenuItem} ${styles.actionsMenuNested}`}
-                    onMouseEnter={onSubmenuEnter('more')}
-                    data-testid={`transaction-action-more-${txn.id}`}
-                  >
-                    <div className={styles.actionsMenuNestedLabel}>
-                      <FiMoreHorizontal aria-hidden />
-                      <span>More actions</span>
-                    </div>
-                    <FiChevronRight className={styles.actionsMenuNestedCaret} aria-hidden />
-                    <div
-                      className={`${styles.actionsSubmenu} ${
-                        isSubmenuFlipped ? styles.actionsSubmenuFlipped : ''
-                      } ${
-                        openActionId === txn.id && openActionSubmenu === 'more'
-                          ? styles.actionsSubmenuOpen
-                          : ''
-                      }`.trim()}
-                      role="menu"
-                    >
-                      <button
-                        type="button"
-                        className={styles.actionsMenuItem}
-                        onClick={onAction({
-                          mode: 'advanced',
-                          transaction: txn,
-                          intent: 'advanced-panel',
-                        })}
-                        data-testid={`transaction-action-advanced-${txn.id}`}
-                      >
-                        <FiFilter aria-hidden />
-                        <span>Open advanced panel</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.actionsMenuItem}
-                        onClick={onAction({
-                          mode: 'advanced',
-                          transaction: txn,
-                          intent: 'duplicate-draft',
-                        })}
-                        data-testid={`transaction-action-duplicate-${txn.id}`}
-                      >
-                        <FiEdit2 aria-hidden />
-                        <span>Duplicate as draft</span>
-                      </button>
-                    </div>
+                  <div className={styles.checkboxCellInner}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(event) => onSelectRow?.(transaction.id, event.target.checked)}
+                      aria-label={`Select transaction ${transaction.id}`}
+                    />
                   </div>
-                </TableActionMenuPortal>
-              </td>
-            </tr>
-          );
+                </td>
+                {columns.map((descriptor) => {
+                  const { id, minWidth, width, align } = descriptor;
+                  const isHidden = hiddenColumnIds.has(id);
+                  const cellClassName = [
+                    styles.bodyCell,
+                    align === 'right'
+                      ? styles.cellAlignRight
+                      : align === 'center'
+                      ? styles.cellAlignCenter
+                      : '',
+                    isHidden && isColumnReorderMode ? styles.bodyCellHidden : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ');
+
+                  return (
+                    <td
+                      key={id}
+                      className={cellClassName}
+                      style={{ minWidth: `${minWidth}px`, width: `${width}px` }}
+                      data-testid={`transactions-cell-${id}-${transaction.id}`}
+                      aria-hidden={isHidden && isColumnReorderMode ? 'true' : undefined}
+                      onMouseEnter={handleCellEnter}
+                      onMouseLeave={handleCellLeave}
+                      onFocus={handleCellEnter}
+                      onBlur={handleCellLeave}
+                    >
+                      {resolveCellContent(descriptor, transaction)}
+                    </td>
+                  );
+                })}
+                {renderRowActions(transaction, isSelected)}
+              </tr>
+            );
           })
         )}
       </tbody>
       <TableTooltip
         anchor={tooltipAnchor}
         isVisible={tooltipVisible}
-        className={styles.tooltipPortal}
+        className={bodyStyles.tooltipPortal}
         offset={{ x: 0, y: -8 }}
       >
         {tooltipContent}

@@ -3,6 +3,7 @@ import { FiPlus, FiRefreshCw, FiSettings, FiSearch } from 'react-icons/fi';
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { TableRestoreInput } from '../table';
+import { Tooltip } from '../ui/Tooltip';
 
 export function TransactionsToolbar({
   searchValue,
@@ -102,7 +103,7 @@ export function TransactionsToolbar({
 
         <button
           type="button"
-          className={styles.secondaryButton}
+          className={`${styles.secondaryButton} ${styles.toolbarIconButton}`.trim()}
           onClick={onResetFilters}
           data-testid="transactions-reset-filters"
           disabled={isCustomizeLocked}
@@ -149,7 +150,6 @@ export function TransactionsToolbar({
                 />
                 <span>All columns (excl. Notes)</span>
               </label>
-
               <div className={styles.customizeToolbarActions}>
                 <button
                   type="button"
@@ -172,14 +172,16 @@ export function TransactionsToolbar({
             </div>
           ) : null}
 
-          <button
-            type="button"
-            className={`${styles.filterButton} ${isReorderMode ? styles.filterButtonActive : ''}`}
-            onClick={onCustomizeColumns}
-            data-testid="transactions-customize-columns-trigger"
-            aria-label={isReorderMode ? 'Finish customizing columns' : 'Customize table columns'}
-            aria-pressed={isReorderMode}
-          >
+        <button
+          type="button"
+          className={`${styles.filterButton} ${
+            isReorderMode ? styles.filterButtonActive : ''
+          } ${styles.toolbarIconButton}`.trim()}
+          onClick={onCustomizeColumns}
+          data-testid="transactions-customize-columns-trigger"
+          aria-label={isReorderMode ? 'Finish customizing columns' : 'Customize table columns'}
+          aria-pressed={isReorderMode}
+        >
             <FiSettings aria-hidden />
             <span className={styles.customizeButtonText}>
               {isReorderMode ? 'Done customizing' : 'Customize columns'}
@@ -187,17 +189,19 @@ export function TransactionsToolbar({
           </button>
         </div>
 
-        <button
-          type="button"
-          className={styles.primaryButton}
-          onClick={onAddTransaction}
-          data-testid="transactions-add-button"
-          disabled={isCustomizeLocked}
-          aria-label="Add new transaction"
-        >
-          <FiPlus aria-hidden />
-          <span className={styles.addButtonText}>Add transaction</span>
-        </button>
+        <Tooltip content="Add transaction">
+          <button
+            type="button"
+            className={`${styles.primaryButton} ${styles.iconPrimaryButton}`.trim()}
+            onClick={onAddTransaction}
+            data-testid="transactions-add-button"
+            disabled={isCustomizeLocked}
+            aria-label="Add new transaction"
+          >
+            <FiPlus aria-hidden />
+            <span className={styles.srOnly}>Add transaction</span>
+          </button>
+        </Tooltip>
       </div>
     </section>
   );

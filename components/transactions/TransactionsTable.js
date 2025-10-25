@@ -123,6 +123,7 @@ function usePaginationRenderer(pagination, fontScaleState) {
 
 export function TransactionsTable(props) {
   const {
+    tableScrollRef,
     transactions,
     selectedIds,
     onSelectRow,
@@ -138,6 +139,7 @@ export function TransactionsTable(props) {
     onColumnOrderChange,
     sortState,
     onSortChange,
+    isFetching = false,
   } = props;
 
   const [fontScale, setFontScale] = useState(FONT_SCALE_DEFAULT);
@@ -170,6 +172,7 @@ export function TransactionsTable(props) {
 
   return (
     <TableBase
+      tableScrollRef={tableScrollRef}
       transactions={transactions}
       selectedIds={selectedIds}
       onSelectRow={onSelectRow}
@@ -187,6 +190,7 @@ export function TransactionsTable(props) {
       sortState={sortState}
       onSortChange={onSortChange}
       isShowingSelectedOnly={props.isShowingSelectedOnly}
+      isFetching={isFetching}
     />
   );
 }

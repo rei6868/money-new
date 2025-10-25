@@ -1,39 +1,93 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
+import { FiChevronDown, FiChevronUp, FiMinus } from 'react-icons/fi';
 
 import headerStyles from './TableBaseHeader.module.css';
 import styles from './TableBase.module.css';
 import { Tooltip } from '../ui/Tooltip';
-import {
-  ACTIONS_COLUMN_WIDTH,
-  CHECKBOX_COLUMN_WIDTH,
-  STICKY_COLUMN_BUFFER,
-  resolveColumnSizing,
-  resolveColumnSortType,
-} from './tableUtils';
+import { ACTIONS_COLUMN_WIDTH, CHECKBOX_COLUMN_WIDTH } from './tableUtils';
 
-function SortIcon({ direction }) {
-  const isActive = direction === 'asc' || direction === 'desc';
-  const iconClassName = `${headerStyles.sortIcon} ${isActive ? headerStyles.sortIconActive : ''}`.trim();
-
-  let icon;
+function SortGlyph({ direction, isLoading }) {
+  if (isLoading) {
+    return <span className={headerStyles.sortSpinner} aria-hidden />;
+  }
   if (direction === 'asc') {
-    icon = '↑';
-  } else if (direction === 'desc') {
-    icon = '↓';
-  } else {
-    icon = '↕';
+    return <FiChevronUp aria-hidden />;
+  }
+  if (direction === 'desc') {
+    return <FiChevronDown aria-hidden />;
+  }
+  return <FiMinus aria-hidden />;
+}
+
+function resolveColumnValue(transaction, descriptor) {
+  if (!transaction || !descriptor) {
+    return null;
   }
 
-  return (
-    <span className={iconClassName} aria-hidden="true">
-      {icon}
-    </span>
-  );
+  const { id } = descriptor;
+  if (!id) {
+    return null;
+  }
+
+  const value = transaction[id];
+  if (value !== undefined) {
+    return value;
+  }
+
+  const fallbackKey = descriptor.definition?.valueKey;
+  if (fallbackKey && fallbackKey in transaction) {
+    return transaction[fallbackKey];
+  }
+
+  return null;
+}
+
+function hasMeaningfulValue(value) {
+  if (value === null || value === undefined) {
+    return false;
+  }
+
+  if (typeof value === 'number') {
+    return Math.abs(value) > 0;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return false;
+    }
+    const numericPattern = /^[-+]?[$€£¥]?\s*[\d.,]+%?$/;
+    if (numericPattern.test(trimmed)) {
+      const normalized = trimmed
+        .replace(/[$€£¥]/g, '')
+        .replace(/[,\s]/g, '')
+        .replace(/%$/, '');
+      const numeric = Number(normalized);
+      if (Number.isFinite(numeric)) {
+        return Math.abs(numeric) > 0;
+      }
+    }
+    return true;
+  }
+
+  if (typeof value === 'boolean') {
+    return value === true;
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((item) => hasMeaningfulValue(item));
+  }
+
+  if (typeof value === 'object') {
+    return Object.values(value).some((item) => hasMeaningfulValue(item));
+  }
+
+  return true;
 }
 
 export function TableBaseHeader({
   columns,
-  definitionMap,
+  visibleColumnIds = [],
   isColumnReorderMode = false,
   activeDropTarget,
   onColumnDragStart,
@@ -45,80 +99,65 @@ export function TableBaseHeader({
   isIndeterminate = false,
   onSelectAll,
   headerCheckboxRef,
-  visibleColumnIds = [],
   onColumnVisibilityChange,
   sortState,
   onSortChange,
+  isFetching = false,
+  transactions = [],
 }) {
-  const headerRowRef = useRef(null);
-  const [mainHeaderHeight, setMainHeaderHeight] = useState(0);
+  const visibleIdSet = useMemo(() => new Set(visibleColumnIds), [visibleColumnIds]);
+  const totalVisibleColumns = visibleIdSet.size;
 
-  useLayoutEffect(() => {
-    if (!isColumnReorderMode || !headerRowRef.current) {
-      return undefined;
+  const disabledSortColumnIds = useMemo(() => {
+    if (!Array.isArray(transactions) || transactions.length === 0) {
+      return new Set();
     }
 
-    const measure = () => {
-      const rect = headerRowRef.current.getBoundingClientRect();
-      setMainHeaderHeight(rect.height);
-    };
-
-    measure();
-    window.addEventListener('resize', measure);
-    return () => {
-      window.removeEventListener('resize', measure);
-    };
-  }, [isColumnReorderMode, columns]);
-
-  const visibleIdSet = useMemo(() => new Set(visibleColumnIds), [visibleColumnIds]);
-
-  const renderHeaderCell = (column) => {
-    const definition = definitionMap.get(column.id);
-    const alignClass =
-      definition?.align === 'right'
-        ? headerStyles.headerAlignRight
-        : definition?.align === 'center'
-        ? headerStyles.headerAlignCenter
-        : '';
-    const headerTitle = definition?.label ?? column.id;
-    const isHidden = column.visible === false;
-    const isDropping = isColumnReorderMode && activeDropTarget === column.id;
-    const headerClassName = `${headerStyles.headerCell} ${alignClass} ${
-      isColumnReorderMode ? headerStyles.headerReorderActive : ''
-    } ${isDropping ? headerStyles.headerReorderTarget : ''} ${
-      isHidden && isColumnReorderMode ? headerStyles.headerCellHidden : ''
-    }`.trim();
-    const isDraggable = isColumnReorderMode && column.visible !== false;
-    const isSorted = sortState?.columnId === column.id && sortState.direction;
-    const sortDirection = isSorted ? sortState.direction : null;
-    const sortType = resolveColumnSortType(column.id, definition);
-    const iconType = sortType === 'number' || sortType === 'date' ? 'number' : 'string';
-    const tooltipContent = isSorted
-      ? sortDirection === 'asc'
-        ? 'Sorted Ascending'
-        : 'Sorted Descending'
-      : `Sort by ${headerTitle}`;
-    const ariaSort = sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : 'none';
-    const sortButtonClassName = `${headerStyles.headerSortButton} ${
-      sortDirection ? headerStyles.headerSortActive : ''
-    }`.trim();
-
-    // Toggle switch logic for customization mode
-    const isVisible = column.visible !== false;
-    const totalVisibleColumns = visibleIdSet.size;
-    const isToggleable = column.id !== 'notes';
-    const isLastVisible = isVisible && totalVisibleColumns <= 1;
-    const isInteractive = isToggleable && !isLastVisible;
-
-    const handleToggleChange = (event) => {
-      if (!isInteractive) {
-        event.preventDefault();
+    const disabled = new Set();
+    columns.forEach((descriptor) => {
+      if (!descriptor?.id) {
         return;
       }
-      onColumnVisibilityChange?.(column.id, event.target.checked);
-    };
+      const hasAnyMeaningfulValue = transactions.some((txn) => {
+        const value = resolveColumnValue(txn, descriptor);
+        return hasMeaningfulValue(value);
+      });
+      if (!hasAnyMeaningfulValue) {
+        disabled.add(descriptor.id);
+      }
+    });
+    return disabled;
+  }, [columns, transactions]);
 
-    const { minWidth, width } = resolveColumnSizing(column, definition);
+  const renderColumnHeader = (descriptor) => {
+    const { id, column, definition, minWidth, width, align } = descriptor;
+    const title = definition?.label ?? column.id;
+    const isHidden = column.visible === false;
+    const isDropTarget = isColumnReorderMode && activeDropTarget === id;
+    const isVisible = column.visible !== false;
+    const isToggleable = id !== 'notes';
+    const isLastVisible = isVisible && totalVisibleColumns <= 1 && visibleIdSet.has(id);
+    const canToggle = isToggleable && !isLastVisible;
+
+    const isSorted = sortState?.columnId === id && sortState.direction;
+    const sortDirection = isSorted ? sortState.direction : null;
+    const isLoading = isSorted && isFetching;
+    const ariaSort = isSorted ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none';
+
+    const headerClassName = [
+      headerStyles.headerCell,
+      styles.bodyCell,
+      align === 'right'
+        ? styles.cellAlignRight
+        : align === 'center'
+        ? styles.cellAlignCenter
+        : '',
+      isColumnReorderMode ? headerStyles.headerReorder : '',
+      isDropTarget ? headerStyles.headerDropTarget : '',
+      isHidden && isColumnReorderMode ? headerStyles.headerHidden : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
 
     const handleSortClick = () => {
       if (isColumnReorderMode) {
@@ -126,62 +165,82 @@ export function TableBaseHeader({
       }
       const nextDirection =
         sortDirection === 'asc' ? 'desc' : sortDirection === 'desc' ? null : 'asc';
-      onSortChange?.(column.id, nextDirection);
+      onSortChange?.(id, nextDirection);
     };
+
+    const handleToggleChange = (event) => {
+      if (!canToggle) {
+        event.preventDefault();
+        return;
+      }
+      onColumnVisibilityChange?.(id, event.target.checked);
+    };
+
+    const isSortDisabledForData = disabledSortColumnIds.has(id);
+
+    const tooltipLabel = isSortDisabledForData
+      ? `Sorting unavailable for ${title}`
+      : isSorted
+      ? sortDirection === 'asc'
+        ? `Sorted ascending by ${title}`
+        : `Sorted descending by ${title}`
+      : `Sort by ${title}`;
+
+    const showActiveState = isSorted && !isSortDisabledForData;
+    const glyphDirection = isSortDisabledForData ? null : sortDirection;
 
     return (
       <th
-        key={column.id}
+        key={id}
         scope="col"
         className={headerClassName}
-        style={{
-          minWidth: isColumnReorderMode ? 'max-content' : `${minWidth}px`,
-          width: isColumnReorderMode ? 'auto' : `${width}px`,
-        }}
-        draggable={isDraggable}
-        onDragStart={isDraggable && onColumnDragStart ? onColumnDragStart(column.id) : undefined}
+        style={{ minWidth: `${minWidth}px`, width: `${width}px` }}
+        draggable={isColumnReorderMode && isVisible}
+        onDragStart={
+          isColumnReorderMode && isVisible && onColumnDragStart
+            ? onColumnDragStart(id)
+            : undefined
+        }
         onDragEnter={
-          isColumnReorderMode && onColumnDragEnter ? onColumnDragEnter(column.id) : undefined
+          isColumnReorderMode && onColumnDragEnter ? onColumnDragEnter(id) : undefined
         }
         onDragOver={isColumnReorderMode ? onColumnDragOver : undefined}
         onDragEnd={isColumnReorderMode ? onColumnDragEnd : undefined}
-        onDrop={isColumnReorderMode && onColumnDrop ? onColumnDrop(column.id) : undefined}
+        onDrop={isColumnReorderMode && onColumnDrop ? onColumnDrop(id) : undefined}
         aria-sort={ariaSort}
       >
         <div className={headerStyles.headerShell}>
-          <div className={headerStyles.headerContent}>
-            <span className={headerStyles.headerStaticLabel}>
-              <span className={headerStyles.headerLabelText}>{headerTitle}</span>
-            </span>
-            {isColumnReorderMode && (
+          <div className={headerStyles.headerLabel}>
+            <span>{title}</span>
+            {isColumnReorderMode ? (
               <label
-                className={headerStyles.columnToggleSwitch}
-                title="Show/hide this column"
-                data-disabled={isInteractive ? undefined : 'true'}
+                className={headerStyles.columnToggle}
+                title={canToggle ? `Toggle ${title}` : 'At least one column must stay visible'}
+                data-disabled={canToggle ? undefined : 'true'}
               >
                 <input
                   type="checkbox"
                   checked={isVisible}
                   onChange={handleToggleChange}
-                  aria-label={`Show or hide ${headerTitle} column`}
-                  aria-disabled={isInteractive ? undefined : 'true'}
-                  data-testid={`transactions-columns-toggle-${column.id}`}
+                  aria-label={`Show or hide ${title} column`}
+                  aria-disabled={canToggle ? undefined : 'true'}
+                  data-testid={`transactions-columns-toggle-${id}`}
                 />
-                <span className={headerStyles.columnToggleTrack}>
-                  <span className={headerStyles.columnToggleThumb} />
+                <span className={headerStyles.toggleTrack}>
+                  <span className={headerStyles.toggleThumb} />
                 </span>
               </label>
-            )}
+            ) : null}
           </div>
-          <Tooltip content={tooltipContent}>
+          <Tooltip content={tooltipLabel}>
             <button
               type="button"
-              className={sortButtonClassName}
+              className={`${headerStyles.sortButton} ${showActiveState ? headerStyles.sortButtonActive : ''}`.trim()}
               onClick={handleSortClick}
-              disabled={isColumnReorderMode}
-              aria-label={tooltipContent}
+              disabled={isColumnReorderMode || isSortDisabledForData}
+              aria-label={tooltipLabel}
             >
-              <SortIcon direction={sortDirection ?? undefined} />
+              <SortGlyph direction={glyphDirection ?? undefined} isLoading={isLoading} />
             </button>
           </Tooltip>
         </div>
@@ -189,18 +248,12 @@ export function TableBaseHeader({
     );
   };
 
-
-
-  const headerStyle = isColumnReorderMode
-    ? { '--table-header-main-height': `${mainHeaderHeight}px` }
-    : undefined;
-
   return (
-    <thead className={headerStyles.tableHeader} style={headerStyle}>
-      <tr ref={headerRowRef}>
+    <thead className={headerStyles.tableHeader}>
+      <tr>
         <th
           scope="col"
-          className={`${headerStyles.headerCell} ${styles.stickyLeft} ${styles.checkboxCell} ${styles.stickyLeftNoShadow}`}
+          className={`${headerStyles.headerCell} ${styles.checkboxCell} ${styles.stickyLeft}`}
           style={{
             minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
             width: `${CHECKBOX_COLUMN_WIDTH}px`,
@@ -220,25 +273,23 @@ export function TableBaseHeader({
             </div>
           </div>
         </th>
-        {columns.map((column) => renderHeaderCell(column))}
+        {columns.map(renderColumnHeader)}
         <th
           scope="col"
           aria-label="Task"
-          className={`${headerStyles.headerCell} ${headerStyles.actionsHeader} ${styles.stickyRight}`}
+          className={`${headerStyles.headerCell} ${styles.actionsCell} ${styles.stickyRight}`}
           style={{
-            left: `${CHECKBOX_COLUMN_WIDTH}px`,
-            minWidth: `${STICKY_COLUMN_BUFFER - CHECKBOX_COLUMN_WIDTH}px`,
-            width: `${STICKY_COLUMN_BUFFER - CHECKBOX_COLUMN_WIDTH}px`,
+            minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
+            width: `${ACTIONS_COLUMN_WIDTH}px`,
           }}
         >
           <div className={headerStyles.headerShell}>
-            <span className={headerStyles.headerStaticLabel}>
-              <span className={headerStyles.headerLabelText}>Task</span>
+            <span className={headerStyles.headerLabel}>
+              <span>Task</span>
             </span>
           </div>
         </th>
       </tr>
-
     </thead>
   );
 }
