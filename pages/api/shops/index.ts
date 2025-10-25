@@ -1,157 +1,85 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { asc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
-import { getDb } from "../../../lib/db/client";
-import {
-  shops,
-  shopStatusEnum,
-  shopTypeEnum,
-  type NewShop,
-} from "../../../src/db/schema/shops";
-
-type ShopListResponse = {
-  shops: Array<typeof shops.$inferSelect>;
-};
-
-const respondJson = (res: NextApiResponse, status: number, payload: unknown): void => {
-  res.setHeader("Content-Type", "application/json");
-  res.status(status).json(payload);
-};
-
-const normalizeString = (value: unknown): string | undefined => {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-};
-
-const parseRequestBody = (raw: unknown): Record<string, unknown> | null => {
-  if (raw == null) {
-    return {};
-  }
-  if (typeof raw === "string") {
-    if (raw.trim().length === 0) {
-      return {};
-    }
-    try {
-      const parsed = JSON.parse(raw);
-      return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : null;
-    } catch (error) {
-      console.error("Failed to parse JSON payload for /api/shops", error);
-      return null;
-    }
-  }
-  if (typeof raw === "object") {
-    return raw as Record<string, unknown>;
-  }
-  return null;
-};
-
-const generateShopId = (): string => {
-  if (typeof randomUUID === "function") {
-    return randomUUID();
-  }
-  return `shop_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-};
-
-const normalizeEnumValue = (value: unknown, allowed: readonly string[]): string | null => {
-  const normalized = normalizeString(value);
-  if (!normalized) {
-    return null;
-  }
-  const candidate = normalized.toLowerCase();
-  return allowed.includes(candidate) ? candidate : null;
-};
+import { db } from "../../../lib/db/client";
+import { shops, shopTypeEnum, shopStatusEnum, type NewShop } from "../../../src/db/schema/shops";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const db = getDb();
-  if (!db) {
-    respondJson(res, 503, { error: "Database connection is not configured" });
+  const database = db;
+
+  if (!database) {
+    console.error("Database connection is not configured");
+    res.status(500).json({ error: "Database connection is not configured" });
     return;
   }
 
   if (req.method === "GET") {
     try {
-      const rows = await db.select().from(shops);
-      const response: ShopListResponse = { shops: rows };
-      respondJson(res, 200, response);
+      const result = await database.select().from(shops).orderBy(asc(shops.shopName));
+      res.status(200).json(result);
     } catch (error) {
       console.error("Failed to fetch shops", error);
-      const details = error instanceof Error ? error.message : "Unknown error";
-      respondJson(res, 500, { error: "Failed to fetch shops", details });
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ error: message });
     }
     return;
   }
 
   if (req.method === "POST") {
-    const parsedBody = parseRequestBody(req.body);
-    if (parsedBody === null) {
-      respondJson(res, 400, { error: "Validation failed", details: "Invalid JSON payload" });
-      return;
-    }
-
-    const payload = parsedBody as Partial<NewShop>;
-
-    const shopName = normalizeString(payload.shopName);
-    const shopType = normalizeEnumValue(payload.shopType, shopTypeEnum.enumValues) as
-      | (typeof shopTypeEnum.enumValues)[number]
-      | null;
-    const status = normalizeEnumValue(payload.status, shopStatusEnum.enumValues) as
-      | (typeof shopStatusEnum.enumValues)[number]
-      | null;
-
-    if (!shopName || !shopType || !status) {
-      respondJson(res, 400, {
-        error: "Validation failed",
-        details: `shopName, shopType, and status are required. shopType must be one of: ${shopTypeEnum.enumValues.join(
-          ", "
-        )}. status must be one of: ${shopStatusEnum.enumValues.join(", ")}`,
-      });
-      return;
-    }
-
-    const newShop: NewShop = {
-      shopId: generateShopId(),
-      shopName,
-      shopType,
-      status,
-    };
-
-    const optionalFields: Array<keyof Pick<NewShop, "imgUrl" | "url">> = ["imgUrl", "url"];
-    for (const field of optionalFields) {
-      const value = normalizeString(payload[field]);
-      if (value) {
-        newShop[field] = value;
-      }
-    }
-
-    if (payload.notes !== undefined) {
-      if (typeof payload.notes === "string") {
-        const trimmedNotes = payload.notes.trim();
-        newShop.notes = trimmedNotes.length > 0 ? trimmedNotes : null;
-      } else if (payload.notes === null) {
-        newShop.notes = null;
-      } else {
-        respondJson(res, 400, {
-          error: "Validation failed",
-          details: "notes must be a string or null",
+    try {
+      const body = req.body || {};
+      
+      // ✅ VALIDATE required fields
+      if (!body.shopName || !body.shopType || !body.status) {
+        res.status(400).json({ 
+          error: "Validation failed", 
+          details: "shopName, shopType, and status are required" 
         });
         return;
       }
-    }
 
-    try {
-      const [created] = await db.insert(shops).values(newShop).returning();
-      respondJson(res, 201, created ?? newShop);
+      // ✅ VALIDATE shopType enum
+      const allowedTypes = shopTypeEnum.enumValues as readonly string[];
+      if (!allowedTypes.includes(body.shopType)) {
+        res.status(400).json({ 
+          error: "Validation failed", 
+          details: `shopType must be one of: ${allowedTypes.join(", ")}` 
+        });
+        return;
+      }
+
+      // ✅ VALIDATE shopStatus enum
+      const allowedStatuses = shopStatusEnum.enumValues as readonly string[];
+      if (!allowedStatuses.includes(body.status)) {
+        res.status(400).json({ 
+          error: "Validation failed", 
+          details: `status must be one of: ${allowedStatuses.join(", ")}` 
+        });
+        return;
+      }
+
+      // ✅ BUILD INSERT PAYLOAD with auto UUID
+      const payload: NewShop = {
+        shopId: randomUUID(),
+        shopName: body.shopName,
+        shopType: body.shopType,
+        imgUrl: body.imgUrl || null,
+        url: body.url || null,
+        status: body.status,
+        notes: body.notes || null,
+      };
+
+      const created = await database.insert(shops).values(payload).returning();
+      res.status(201).json(created[0]);
     } catch (error) {
       console.error("Failed to create shop", error);
-      const details = error instanceof Error ? error.message : "Unknown error";
-      respondJson(res, 500, { error: "Failed to create shop", details });
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ error: message });
     }
     return;
   }
 
   res.setHeader("Allow", ["GET", "POST"]);
-  respondJson(res, 405, { error: "Method not allowed" });
+  res.status(405).json({ error: "Method not allowed" });
 }
