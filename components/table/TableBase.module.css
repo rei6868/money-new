@@ -100,6 +100,12 @@
   box-shadow: none;
 }
 
+/* Remove shadow from second sticky column to prevent gap */
+:global(th):nth-child(2).stickyLeft,
+:global(td):nth-child(2).stickyLeft {
+  box-shadow: none !important;
+}
+
 .stickyRight {
   position: sticky;
   right: 0;
@@ -478,8 +484,6 @@ th.checkboxCell {
   background: var(--mf-sidebar-bg);
   flex-shrink: 0;
   min-height: var(--pagination-bar-height);
-  position: sticky;
-  bottom: 0;
   z-index: 120;
 }
 
