@@ -357,7 +357,9 @@ export function TableBase({
                       : undefined
                   }
                 >
-                  <span className={styles.totalRowLeadLabel}>TOTAL</span>
+                  <div className={styles.checkboxCellInner}>
+                    <span className={styles.totalRowLeadLabel}>TOTAL</span>
+                  </div>
                 </td>
                 {displayColumns.map((column) => {
                   const definition = definitionMap.get(column.id);

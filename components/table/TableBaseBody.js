@@ -224,12 +224,14 @@ export function TableBaseBody({
                   width: `${CHECKBOX_COLUMN_WIDTH}px`,
                 }}
               >
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={(event) => onSelectRow?.(txn.id, event.target.checked)}
-                  aria-label={`Select transaction ${txn.id}`}
-                />
+                <div className={styles.checkboxCellInner}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(event) => onSelectRow?.(txn.id, event.target.checked)}
+                    aria-label={`Select transaction ${txn.id}`}
+                  />
+                </div>
               </td>
               {columns.map((column) => {
                 const definition = definitionMap.get(column.id);
