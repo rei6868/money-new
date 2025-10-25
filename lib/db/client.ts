@@ -48,6 +48,8 @@ export const getDb = (): DrizzleClient | null => {
   return cachedDb;
 };
 
+export const db = getDb();
+
 export const isDbAvailable = (): boolean => Boolean(getDb());
 
 export const teardownDb = async (): Promise<void> => {

@@ -1,129 +1,43 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { randomUUID } from 'crypto';
+import type { NextApiRequest, NextApiResponse } from "next";
+import { asc } from "drizzle-orm";
 
-import { getDb } from '../../../lib/db/client';
-import { people, personStatusEnum, type NewPerson } from '../../../src/db/schema/people';
-
-type PeopleListResponse = {
-  people: Array<typeof people.$inferSelect>;
-};
-
-const respondJson = (res: NextApiResponse, status: number, payload: unknown): void => {
-  res.setHeader('Content-Type', 'application/json');
-  res.status(status).json(payload);
-};
-
-const generatePersonId = (): string => {
-  if (typeof randomUUID === 'function') {
-    return randomUUID();
-  }
-  return `person_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-};
-
-const normalizeString = (value: unknown): string | undefined => {
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-};
-
-const parseRequestBody = (raw: unknown): Record<string, unknown> | null => {
-  if (raw == null) {
-    return {};
-  }
-  if (typeof raw === 'string') {
-    if (raw.trim().length === 0) {
-      return {};
-    }
-    try {
-      const parsed = JSON.parse(raw);
-      return typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : null;
-    } catch (error) {
-      console.error('Failed to parse JSON payload for /api/people', error);
-      return null;
-    }
-  }
-  if (typeof raw === 'object') {
-    return raw as Record<string, unknown>;
-  }
-  return null;
-};
+import { db } from "../../../lib/db/client";
+import { people, type NewPerson } from "../../../src/db/schema/people";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const db = getDb();
-  if (!db) {
-    respondJson(res, 503, { error: 'Database connection is not configured' });
+  const database = db;
+
+  if (!database) {
+    console.error("Database connection is not configured");
+    res.status(500).json({ error: "Database connection is not configured" });
     return;
   }
 
-  if (req.method === 'GET') {
+  if (req.method === "GET") {
     try {
-      const rows = await db.select().from(people);
-      const response: PeopleListResponse = { people: rows };
-      respondJson(res, 200, response);
+      const result = await database.select().from(people).orderBy(asc(people.fullName));
+      res.status(200).json(result);
     } catch (error) {
-      console.error('Failed to fetch people', error);
-      const details = error instanceof Error ? error.message : 'Unknown error';
-      respondJson(res, 500, { error: 'Failed to fetch people', details });
+      console.error("Failed to fetch people", error);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ error: message });
     }
     return;
   }
 
-  if (req.method === 'POST') {
+  if (req.method === "POST") {
     try {
-      const parsedBody = parseRequestBody(req.body);
-      if (parsedBody === null) {
-        respondJson(res, 400, { error: 'Validation failed', details: 'Invalid JSON payload' });
-        return;
-      }
-
-      const payload = parsedBody as Partial<NewPerson>;
-
-      const fullName = normalizeString(payload.fullName);
-      const status = normalizeString(payload.status);
-      const allowedStatuses = personStatusEnum.enumValues;
-      const normalizedStatus =
-        status && (allowedStatuses as readonly string[]).includes(status)
-          ? (status as (typeof allowedStatuses)[number])
-          : undefined;
-      if (!fullName || !normalizedStatus) {
-        respondJson(res, 400, {
-          error: 'Validation failed',
-          details: `fullName and status are required. status must be one of: ${allowedStatuses.join(', ')}`,
-        });
-        return;
-      }
-
-      const newPerson: NewPerson = {
-        personId: generatePersonId(),
-        fullName,
-        status: normalizedStatus,
-      };
-
-      const optionalFields: Array<'contactInfo' | 'groupId' | 'imgUrl' | 'note'> = [
-        'contactInfo',
-        'groupId',
-        'imgUrl',
-        'note',
-      ];
-      for (const field of optionalFields) {
-        const value = payload[field];
-        if (value !== undefined && value !== null && value !== '') {
-          newPerson[field] = value;
-        }
-      }
-
-      const [created] = await db.insert(people).values(newPerson).returning();
-      respondJson(res, 201, created);
+      const payload = req.body as NewPerson;
+      const created = await database.insert(people).values(payload).returning();
+      res.status(201).json(created[0]);
     } catch (error) {
-      console.error('Failed to create person', error);
-      const details = error instanceof Error ? error.message : 'Unknown error';
-      respondJson(res, 500, { error: 'Failed to create person', details });
+      console.error("Failed to create person", error);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ error: message });
     }
     return;
   }
 
-  res.setHeader('Allow', ['GET', 'POST']);
-  respondJson(res, 405, { error: 'Method not allowed' });
+  res.setHeader("Allow", ["GET", "POST"]);
+  res.status(405).json({ error: "Method not allowed" });
 }
