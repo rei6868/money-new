@@ -26,7 +26,6 @@
   overscroll-behavior: contain;
   flex: 1 1 auto;
   min-height: 0;
-  max-height: calc(100vh - var(--pagination-bar-height, 60px) - 200px);
 }
 
 .table {

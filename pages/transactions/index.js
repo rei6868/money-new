@@ -39,6 +39,18 @@ export default function TransactionsHistoryPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const discardResolverRef = useRef(null);
   const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false);
+  const tableScrollRef = useRef(null);
+  const savedScrollLeftRef = useRef(0);
+
+  useEffect(() => {
+    if (tableScrollRef.current && savedScrollLeftRef.current > 0) {
+      requestAnimationFrame(() => {
+        if (tableScrollRef.current) {
+          tableScrollRef.current.scrollLeft = savedScrollLeftRef.current;
+        }
+      });
+    }
+  }, [transactions]);
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -132,6 +144,11 @@ export default function TransactionsHistoryPage() {
 
     let isCancelled = false;
     const controller = new AbortController();
+
+    if (tableScrollRef.current) {
+      savedScrollLeftRef.current = tableScrollRef.current.scrollLeft;
+    }
+
     setIsFetching(true);
 
     const params = new URLSearchParams();
@@ -339,22 +356,12 @@ export default function TransactionsHistoryPage() {
         return;
       }
 
-      // Preserve scroll position
-      const tableContainer = document.querySelector('[data-testid="transactions-table-container"]');
-      const scrollLeft = tableContainer?.scrollLeft || 0;
-
       if (!columnId || !direction) {
         if (sortState.columnId === null && sortState.direction === null) {
           return;
         }
         setSortState({ columnId: null, direction: null });
         setCurrentPage(1);
-        // Restore scroll position after state update
-        setTimeout(() => {
-          if (tableContainer) {
-            tableContainer.scrollLeft = scrollLeft;
-          }
-        }, 0);
         return;
       }
 
@@ -364,12 +371,6 @@ export default function TransactionsHistoryPage() {
 
       setSortState({ columnId, direction });
       setCurrentPage(1);
-      // Restore scroll position after state update
-      setTimeout(() => {
-        if (tableContainer) {
-          tableContainer.scrollLeft = scrollLeft;
-        }
-      }, 0);
     },
     [isReorderMode, sortState],
   );
@@ -647,6 +648,7 @@ export default function TransactionsHistoryPage() {
           </div>
         ) : (
           <TransactionsTable
+            tableScrollRef={tableScrollRef}
             transactions={displayedTransactions}
             selectedIds={selectedIds}
             onSelectRow={handleSelectRow}
@@ -662,7 +664,9 @@ export default function TransactionsHistoryPage() {
               currentPage,
               totalPages: Math.max(1, serverPagination.totalPages || 1),
               onPageSizeChange: (value) => {
-                const normalized = PAGE_SIZE_OPTIONS.includes(value) ? value : PAGE_SIZE_OPTIONS[0];
+                const normalized = PAGE_SIZE_OPTIONS.includes(value)
+                  ? value
+                  : PAGE_SIZE_OPTIONS[0];
                 setPageSize(normalized);
                 setCurrentPage(1);
               },
