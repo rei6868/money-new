@@ -225,13 +225,13 @@ async function getDebtTotal(
   return total === 0 ? "0.00" : total.toFixed(2);
 }
 
-async function getNextSeqNo(client: DatabaseClient, snapshotId: string): Promise<number> {
+async function getNextSeqNo(client: DatabaseClient, txnId: string): Promise<number> {
   const [result] = await client
     .select({
       maxSeq: sql<number>`COALESCE(MAX(${transactionHistory.seqNo}), 0)`,
     })
     .from(transactionHistory)
-    .where(eq(transactionHistory.transactionIdSnapshot, snapshotId));
+    .where(eq(transactionHistory.transactionId, txnId));
 
   const value = result?.maxSeq ?? 0;
   return Number(value) + 1;
@@ -239,9 +239,9 @@ async function getNextSeqNo(client: DatabaseClient, snapshotId: string): Promise
 
 async function recordHistory(
   client: DatabaseClient,
-  payload: Omit<NewTransactionHistory, "historyId" | "createdAt" | "seqNo">,
+  payload: Omit<NewTransactionHistory, "historyId" | "createdAt" | "seqNo"> & { transactionId: string },
 ): Promise<void> {
-  const nextSeq = await getNextSeqNo(client, payload.transactionIdSnapshot);
+  const nextSeq = await getNextSeqNo(client, payload.transactionId);
   await client.insert(transactionHistory).values({
     ...payload,
     seqNo: nextSeq,
@@ -349,7 +349,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         await recordHistory(txClient, {
           transactionId,
-          transactionIdSnapshot: transactionId,
           oldAmount,
           newAmount,
           oldCashback,
@@ -403,7 +402,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         await recordHistory(txClient, {
           transactionId,
-          transactionIdSnapshot: transactionId,
           oldAmount,
           newAmount: null,
           oldCashback,

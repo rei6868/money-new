@@ -5,6 +5,7 @@ import {
   pgEnum,
   pgTable,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -36,7 +37,6 @@ export const transactionHistory = pgTable(
         onUpdate: "cascade",
       },
     ),
-    transactionIdSnapshot: varchar("transaction_id_snapshot", { length: 36 }).notNull(),
     oldAmount: numeric("old_amount", { precision: 18, scale: 2 }),
     newAmount: numeric("new_amount", { precision: 18, scale: 2 }),
     oldCashback: numeric("old_cashback", { precision: 18, scale: 2 }),
@@ -49,8 +49,8 @@ export const transactionHistory = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
-    transactionSnapshotSeqIdx: index("transaction_history_transaction_snapshot_seq_idx").on(
-      table.transactionIdSnapshot,
+    transactionSeqIdx: uniqueIndex("transaction_history_transaction_seq_idx").on(
+      table.transactionId,
       table.seqNo,
     ),
     transactionIdIdx: index("transaction_history_transaction_id_idx").on(table.transactionId),
