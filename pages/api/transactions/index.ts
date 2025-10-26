@@ -5,11 +5,34 @@ import { transactions, transactionTypeEnum, transactionStatusEnum, type NewTrans
 import { debtMovements, debtMovementTypeEnum, debtMovementStatusEnum, type NewDebtMovement } from "../../../src/db/schema/debtMovements";
 import { debtLedger, debtLedgerStatusEnum, type NewDebtLedger } from "../../../src/db/schema/debtLedger";
 import { accounts } from "../../../src/db/schema/accounts";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, desc } from "drizzle-orm";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const database = db;
   if (!database) return res.status(500).json({ error: "No database configured" });
+
+  if (req.method === "GET") {
+    try {
+      const rawPage = Array.isArray(req.query.page) ? req.query.page[0] : req.query.page;
+      const rawPageSize = Array.isArray(req.query.pageSize) ? req.query.pageSize[0] : req.query.pageSize;
+      const page = Math.max(parseInt(rawPage ?? "1", 10) || 1, 1);
+      const pageSize = Math.max(parseInt(rawPageSize ?? "10", 10) || 10, 1);
+      const offset = (page - 1) * pageSize;
+
+      const txns = await database
+        .select()
+        .from(transactions)
+        .orderBy(desc(transactions.occurredOn))
+        .limit(pageSize)
+        .offset(offset);
+
+      return res.status(200).json({ items: txns, total: txns.length });
+    } catch (error) {
+      console.error("Failed to fetch transactions", error);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return res.status(500).json({ error: message });
+    }
+  }
 
   if (req.method === "POST") {
     try {
@@ -149,6 +172,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  res.setHeader("Allow", ["POST"]);
+  res.setHeader("Allow", ["GET", "POST"]);
   res.status(405).json({ error: "Method not allowed" });
 }
