@@ -10,4 +10,5 @@ export * from "./debtMovements";
 export * from "./people";
 export * from "./shops";
 export * from "./subscriptions";
+export * from "./transactionHistory";
 export * from "./transactions";
