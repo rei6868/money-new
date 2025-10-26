@@ -10,6 +10,7 @@ import {
   FiSun,
   FiChevronDown,
   FiMenu,
+  FiCreditCard,
 } from 'react-icons/fi';
 
 import { useAuth } from '../context/AuthContext';
@@ -23,6 +24,12 @@ const NAV_ITEMS = [
     label: 'Dashboard',
     href: '/dashboard',
     icon: FiGrid,
+  },
+  {
+    key: 'accounts',
+    label: 'Accounts',
+    href: '/accounts',
+    icon: FiCreditCard,
   },
   {
     key: 'transactions',
