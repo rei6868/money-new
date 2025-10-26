@@ -10,8 +10,6 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-import { transactions } from "./transactions";
-
 /**
  * Enumerates the supported audit actions captured for transactions.
  */
@@ -30,13 +28,7 @@ export const transactionHistory = pgTable(
   "transaction_history",
   {
     historyId: uuid("history_id").defaultRandom().primaryKey(),
-    transactionId: varchar("transaction_id", { length: 36 }).references(
-      () => transactions.transactionId,
-      {
-        onDelete: "set null",
-        onUpdate: "cascade",
-      },
-    ),
+    transactionId: varchar("transaction_id", { length: 36 }).notNull(),
     oldAmount: numeric("old_amount", { precision: 18, scale: 2 }),
     newAmount: numeric("new_amount", { precision: 18, scale: 2 }),
     oldCashback: numeric("old_cashback", { precision: 18, scale: 2 }),
