@@ -1,11 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { randomUUID } from "crypto";
+import { getTransactionsTable } from "../../../lib/api/transactions/transactions.table";
+import {
+  type TransactionsTableRequest,
+  type SortDirection,
+} from "../../../lib/api/transactions/transactions.types";
 import { db } from "../../../lib/db/client";
 import { transactions, transactionTypeEnum, transactionStatusEnum, type NewTransaction } from "../../../src/db/schema/transactions";
 import { debtMovements, debtMovementTypeEnum, debtMovementStatusEnum, type NewDebtMovement } from "../../../src/db/schema/debtMovements";
 import { debtLedger, debtLedgerStatusEnum, type NewDebtLedger } from "../../../src/db/schema/debtLedger";
 import { accounts } from "../../../src/db/schema/accounts";
-import { eq, and, isNull, desc } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const database = db;
@@ -13,20 +18,76 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "GET") {
     try {
-      const rawPage = Array.isArray(req.query.page) ? req.query.page[0] : req.query.page;
-      const rawPageSize = Array.isArray(req.query.pageSize) ? req.query.pageSize[0] : req.query.pageSize;
-      const page = Math.max(parseInt(rawPage ?? "1", 10) || 1, 1);
-      const pageSize = Math.max(parseInt(rawPageSize ?? "10", 10) || 10, 1);
-      const offset = (page - 1) * pageSize;
+      const parseNumericParam = (value: unknown): number | undefined => {
+        if (Array.isArray(value)) {
+          return parseNumericParam(value[0]);
+        }
+        if (typeof value === "string" && value.trim() !== "") {
+          const parsed = Number.parseInt(value, 10);
+          if (Number.isFinite(parsed) && parsed > 0) {
+            return parsed;
+          }
+        }
+        return undefined;
+      };
 
-      const txns = await database
-        .select()
-        .from(transactions)
-        .orderBy(desc(transactions.occurredOn))
-        .limit(pageSize)
-        .offset(offset);
+      const parseSortDirection = (value: unknown): SortDirection | undefined => {
+        if (Array.isArray(value)) {
+          return parseSortDirection(value[0]);
+        }
+        if (value === "asc" || value === "desc") {
+          return value;
+        }
+        return undefined;
+      };
 
-      return res.status(200).json({ items: txns, total: txns.length });
+      const normalizeString = (value: unknown): string | undefined => {
+        if (Array.isArray(value)) {
+          return normalizeString(value[0]);
+        }
+        if (typeof value === "string") {
+          const trimmed = value.trim();
+          return trimmed === "" ? undefined : trimmed;
+        }
+        return undefined;
+      };
+
+      const requestPayload: TransactionsTableRequest = {};
+
+      const searchTerm = normalizeString(req.query.search);
+      if (searchTerm) {
+        requestPayload.searchTerm = searchTerm;
+      }
+
+      const page = parseNumericParam(req.query.page);
+      const pageSize = parseNumericParam(req.query.pageSize);
+      if (page || pageSize) {
+        requestPayload.pagination = {};
+        if (page) {
+          requestPayload.pagination.page = page;
+        }
+        if (pageSize) {
+          requestPayload.pagination.pageSize = pageSize;
+        }
+      }
+
+      const sortBy = normalizeString(req.query.sortBy);
+      const sortDir = parseSortDirection(req.query.sortDir);
+      if (sortBy || sortDir) {
+        requestPayload.sort = {};
+        if (sortBy) {
+          requestPayload.sort.columnId = sortBy;
+        }
+        if (sortDir) {
+          requestPayload.sort.direction = sortDir;
+        }
+      }
+
+      const restoreToken = normalizeString(req.query.restore);
+
+      const response = await getTransactionsTable(requestPayload, restoreToken);
+
+      return res.status(200).json(response);
     } catch (error) {
       console.error("Failed to fetch transactions", error);
       const message = error instanceof Error ? error.message : "Unknown error";
