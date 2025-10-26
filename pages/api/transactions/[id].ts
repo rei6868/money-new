@@ -12,6 +12,7 @@ import {
 } from "../../../src/db/schema/transactions";
 import { transactionHistory, type NewTransactionHistory } from "../../../src/db/schema/transactionHistory";
 import { cashbackMovements } from "../../../src/db/schema/cashbackMovements";
+import { debtMovements } from "../../../src/db/schema/debtMovements";
 
 type DatabaseClient = NodePgDatabase<Record<string, never>>;
 
@@ -203,6 +204,27 @@ async function getCashbackTotal(
   return total === 0 ? "0.00" : total.toFixed(2);
 }
 
+async function getDebtTotal(
+  client: DatabaseClient,
+  transactionId: string,
+): Promise<string | null> {
+  const rows = await client
+    .select({ amount: debtMovements.amount })
+    .from(debtMovements)
+    .where(eq(debtMovements.transactionId, transactionId));
+
+  if (!rows.length) {
+    return null;
+  }
+
+  const total = rows.reduce((acc, row) => {
+    const value = normalizeNumeric(row.amount);
+    return acc + (value ? Number(value) : 0);
+  }, 0);
+
+  return total === 0 ? "0.00" : total.toFixed(2);
+}
+
 async function getNextSeqNo(client: DatabaseClient, snapshotId: string): Promise<number> {
   const [result] = await client
     .select({
@@ -377,6 +399,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const oldAmount = normalizeNumeric(existing.amount as string | null);
         const oldCashback = await getCashbackTotal(txClient, transactionId);
+        const oldDebt = await getDebtTotal(txClient, transactionId);
+
+        await recordHistory(txClient, {
+          transactionId,
+          transactionIdSnapshot: transactionId,
+          oldAmount,
+          newAmount: null,
+          oldCashback,
+          newCashback: null,
+          oldDebt,
+          newDebt: null,
+          actionType: "delete",
+          editedBy,
+        });
+
+        await tx.delete(cashbackMovements).where(eq(cashbackMovements.transactionId, transactionId));
+        await tx.delete(debtMovements).where(eq(debtMovements.transactionId, transactionId));
 
         const deletedRows = await tx
           .delete(transactions)
@@ -386,19 +425,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (deletedRows.length === 0) {
           return { kind: "not_found" } as const;
         }
-
-        await recordHistory(txClient, {
-          transactionId: null,
-          transactionIdSnapshot: transactionId,
-          oldAmount,
-          newAmount: null,
-          oldCashback,
-          newCashback: null,
-          oldDebt: null,
-          newDebt: null,
-          actionType: "delete",
-          editedBy,
-        });
 
         return { kind: "success", payload: deletedRows[0] as Transaction } as const;
       });
