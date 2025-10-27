@@ -56,19 +56,6 @@
   white-space: nowrap;
 }
 
-.taskHeaderCell {
-  text-align: center;
-}
-
-.taskHeaderLabel {
-  justify-content: center;
-  align-items: center;
-}
-
-.taskHeaderText {
-  white-space: nowrap;
-}
-
 .headerReorder {
   cursor: grab;
 }
@@ -128,10 +115,6 @@
   .headerLabelText {
     white-space: normal;
   }
-
-  .taskHeaderText {
-    white-space: nowrap;
-  }
 }
 
 .toggleThumb {
@@ -190,9 +173,58 @@
   animation: headerSpinner 0.8s linear infinite;
 }
 
-.headerCheckboxInner {
-  display: grid;
-  place-items: center;
+.modeToggleButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  background: rgba(99, 102, 241, 0.08);
+  color: #4338ca;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  min-width: 0;
+}
+
+.modeToggleButton:hover,
+.modeToggleButton:focus-visible {
+  background: rgba(99, 102, 241, 0.2);
+  color: #312e81;
+  outline: none;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.18);
+}
+
+.modeToggleButton[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.modeToggleButton[data-state='selection'] {
+  background: rgba(148, 163, 184, 0.12);
+  color: #334155;
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+.modeToggleButton[data-state='selection']:hover,
+.modeToggleButton[data-state='selection']:focus-visible {
+  background: rgba(99, 102, 241, 0.15);
+  color: #312e81;
+}
+
+.modeToggleGlyph {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.modeToggleLabel {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 @keyframes headerSpinner {

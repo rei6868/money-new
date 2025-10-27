@@ -17,6 +17,8 @@ import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/accounts.module.css';
 import headerStyles from '../../styles/HeaderActionBar.module.css';
 import { FiPlus } from 'react-icons/fi';
+import { useActionMode } from '../../hooks/useActionMode';
+import { AnimatePresence, motion } from 'framer-motion';
 
 type ColumnState = ReturnType<typeof createDefaultColumnState>[number];
 
@@ -124,6 +126,13 @@ export default function AccountsPage() {
   const [activeTab, setActiveTab] = useState<'table' | 'cards'>('table');
   const [addModalType, setAddModalType] = useState<AddModalType | null>(null);
   const [quickAction, setQuickAction] = useState<QuickAddActionId | null>(null);
+  const { actionMode, setActionMode, disableActionMode } = useActionMode(false);
+
+  useEffect(() => {
+    if (activeTab === 'cards' && actionMode) {
+      disableActionMode();
+    }
+  }, [activeTab, actionMode, disableActionMode]);
 
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -441,34 +450,56 @@ export default function AccountsPage() {
                 </button>
               </div>
             </div>
-          ) : activeTab === 'cards' ? (
-            <AccountsCardsView
-              accounts={sortedAccounts}
-              onQuickAction={(actionId) => handleQuickActionSelect(actionId as QuickAddActionId)}
-            />
           ) : (
-            <div className={styles.tableWrapper}>
-              <TableAccounts
-                tableScrollRef={tableScrollRef}
-                accounts={displayedAccounts}
-                selectedIds={selectedIds}
-                onSelectRow={handleSelectRow}
-                onSelectAll={handleSelectAll}
-                selectionSummary={selectionSummary}
-                pagination={pagination}
-                columnDefinitions={ACCOUNT_COLUMN_DEFINITIONS}
-                allColumns={orderedColumns}
-                visibleColumns={visibleColumns}
-                isColumnReorderMode={false}
-                onColumnVisibilityChange={handleColumnVisibilityChange}
-                onColumnOrderChange={handleColumnOrderChange}
-                sortState={sortState}
-                onSortChange={handleSortChange}
-                isFetching={isFetching}
-                isShowingSelectedOnly={showSelectedOnly}
-                onQuickAction={(actionId) => handleQuickActionSelect(actionId as QuickAddActionId)}
-              />
-            </div>
+            <AnimatePresence mode="wait" initial={false}>
+              {activeTab === 'cards' ? (
+                <motion.div
+                  key="cards"
+                  initial={{ opacity: 0, x: 24 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -24 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                >
+                  <AccountsCardsView
+                    accounts={sortedAccounts}
+                    onQuickAction={(actionId) => handleQuickActionSelect(actionId as QuickAddActionId)}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="table"
+                  initial={{ opacity: 0, x: -24 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 24 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                >
+                  <div className={styles.tableWrapper}>
+                    <TableAccounts
+                      tableScrollRef={tableScrollRef}
+                      accounts={displayedAccounts}
+                      selectedIds={selectedIds}
+                      onSelectRow={handleSelectRow}
+                      onSelectAll={handleSelectAll}
+                      selectionSummary={selectionSummary}
+                      pagination={pagination}
+                      columnDefinitions={ACCOUNT_COLUMN_DEFINITIONS}
+                      allColumns={orderedColumns}
+                      visibleColumns={visibleColumns}
+                      isColumnReorderMode={false}
+                      onColumnVisibilityChange={handleColumnVisibilityChange}
+                      onColumnOrderChange={handleColumnOrderChange}
+                      sortState={sortState}
+                      onSortChange={handleSortChange}
+                      isFetching={isFetching}
+                      isShowingSelectedOnly={showSelectedOnly}
+                      onQuickAction={(actionId) => handleQuickActionSelect(actionId as QuickAddActionId)}
+                      actionMode={actionMode}
+                      onActionModeChange={setActionMode}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           )}
         </div>
 

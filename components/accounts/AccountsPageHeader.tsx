@@ -23,6 +23,7 @@ export function AccountsPageHeader({ activeTab, onTabChange }: AccountsPageHeade
               type="button"
               className={styles.tabButton}
               data-active={activeTab === 'table' ? 'true' : 'false'}
+              data-variant="table"
               onClick={() => onTabChange?.('table')}
               role="tab"
               aria-selected={activeTab === 'table'}
@@ -33,6 +34,7 @@ export function AccountsPageHeader({ activeTab, onTabChange }: AccountsPageHeade
               type="button"
               className={styles.tabButton}
               data-active={activeTab === 'cards' ? 'true' : 'false'}
+              data-variant="cards"
               onClick={() => onTabChange?.('cards')}
               role="tab"
               aria-selected={activeTab === 'cards'}

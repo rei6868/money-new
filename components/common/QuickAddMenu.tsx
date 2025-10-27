@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { FiArrowDownCircle, FiArrowUpCircle, FiLayers, FiRefreshCw, FiZap } from 'react-icons/fi';
 
@@ -46,6 +53,8 @@ export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
   const [isHoverable, setIsHoverable] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 248 });
   const closeTimerRef = useRef<number | null>(null);
+  const openTimerRef = useRef<number | null>(null);
+  const instanceId = useId();
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -126,7 +135,20 @@ export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
     }
   }, []);
 
-  useEffect(() => () => clearCloseTimer(), [clearCloseTimer]);
+  const clearOpenTimer = useCallback(() => {
+    if (openTimerRef.current !== null) {
+      window.clearTimeout(openTimerRef.current);
+      openTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(
+    () => () => {
+      clearCloseTimer();
+      clearOpenTimer();
+    },
+    [clearCloseTimer, clearOpenTimer],
+  );
 
   const actionItems = useMemo(() => ACTIONS, []);
 
@@ -147,21 +169,67 @@ export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
     }, 180);
   }, [clearCloseTimer, isHoverable]);
 
-  const handleToggle = () => {
-    if (isHoverable) {
-      clearCloseTimer();
+  const openWithDelay = useCallback(() => {
+    if (!isHoverable) {
+      return;
+    }
+    clearOpenTimer();
+    openTimerRef.current = window.setTimeout(() => {
       setIsOpen(true);
       updateMenuPosition();
-    } else {
-      setIsOpen((prev) => {
-        const next = !prev;
-        if (!prev && next) {
-          updateMenuPosition();
-        }
-        return next;
-      });
-    }
+      openTimerRef.current = null;
+    }, 150);
+  }, [clearOpenTimer, isHoverable, updateMenuPosition]);
+
+  const handleToggle = () => {
+    clearOpenTimer();
+    clearCloseTimer();
+    setIsOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        updateMenuPosition();
+      }
+      return next;
+    });
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleExternalOpen = (event: Event) => {
+      const customEvent = event as CustomEvent<{ id?: string }>;
+      const eventId = customEvent.detail?.id;
+      if (eventId && eventId !== instanceId) {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener('quick-add-menu:open', handleExternalOpen as EventListener);
+    return () => {
+      window.removeEventListener('quick-add-menu:open', handleExternalOpen as EventListener);
+    };
+  }, [instanceId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isOpen) {
+      return undefined;
+    }
+
+    window.dispatchEvent(new CustomEvent('quick-add-menu:open', { detail: { id: instanceId } }));
+
+    const handleScrollClose = () => {
+      setIsOpen(false);
+    };
+
+    const scrollListenerOptions: AddEventListenerOptions = { capture: true, passive: true };
+    window.addEventListener('scroll', handleScrollClose, scrollListenerOptions);
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollClose, scrollListenerOptions);
+    };
+  }, [instanceId, isOpen]);
 
   const containerClassName = [styles.container, className].filter(Boolean).join(' ');
   const menu = (
@@ -218,11 +286,12 @@ export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
         onMouseEnter={() => {
           if (isHoverable) {
             clearCloseTimer();
-            setIsOpen(true);
+            openWithDelay();
           }
         }}
         onMouseLeave={() => {
           if (isHoverable) {
+            clearOpenTimer();
             scheduleClose();
           }
         }}

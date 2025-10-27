@@ -11,6 +11,7 @@ import LoadingOverlay from '../../components/common/LoadingOverlay';
 import AddModalGlobal from '../../components/common/AddModalGlobal';
 import headerStyles from '../../styles/HeaderActionBar.module.css';
 import { FiPlus } from 'react-icons/fi';
+import { useActionMode } from '../../hooks/useActionMode';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
 
@@ -37,6 +38,7 @@ export default function TransactionsHistoryPage() {
   const [quickAction, setQuickAction] = useState(null);
   const tableScrollRef = useRef(null);
   const savedScrollLeftRef = useRef(0);
+  const { actionMode, setActionMode } = useActionMode(false);
 
   useEffect(() => {
     if (tableScrollRef.current && savedScrollLeftRef.current > 0) {
@@ -530,6 +532,8 @@ export default function TransactionsHistoryPage() {
             onSortChange={handleSortStateChange}
             isShowingSelectedOnly={showSelectedOnly}
             isFetching={isFetching}
+            actionMode={actionMode}
+            onActionModeChange={setActionMode}
           />
         )}
       </div>

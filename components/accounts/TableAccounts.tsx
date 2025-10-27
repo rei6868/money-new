@@ -11,8 +11,6 @@ import { AccountColumnDefinition, AccountRow } from './accountColumns';
 import AccountsQuickActions from './AccountsQuickActions';
 import styles from '../../styles/accounts.module.css';
 import { TableBase } from '../table';
-import tableStyles from '../table/TableBase.module.css';
-import { ACTIONS_COLUMN_WIDTH } from '../table/tableUtils';
 
 interface SelectionSummary {
   count: number;
@@ -62,6 +60,8 @@ export type TableAccountsProps = {
   isFetching?: boolean;
   isShowingSelectedOnly?: boolean;
   onQuickAction?: (actionId: string, account: AccountRow) => void;
+  actionMode?: boolean;
+  onActionModeChange?: (next: boolean) => void;
 };
 
 type FontScaleState = {
@@ -203,6 +203,8 @@ export function TableAccounts({
   isFetching = false,
   isShowingSelectedOnly = false,
   onQuickAction,
+  actionMode = false,
+  onActionModeChange,
 }: TableAccountsProps) {
   const [fontScale, setFontScale] = useState(FONT_SCALE_DEFAULT);
 
@@ -221,22 +223,26 @@ export function TableAccounts({
   });
 
   const renderRowActionsCell = useCallback(
-    ({ transaction }: { transaction: AccountRow }) => (
-      <td
-        className={`${tableStyles.bodyCell} ${tableStyles.actionsCell}`}
-        style={{
-          minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
-          width: `${ACTIONS_COLUMN_WIDTH}px`,
-        }}
-      >
+    ({
+      transaction,
+      actionMode: isActionMode,
+    }: {
+      transaction: AccountRow;
+      actionMode: boolean;
+      toggleSelection?: (checked: boolean) => void;
+    }) => {
+      if (!isActionMode) {
+        return null;
+      }
+      return (
         <AccountsQuickActions
           account={transaction}
           onAction={onQuickAction}
           className={styles.tableQuickActions}
           buttonClassName={styles.tableQuickActionButton}
         />
-      </td>
-    ),
+      );
+    },
     [onQuickAction],
   );
 
@@ -264,6 +270,8 @@ export function TableAccounts({
       isFetching={isFetching}
       rowIdAccessor={(account: AccountRow) => account.accountId}
       renderRowActionsCell={renderRowActionsCell}
+      actionMode={actionMode}
+      onActionModeChange={onActionModeChange}
     />
   );
 }

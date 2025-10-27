@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { FiLogOut, FiMoreHorizontal, FiMoon, FiSun, FiChevronDown } from 'react-icons/fi';
+import { AnimatePresence, motion } from 'framer-motion';
 
 import styles from './TopNavBar.module.css';
 
@@ -179,10 +180,14 @@ export function TopNavBar({
 
   const overflowItems = flattenedNavItems.filter((item) => overflowKeySet.has(item.key));
 
-  const activePageLabel = useMemo(() => {
+  const activePageMeta = useMemo(() => {
+    const fallback = flattenedNavItems[0] || { label: 'Menu', href: '/' };
     const activePage = flattenedNavItems.find((item) => activeSet.has(item.key));
-    return activePage?.label || 'Menu';
+    return activePage || fallback;
   }, [flattenedNavItems, activeSet]);
+
+  const activePageLabel = activePageMeta?.label || 'Menu';
+  const activePageHref = activePageMeta?.href || '/';
 
   const closeDropdown = useCallback(() => {
     setDropdownMode(null);
@@ -245,24 +250,42 @@ export function TopNavBar({
         <span className={styles.brandMark}>MF</span>
       </Link>
       <div className={styles.mobileMenuWrapper} ref={mobileDropdownRef}>
-        <button
-          type="button"
-          className={styles.mobileTrigger}
-          onClick={handleMobileToggleDropdown}
-          aria-haspopup="menu"
-          aria-expanded={isMobileDropdown}
-          aria-label="Open navigation menu"
-        >
-          <span className={styles.mobileLabel}>{activePageLabel}</span>
-          <FiChevronDown className={styles.mobileChevron} aria-hidden="true" />
-        </button>
-        {isMobileDropdown ? (
-          <div className={styles.mobileMenu} role="menu">
-            <ul className={styles.mobileMenuList}>
-              {flattenedNavItems.map((item) => renderNavLink(item, { inOverflow: true }))}
-            </ul>
-          </div>
-        ) : null}
+        <div className={styles.mobileTrigger} data-open={isMobileDropdown ? 'true' : undefined}>
+          <Link href={activePageHref} className={styles.mobileLabelLink} onClick={closeDropdown}>
+            <span className={styles.mobileLabel}>{activePageLabel}</span>
+          </Link>
+          <motion.button
+            type="button"
+            className={styles.mobileCaretButton}
+            onClick={handleMobileToggleDropdown}
+            aria-haspopup="menu"
+            aria-expanded={isMobileDropdown}
+            aria-label={isMobileDropdown ? 'Close navigation menu' : 'Open navigation menu'}
+          >
+            <motion.span
+              animate={{ rotate: isMobileDropdown ? 180 : 0 }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+            >
+              <FiChevronDown className={styles.mobileChevron} aria-hidden="true" />
+            </motion.span>
+          </motion.button>
+        </div>
+        <AnimatePresence>
+          {isMobileDropdown ? (
+            <motion.div
+              className={styles.mobileMenu}
+              role="menu"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+            >
+              <ul className={styles.mobileMenuList}>
+                {flattenedNavItems.map((item) => renderNavLink(item, { inOverflow: true }))}
+              </ul>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
       <div className={styles.navListWrapper} ref={listContainerRef}>
         <ul className={styles.navList}>

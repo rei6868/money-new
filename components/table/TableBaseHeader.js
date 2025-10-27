@@ -4,7 +4,7 @@ import { FiChevronDown, FiChevronUp, FiMinus } from 'react-icons/fi';
 import headerStyles from './TableBaseHeader.module.css';
 import styles from './TableBase.module.css';
 import { Tooltip } from '../ui/Tooltip';
-import { ACTIONS_COLUMN_WIDTH, CHECKBOX_COLUMN_WIDTH } from './tableUtils';
+import { CHECKBOX_COLUMN_WIDTH } from './tableUtils';
 
 function SortGlyph({ direction, isLoading }) {
   if (isLoading) {
@@ -95,15 +95,13 @@ export function TableBaseHeader({
   onColumnDragOver,
   onColumnDrop,
   onColumnDragEnd,
-  allSelected = false,
-  isIndeterminate = false,
-  onSelectAll,
-  headerCheckboxRef,
   onColumnVisibilityChange,
   sortState,
   onSortChange,
   isFetching = false,
   transactions = [],
+  actionMode = false,
+  onToggleActionMode,
 }) {
   const visibleIdSet = useMemo(() => new Set(visibleColumnIds), [visibleColumnIds]);
   const totalVisibleColumns = visibleIdSet.size;
@@ -144,8 +142,6 @@ export function TableBaseHeader({
     const isLoading = isSorted && isFetching;
     const ariaSort = isSorted ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none';
 
-    const isTaskColumn = id === 'task';
-
     const headerClassName = [
       headerStyles.headerCell,
       styles.bodyCell,
@@ -157,7 +153,6 @@ export function TableBaseHeader({
       isColumnReorderMode ? headerStyles.headerReorder : '',
       isDropTarget ? headerStyles.headerDropTarget : '',
       isHidden && isColumnReorderMode ? headerStyles.headerHidden : '',
-      isTaskColumn ? headerStyles.taskHeaderCell : '',
     ]
       .filter(Boolean)
       .join(' ');
@@ -194,22 +189,12 @@ export function TableBaseHeader({
 
     const baseMinWidth = isColumnReorderMode ? Math.max(minWidth, 160) : minWidth;
     const baseWidth = isColumnReorderMode ? Math.max(width, baseMinWidth) : width;
-    const effectiveMinWidth = isTaskColumn ? Math.max(baseMinWidth, 80) : baseMinWidth;
-    const effectiveWidth = isTaskColumn ? Math.max(baseWidth, effectiveMinWidth) : baseWidth;
+    const effectiveMinWidth = baseMinWidth;
+    const effectiveWidth = baseWidth;
 
-    const headerLabelClassName = [
-      headerStyles.headerLabel,
-      isTaskColumn ? headerStyles.taskHeaderLabel : '',
-    ]
-      .filter(Boolean)
-      .join(' ');
+    const headerLabelClassName = headerStyles.headerLabel;
 
-    const headerLabelTextClassName = [
-      headerStyles.headerLabelText,
-      isTaskColumn ? headerStyles.taskHeaderText : '',
-    ]
-      .filter(Boolean)
-      .join(' ');
+    const headerLabelTextClassName = headerStyles.headerLabelText;
 
     const columnToggleControl = isColumnReorderMode ? (
       <label
@@ -299,36 +284,25 @@ export function TableBaseHeader({
           }}
         >
           <div className={styles.checkboxCellInner}>
-            <div className={headerStyles.headerCheckboxInner}>
-              <input
-                ref={headerCheckboxRef}
-                type="checkbox"
-                aria-label="Select all rows"
-                aria-checked={isIndeterminate ? 'mixed' : allSelected ? 'true' : 'false'}
-                checked={allSelected}
-                onChange={(event) => onSelectAll?.(event.target.checked)}
-                data-testid="transaction-select-all"
-                disabled={isColumnReorderMode}
-              />
-            </div>
+            <button
+              type="button"
+              className={headerStyles.modeToggleButton}
+              onClick={() => onToggleActionMode?.(!actionMode)}
+              aria-pressed={actionMode}
+              aria-label={actionMode ? 'Switch to selection mode' : 'Switch to action mode'}
+              data-state={actionMode ? 'action' : 'selection'}
+              disabled={isColumnReorderMode || !onToggleActionMode}
+            >
+              <span aria-hidden className={headerStyles.modeToggleGlyph}>
+                {actionMode ? '☑️' : '⋮'}
+              </span>
+              <span className={headerStyles.modeToggleLabel}>
+                {actionMode ? 'Action mode' : 'Select rows'}
+              </span>
+            </button>
           </div>
         </th>
         {columns.map(renderColumnHeader)}
-        <th
-          scope="col"
-          aria-label="Task"
-          className={`${headerStyles.headerCell} ${styles.actionsCell}`}
-          style={{
-            minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
-            width: `${ACTIONS_COLUMN_WIDTH}px`,
-          }}
-        >
-          <div className={headerStyles.headerShell}>
-            <span className={headerStyles.headerLabel}>
-              <span>Task</span>
-            </span>
-          </div>
-        </th>
       </tr>
     </thead>
   );

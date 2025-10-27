@@ -13,7 +13,6 @@ import styles from './TableBase.module.css';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
 import {
-  ACTIONS_COLUMN_WIDTH,
   CHECKBOX_COLUMN_WIDTH,
   STICKY_COLUMN_BUFFER,
   computeMinWidth,
@@ -122,6 +121,8 @@ const TableBaseInner = (
     rowIdKey = 'id',
     rowIdAccessor,
     renderRowActionsCell,
+    actionMode = false,
+    onActionModeChange,
   },
   forwardedRef,
 ) => {
@@ -129,9 +130,9 @@ const TableBaseInner = (
   const [openActionSubmenu, setOpenActionSubmenu] = useState(null);
   const [isSubmenuFlipped, setIsSubmenuFlipped] = useState(false);
   const [activeDropTarget, setActiveDropTarget] = useState(null);
+  const [isCompact, setIsCompact] = useState(false);
 
   const actionMenuCloseTimer = useRef(null);
-  const headerCheckboxRef = useRef(null);
   const dragSourceRef = useRef(null);
   const internalScrollRef = useRef(null);
   const tableRef = useRef(null);
@@ -158,9 +159,6 @@ const TableBaseInner = (
     },
     [rowIdAccessor, rowIdKey],
   );
-  const allSelected =
-    transactions.length > 0 && transactions.every((txn) => selectionSet.has(resolveRowId(txn)));
-  const isIndeterminate = selectionSet.size > 0 && !allSelected;
   const totals = useMemo(() => normalizeTotals(selectionSummary), [selectionSummary]);
   const selectionCount = Number(selectionSummary?.count ?? selectionSet.size);
   const shouldShowTotals = selectionCount > 0;
@@ -212,10 +210,19 @@ const TableBaseInner = (
   }, [displayColumns, definitionMap]);
 
   useEffect(() => {
-    if (headerCheckboxRef.current) {
-      headerCheckboxRef.current.indeterminate = isIndeterminate;
+    if (typeof window === 'undefined') {
+      return undefined;
     }
-  }, [isIndeterminate]);
+
+    const media = window.matchMedia('(max-width: 768px)');
+    const updateCompact = () => {
+      setIsCompact(media.matches);
+    };
+
+    updateCompact();
+    media.addEventListener('change', updateCompact);
+    return () => media.removeEventListener('change', updateCompact);
+  }, []);
 
   useEffect(() => {
     if (!openActionId) {
@@ -255,6 +262,19 @@ const TableBaseInner = (
       setActiveDropTarget(null);
     }
   }, [isColumnReorderMode]);
+
+  useEffect(() => {
+    if (!actionMode) {
+      setOpenActionId(null);
+      setOpenActionSubmenu(null);
+    }
+  }, [actionMode]);
+
+  useEffect(() => {
+    if (isCompact && !actionMode && onActionModeChange) {
+      onActionModeChange(true);
+    }
+  }, [isCompact, actionMode, onActionModeChange]);
 
   const handleColumnDragStart = useCallback(
     (columnId) => (event) => {
@@ -395,7 +415,11 @@ const TableBaseInner = (
       style={{ '--transactions-font-scale': fontScale }}
     >
       {toolbarSlot}
-      <div className={styles.tableShell}>
+      <div
+        className={styles.tableShell}
+        data-compact={isCompact ? 'true' : undefined}
+        data-action-mode={actionMode ? 'true' : undefined}
+      >
         <div
           ref={mergedScrollRef}
           className={styles.tableScroll}
@@ -405,6 +429,7 @@ const TableBaseInner = (
             ref={tableRef}
             className={styles.table}
             style={{ '--table-min-width': `${tableMinWidth}px` }}
+            data-action-mode={actionMode ? 'true' : undefined}
           >
             <TableBaseHeader
               columns={columnDescriptors}
@@ -416,16 +441,14 @@ const TableBaseInner = (
               onColumnDragOver={handleColumnDragOver}
               onColumnDrop={handleColumnDrop}
               onColumnDragEnd={handleColumnDragEnd}
-              allSelected={allSelected}
-              isIndeterminate={isIndeterminate}
-              onSelectAll={onSelectAll}
-              headerCheckboxRef={headerCheckboxRef}
               onColumnVisibilityChange={onColumnVisibilityChange}
               visibleColumnIds={activeVisibleColumnIds}
               sortState={sortState}
               onSortChange={onSortChange}
               isFetching={isFetching}
               transactions={transactions}
+              actionMode={actionMode}
+              onToggleActionMode={onActionModeChange}
             />
             <TableBaseBody
             transactions={transactions}
@@ -448,6 +471,7 @@ const TableBaseInner = (
             isShowingSelectedOnly={isShowingSelectedOnly}
             getRowId={resolveRowId}
             renderRowActionsCell={renderRowActionsCell}
+            actionMode={actionMode}
           />
             {shouldShowTotals ? (
               <tfoot>
@@ -500,14 +524,6 @@ const TableBaseInner = (
                       </td>
                     );
                   })}
-                  <td
-                    className={`${styles.bodyCell} ${styles.actionsCell}`}
-                    style={{
-                      minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
-                      width: `${ACTIONS_COLUMN_WIDTH}px`,
-                    }}
-                    aria-hidden="true"
-                  />
                 </tr>
               </tfoot>
             ) : null}

@@ -177,27 +177,64 @@
 .mobileTrigger {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.45rem 0.75rem;
-  border: none;
+  gap: 0.4rem;
+  padding: 0.25rem 0.35rem;
   border-radius: 14px;
   background: rgba(148, 163, 184, 0.12);
   color: var(--mf-text-primary);
-  font-weight: 600;
-  cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease;
-  min-width: 0;
 }
 
-.mobileTrigger:hover,
-.mobileTrigger:focus-visible {
+.mobileTrigger[data-open='true'] {
   background: rgba(99, 102, 241, 0.15);
+}
+
+.mobileLabelLink {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.55rem;
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  font-weight: 600;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.mobileLabelLink:hover,
+.mobileLabelLink:focus-visible {
+  background: rgba(148, 163, 184, 0.18);
   outline: none;
 }
 
 .mobileLabel {
   font-size: 0.95rem;
   letter-spacing: 0.01em;
+}
+
+.mobileCaretButton {
+  border: none;
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--mf-text-primary);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.mobileCaretButton:hover,
+.mobileCaretButton:focus-visible {
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--mf-accent-strong);
+  outline: none;
+}
+
+.mobileTrigger[data-open='true'] .mobileCaretButton {
+  background: rgba(99, 102, 241, 0.24);
+  color: var(--mf-accent-strong);
 }
 
 .mobileMenu {

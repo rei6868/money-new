@@ -4,20 +4,18 @@ import { FiChevronRight, FiEdit2, FiFilter, FiMoreHorizontal, FiTrash2 } from 'r
 import styles from './TableBase.module.css';
 import bodyStyles from './TableBaseBody.module.css';
 import { formatAmount, formatPercent } from '../../lib/numberFormat';
-import { ACTIONS_COLUMN_WIDTH, CHECKBOX_COLUMN_WIDTH } from './tableUtils';
+import { CHECKBOX_COLUMN_WIDTH } from './tableUtils';
 import { TableActionMenuPortal } from './TableActions';
 import { TableTooltip } from './TableTooltip';
 
 const dateFormatters = {
-  'DD/MM/YY': new Intl.DateTimeFormat('en-GB', {
+  'DD/MM': new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
     month: '2-digit',
-    year: '2-digit',
   }),
-  'MM/DD/YY': new Intl.DateTimeFormat('en-US', {
+  'MM/DD': new Intl.DateTimeFormat('en-US', {
     day: '2-digit',
     month: '2-digit',
-    year: '2-digit',
   }),
 };
 
@@ -37,7 +35,8 @@ function formatTransactionDate(value, format = 'DD/MM/YY') {
     return `${dateValue.getFullYear()}-${month}-${day}`;
   }
 
-  const formatter = dateFormatters[format] ?? dateFormatters['DD/MM/YY'];
+  const normalized = format === 'MM/DD/YY' ? 'MM/DD' : format === 'DD/MM/YY' ? 'DD/MM' : format;
+  const formatter = dateFormatters[normalized] ?? dateFormatters['DD/MM'];
   return formatter.format(dateValue);
 }
 
@@ -167,6 +166,7 @@ export function TableBaseBody({
   isShowingSelectedOnly = false,
   getRowId = (row) => (row ? row.id ?? null : null),
   renderRowActionsCell,
+  actionMode = false,
 }) {
   const [tooltipState, setTooltipState] = useState({ anchor: null, content: '', isVisible: false });
 
@@ -228,33 +228,21 @@ export function TableBaseBody({
   const tooltipContent = tooltipState.content;
   const tooltipVisible = tooltipState.isVisible;
 
-  const renderDefaultRowActions = (transaction, isSelected, rowId) => {
-    const resolvedId = rowId ?? transaction?.id;
+  const renderActionMenu = (transaction, resolvedId, isSelected) => {
     if (!resolvedId) {
-      return (
-        <td
-          className={`${styles.bodyCell} ${styles.actionsCell}`}
-          style={{
-            minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
-            width: `${ACTIONS_COLUMN_WIDTH}px`,
-          }}
-        />
-      );
+      return null;
     }
 
     const triggerRef = actionRegistry.registerTrigger(resolvedId);
 
+    const isMenuOpen = !isColumnReorderMode && openActionId === resolvedId;
+
     return (
-      <td
-        className={`${styles.bodyCell} ${styles.actionsCell}`}
-        style={{
-          minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
-          width: `${ACTIONS_COLUMN_WIDTH}px`,
-        }}
-      >
+      <>
         <div
           className={bodyStyles.actionsTrigger}
           ref={triggerRef}
+          data-selected={isSelected ? 'true' : undefined}
           onMouseEnter={() => {
             if (isColumnReorderMode) {
               return;
@@ -279,23 +267,22 @@ export function TableBaseBody({
             }
             onActionBlur(event);
           }}
-          data-selected={isSelected ? 'true' : undefined}
         >
           <button
             type="button"
             className={`${bodyStyles.actionsButton} ${
-              openActionId === resolvedId ? bodyStyles.actionsButtonActive : ''
+              isMenuOpen ? bodyStyles.actionsButtonActive : ''
             }`.trim()}
             data-testid={`transaction-actions-trigger-${resolvedId}`}
             aria-haspopup="menu"
-            aria-expanded={openActionId === resolvedId}
+            aria-expanded={isMenuOpen}
             aria-label="Show row actions"
             disabled={isColumnReorderMode}
             onClick={() => {
               if (isColumnReorderMode) {
                 return;
               }
-              if (openActionId === resolvedId) {
+              if (isMenuOpen) {
                 onAction(null)();
               } else {
                 onActionTriggerEnter(resolvedId);
@@ -308,7 +295,7 @@ export function TableBaseBody({
         <TableActionMenuPortal
           rowId={resolvedId}
           anchor={actionRegistry.getTrigger(resolvedId)}
-          isOpen={!isColumnReorderMode && openActionId === resolvedId}
+          isOpen={isMenuOpen}
           onClose={() => onAction(null)()}
           registerContent={registerActionMenu}
           className={`${bodyStyles.actionsMenu} ${
@@ -356,7 +343,7 @@ export function TableBaseBody({
               className={`${bodyStyles.actionsSubmenu} ${
                 isSubmenuFlipped ? bodyStyles.actionsSubmenuFlipped : ''
               } ${
-                openActionId === resolvedId && openActionSubmenu === 'more'
+                isMenuOpen && openActionSubmenu === 'more'
                   ? bodyStyles.actionsSubmenuOpen
                   : ''
               }`.trim()}
@@ -391,7 +378,7 @@ export function TableBaseBody({
             </div>
           </div>
         </TableActionMenuPortal>
-      </td>
+      </>
     );
   };
   return (
@@ -400,7 +387,7 @@ export function TableBaseBody({
         {transactions.length === 0 ? (
           <tr>
             <td
-              colSpan={visibleColumnCount + 2}
+              colSpan={visibleColumnCount + 1}
               className={bodyStyles.emptyCell}
               data-testid="transactions-empty"
             >
@@ -413,6 +400,26 @@ export function TableBaseBody({
             const resolvedId = rowId ?? transaction.id;
             const normalizedId = resolvedId ?? `row-${index}`;
             const isSelected = normalizedId !== undefined && normalizedId !== null && selectionSet.has(normalizedId);
+            const defaultActions = actionMode
+              ? renderActionMenu(transaction, resolvedId, isSelected)
+              : null;
+            const customActions =
+              actionMode && renderRowActionsCell
+                ? renderRowActionsCell({
+                    transaction,
+                    isSelected,
+                    rowId: resolvedId,
+                    actionMode,
+                    toggleSelection: (checked) => {
+                      const identifier = resolvedId ?? transaction.id ?? `row-${index}`;
+                      if (identifier !== undefined && identifier !== null) {
+                        onSelectRow?.(identifier, checked);
+                      }
+                    },
+                  })
+                : null;
+            const actionSlot = customActions ?? defaultActions;
+
             return (
               <tr
                 key={normalizedId}
@@ -425,19 +432,25 @@ export function TableBaseBody({
                     width: `${CHECKBOX_COLUMN_WIDTH}px`,
                   }}
                 >
-                  <div className={styles.checkboxCellInner}>
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={(event) => {
-                        const identifier = resolvedId ?? transaction.id ?? `row-${index}`;
-                        if (identifier !== undefined && identifier !== null) {
-                          onSelectRow?.(identifier, event.target.checked);
-                        }
-                      }}
-                      aria-label={`Select transaction ${resolvedId ?? transaction.id ?? `row-${index}`}`}
-                      disabled={isColumnReorderMode}
-                    />
+                  <div className={styles.checkboxCellInner} data-mode={actionMode ? 'actions' : 'selection'}>
+                    {actionMode ? (
+                      <div className={bodyStyles.inlineActionCell}>{actionSlot}</div>
+                    ) : (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(event) => {
+                          const identifier = resolvedId ?? transaction.id ?? `row-${index}`;
+                          if (identifier !== undefined && identifier !== null) {
+                            onSelectRow?.(identifier, event.target.checked);
+                          }
+                        }}
+                        aria-label={`Select transaction ${
+                          resolvedId ?? transaction.id ?? `row-${index}`
+                        }`}
+                        disabled={isColumnReorderMode}
+                      />
+                    )}
                   </div>
                 </td>
                 {columns.map((descriptor) => {
@@ -471,19 +484,6 @@ export function TableBaseBody({
                     </td>
                   );
                 })}
-                {renderRowActionsCell
-                  ? renderRowActionsCell({
-                      transaction,
-                      isSelected,
-                      rowId: resolvedId,
-                      toggleSelection: (checked) => {
-                        const identifier = resolvedId ?? transaction.id ?? `row-${index}`;
-                        if (identifier !== undefined && identifier !== null) {
-                          onSelectRow?.(identifier, checked);
-                        }
-                      },
-                    })
-                  : renderDefaultRowActions(transaction, isSelected, resolvedId)}
               </tr>
             );
           })
