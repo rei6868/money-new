@@ -1,0 +1,150 @@
+.grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  width: 100%;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.75rem 1.5rem;
+  border-radius: 1.5rem;
+  background: linear-gradient(160deg, rgba(79, 70, 229, 0.1), rgba(14, 165, 233, 0.08));
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 20px 40px rgba(79, 70, 229, 0.12);
+  backdrop-filter: blur(6px);
+  color: var(--mf-text-primary);
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.identityBlock {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.accountGlyph {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.25);
+  color: var(--mf-accent-strong);
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+
+.accountName {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.accountMeta {
+  margin: 0;
+  color: var(--mf-text-muted);
+  font-size: 0.9rem;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: rgba(59, 130, 246, 0.15);
+  color: #1d4ed8;
+  text-transform: capitalize;
+}
+
+.statusBadge[data-status="closed"] {
+  background: rgba(234, 179, 8, 0.18);
+  color: #a16207;
+}
+
+.statusBadge[data-status="archived"] {
+  background: rgba(148, 163, 184, 0.2);
+  color: #475569;
+}
+
+.balanceRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.balanceLabel {
+  margin: 0;
+  color: var(--mf-text-muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.balanceValue {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.metaList {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.metaList > div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.metaList dt {
+  margin: 0;
+  color: var(--mf-text-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.metaList dd {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--mf-text-primary);
+}
+
+.monospace {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .balanceValue {
+    font-size: 1.5rem;
+  }
+}

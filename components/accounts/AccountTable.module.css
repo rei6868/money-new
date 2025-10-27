@@ -1,0 +1,101 @@
+.tableContainer {
+  width: 100%;
+  border-radius: 1.5rem;
+  border: 1px solid var(--mf-border-subtle);
+  background: var(--mf-sidebar-bg);
+  box-shadow: var(--mf-elevation-sm);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.caption {
+  padding: 1rem 1.25rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--mf-text-secondary);
+}
+
+.table thead {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.table thead th {
+  text-align: left;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mf-text-muted);
+  padding: 0.85rem 1.25rem;
+}
+
+.table tbody td,
+.table tbody th {
+  padding: 1.05rem 1.25rem;
+  border-top: 1px solid var(--mf-border-subtle);
+  font-size: 0.95rem;
+  color: var(--mf-text-primary);
+  vertical-align: middle;
+}
+
+.table tbody tr:hover {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.accountName {
+  display: block;
+  font-weight: 600;
+}
+
+.accountId {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--mf-text-muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+}
+
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: rgba(34, 197, 94, 0.18);
+  color: #15803d;
+  text-transform: capitalize;
+}
+
+.statusBadge[data-status="closed"] {
+  background: rgba(249, 115, 22, 0.18);
+  color: #c2410c;
+}
+
+.statusBadge[data-status="archived"] {
+  background: rgba(148, 163, 184, 0.2);
+  color: #475569;
+}
+
+@media (max-width: 768px) {
+  .tableContainer {
+    border-radius: 1rem;
+  }
+
+  .table thead th,
+  .table tbody td,
+  .table tbody th {
+    padding-inline: 1rem;
+  }
+}
