@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppLayout from '../../components/AppLayout';
 import AccountsCardsView from '../../components/accounts/AccountsCardsView';
 import AccountsPageHeader from '../../components/accounts/AccountsPageHeader';
-import FabAccounts from '../../components/accounts/FabAccounts';
 import TableAccounts from '../../components/accounts/TableAccounts';
 import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGlobal';
 import QuickAddMenu, { QuickAddActionId } from '../../components/common/QuickAddMenu';
@@ -123,7 +122,6 @@ export default function AccountsPage() {
     direction: 'asc',
   });
   const [activeTab, setActiveTab] = useState<'table' | 'cards'>('table');
-  const [isCompactScreen, setIsCompactScreen] = useState(false);
   const [addModalType, setAddModalType] = useState<AddModalType | null>(null);
   const [quickAction, setQuickAction] = useState<QuickAddActionId | null>(null);
 
@@ -133,28 +131,6 @@ export default function AccountsPage() {
     () => new Map(ACCOUNT_COLUMN_DEFINITIONS.map((definition) => [definition.id, definition])),
     [],
   );
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia('(max-width: 600px)');
-    const updateMatch = (query: MediaQueryList | MediaQueryListEvent) => {
-      setIsCompactScreen(Boolean((query as MediaQueryList).matches));
-    };
-
-    updateMatch(mediaQuery);
-
-    const listener = (event: MediaQueryListEvent) => updateMatch(event);
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', listener);
-      return () => mediaQuery.removeEventListener('change', listener);
-    }
-
-    mediaQuery.addListener(listener);
-    return () => mediaQuery.removeListener(listener);
-  }, []);
 
   const orderedColumns = useMemo<ColumnState[]>(() => {
     if (columnState.length === 0) {
@@ -299,11 +275,6 @@ export default function AccountsPage() {
     };
   }, [accounts, selectedIds]);
 
-  const totalBalance = useMemo(
-    () => accounts.reduce((sum, account) => sum + (account.currentBalance ?? 0), 0),
-    [accounts],
-  );
-
   const handleSelectRow = useCallback((id: string, checked: boolean) => {
     setSelectedIds((prev) => {
       if (checked) {
@@ -427,15 +398,6 @@ export default function AccountsPage() {
     [fetchAccounts, quickAction],
   );
 
-  const handleFabAction = useCallback(
-    (actionId: string) => {
-      handleQuickActionSelect(actionId as QuickAddActionId);
-    },
-    [handleQuickActionSelect],
-  );
-
-  const showFab = !isCompactScreen;
-
   if (isLoading || !isAuthenticated) {
     return null;
   }
@@ -444,74 +406,76 @@ export default function AccountsPage() {
 
   return (
     <AppLayout title="Accounts" subtitle="">
-      <div className={styles.screen}>
-        <AccountsPageHeader
-          accountCount={accounts.length}
-          totalBalance={totalBalance}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
+      <div className={styles.pageShell}>
+        <div className={styles.pageContent}>
+          <AccountsPageHeader activeTab={activeTab} onTabChange={setActiveTab} />
 
-        <div className={headerStyles.headerBar}>
-          <div className={headerStyles.headerLeft}>
-            <QuickAddMenu onSelect={handleQuickActionSelect} />
-          </div>
-          <div className={headerStyles.headerRight}>
-            <button
-              type="button"
-              className={headerStyles.addButton}
-              onClick={handleAddAccountClick}
-              disabled={isFetching}
-            >
-              <FiPlus aria-hidden />
-              <span>Add Account</span>
-            </button>
-          </div>
-        </div>
-
-        {fetchError ? (
-          <div className={styles.tableCard} role="alert">
-            <div className={styles.emptyState}>
-              <p>{fetchError}</p>
+          <div className={headerStyles.headerBar}>
+            <div className={headerStyles.headerLeft}>
+              <QuickAddMenu onSelect={handleQuickActionSelect} />
+            </div>
+            <div className={headerStyles.headerRight}>
               <button
                 type="button"
-                className={styles.primaryButton}
-                onClick={handleRefresh}
+                className={headerStyles.addButton}
+                onClick={handleAddAccountClick}
                 disabled={isFetching}
               >
-                Retry
+                <FiPlus aria-hidden />
+                <span>Add Account</span>
               </button>
             </div>
           </div>
-        ) : activeTab === 'cards' ? (
-          <AccountsCardsView accounts={sortedAccounts} onQuickAction={(actionId) => handleQuickActionSelect(actionId as QuickAddActionId)} />
-        ) : (
-          <div className={styles.tableWrapper}>
-            <TableAccounts
-              tableScrollRef={tableScrollRef}
-              accounts={displayedAccounts}
-              selectedIds={selectedIds}
-              onSelectRow={handleSelectRow}
-              onSelectAll={handleSelectAll}
-              selectionSummary={selectionSummary}
-              pagination={pagination}
-              columnDefinitions={ACCOUNT_COLUMN_DEFINITIONS}
-              allColumns={orderedColumns}
-              visibleColumns={visibleColumns}
-              isColumnReorderMode={false}
-              onColumnVisibilityChange={handleColumnVisibilityChange}
-              onColumnOrderChange={handleColumnOrderChange}
-              sortState={sortState}
-              onSortChange={handleSortChange}
-              isFetching={isFetching}
-              isShowingSelectedOnly={showSelectedOnly}
+
+          {fetchError ? (
+            <div className={styles.tableCard} role="alert">
+              <div className={styles.emptyState}>
+                <p>{fetchError}</p>
+                <button
+                  type="button"
+                  className={styles.primaryButton}
+                  onClick={handleRefresh}
+                  disabled={isFetching}
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          ) : activeTab === 'cards' ? (
+            <AccountsCardsView
+              accounts={sortedAccounts}
               onQuickAction={(actionId) => handleQuickActionSelect(actionId as QuickAddActionId)}
             />
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className={styles.tableWrapper}>
+              <TableAccounts
+                tableScrollRef={tableScrollRef}
+                accounts={displayedAccounts}
+                selectedIds={selectedIds}
+                onSelectRow={handleSelectRow}
+                onSelectAll={handleSelectAll}
+                selectionSummary={selectionSummary}
+                pagination={pagination}
+                columnDefinitions={ACCOUNT_COLUMN_DEFINITIONS}
+                allColumns={orderedColumns}
+                visibleColumns={visibleColumns}
+                isColumnReorderMode={false}
+                onColumnVisibilityChange={handleColumnVisibilityChange}
+                onColumnOrderChange={handleColumnOrderChange}
+                sortState={sortState}
+                onSortChange={handleSortChange}
+                isFetching={isFetching}
+                isShowingSelectedOnly={showSelectedOnly}
+                onQuickAction={(actionId) => handleQuickActionSelect(actionId as QuickAddActionId)}
+              />
+            </div>
+          )}
+        </div>
 
-      <FabAccounts onAction={handleFabAction} isVisible={showFab} />
+        <footer className={styles.pageFooter} aria-label="Accounts footer">
+          <span className={styles.footerNote}>Accounts sync nightly • Preview data</span>
+        </footer>
+      </div>
 
       <AddModalGlobal
         type={addModalType ?? 'account'}

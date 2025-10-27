@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FiArrowDownCircle, FiArrowUpCircle, FiLayers, FiRefreshCw, FiZap } from 'react-icons/fi';
 
 import styles from '../../styles/QuickAddMenu.module.css';
@@ -39,8 +40,12 @@ const ACTIONS: { id: QuickAddActionId; label: string; description: string; icon:
 
 export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isHoverable, setIsHoverable] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 248 });
+  const closeTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -59,10 +64,14 @@ export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
     }
 
     const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
       if (!containerRef.current) {
         return;
       }
-      if (containerRef.current.contains(event.target as Node)) {
+      if (containerRef.current.contains(target)) {
+        return;
+      }
+      if (menuRef.current && menuRef.current.contains(target)) {
         return;
       }
       setIsOpen(false);
@@ -72,6 +81,53 @@ export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, []);
 
+  const updateMenuPosition = useCallback(() => {
+    if (typeof window === 'undefined' || !triggerRef.current) {
+      return;
+    }
+
+    const rect = triggerRef.current.getBoundingClientRect();
+    const scrollX = window.scrollX || window.pageXOffset;
+    const scrollY = window.scrollY || window.pageYOffset;
+    const minWidth = 248;
+    const width = Math.max(rect.width, minWidth);
+    const viewportLeft = scrollX + 16;
+    const viewportRight = scrollX + window.innerWidth - 16;
+    const clampedLeft = Math.min(
+      Math.max(rect.left + scrollX, viewportLeft),
+      Math.max(viewportLeft, viewportRight - width),
+    );
+    const top = rect.bottom + scrollY + 12;
+
+    setMenuPosition({ top, left: clampedLeft, width });
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    updateMenuPosition();
+
+    const handleReposition = () => updateMenuPosition();
+    window.addEventListener('resize', handleReposition);
+    window.addEventListener('scroll', handleReposition, true);
+
+    return () => {
+      window.removeEventListener('resize', handleReposition);
+      window.removeEventListener('scroll', handleReposition, true);
+    };
+  }, [isOpen, updateMenuPosition]);
+
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => clearCloseTimer(), [clearCloseTimer]);
+
   const actionItems = useMemo(() => ACTIONS, []);
 
   const handleSelect = (actionId: QuickAddActionId) => {
@@ -79,42 +135,55 @@ export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
     setIsOpen(false);
   };
 
+  const scheduleClose = useCallback(() => {
+    if (!isHoverable) {
+      setIsOpen(false);
+      return;
+    }
+    clearCloseTimer();
+    closeTimerRef.current = window.setTimeout(() => {
+      setIsOpen(false);
+      closeTimerRef.current = null;
+    }, 180);
+  }, [clearCloseTimer, isHoverable]);
+
   const handleToggle = () => {
     if (isHoverable) {
+      clearCloseTimer();
       setIsOpen(true);
+      updateMenuPosition();
     } else {
-      setIsOpen((prev) => !prev);
+      setIsOpen((prev) => {
+        const next = !prev;
+        if (!prev && next) {
+          updateMenuPosition();
+        }
+        return next;
+      });
     }
   };
 
-  return (
+  const containerClassName = [styles.container, className].filter(Boolean).join(' ');
+  const menu = (
     <div
-      ref={containerRef}
-      className={[styles.container, className].filter(Boolean).join(' ')}
+      ref={menuRef}
+      className={styles.portalAnchor}
+      style={{
+        top: `${menuPosition.top}px`,
+        left: `${menuPosition.left}px`,
+        minWidth: `${menuPosition.width}px`,
+      }}
       onMouseEnter={() => {
         if (isHoverable) {
-          setIsOpen(true);
+          clearCloseTimer();
         }
       }}
       onMouseLeave={() => {
         if (isHoverable) {
-          setIsOpen(false);
+          scheduleClose();
         }
       }}
     >
-      <button
-        type="button"
-        className={styles.trigger}
-        aria-haspopup="true"
-        aria-expanded={isOpen ? 'true' : 'false'}
-        onClick={handleToggle}
-      >
-        <span className={styles.triggerIcon} aria-hidden>
-          <FiZap />
-        </span>
-        <span className={styles.triggerLabel}>Quick Add</span>
-      </button>
-
       <div
         className={styles.menu}
         role="menu"
@@ -138,6 +207,49 @@ export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
         ))}
       </div>
     </div>
+  );
+
+  return (
+    <>
+      <div
+        ref={containerRef}
+        className={containerClassName}
+        data-expanded={isOpen ? 'true' : undefined}
+        onMouseEnter={() => {
+          if (isHoverable) {
+            clearCloseTimer();
+            setIsOpen(true);
+          }
+        }}
+        onMouseLeave={() => {
+          if (isHoverable) {
+            scheduleClose();
+          }
+        }}
+      >
+        <button
+          ref={triggerRef}
+          type="button"
+          className={styles.trigger}
+          aria-haspopup="true"
+          aria-expanded={isOpen ? 'true' : 'false'}
+          onClick={handleToggle}
+        >
+          <span className={styles.triggerIcon} aria-hidden>
+            <FiZap />
+          </span>
+          <span className={styles.triggerLabel}>Quick Add</span>
+        </button>
+      </div>
+      {typeof document !== 'undefined'
+        ? createPortal(
+            <div className={styles.portalRoot} data-open={isOpen ? 'true' : 'false'}>
+              {menu}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
 

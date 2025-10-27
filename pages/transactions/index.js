@@ -7,6 +7,7 @@ import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
 import TransactionAdvancedModal from '../../components/transactions/TransactionAdvancedModal';
 import QuickAddMenu from '../../components/common/QuickAddMenu';
+import LoadingOverlay from '../../components/common/LoadingOverlay';
 import AddModalGlobal from '../../components/common/AddModalGlobal';
 import headerStyles from '../../styles/HeaderActionBar.module.css';
 import { FiPlus } from 'react-icons/fi';
@@ -487,7 +488,9 @@ export default function TransactionsHistoryPage() {
 
         {columnDefinitions.length === 0 ? (
           <div className={styles.tableCard} data-testid="transactions-loading">
-            <div className={styles.emptyState}>Loading transactions...</div>
+            <div className={styles.emptyState}>
+              <LoadingOverlay message="Refreshing data…" />
+            </div>
           </div>
         ) : (
           <TransactionsTable

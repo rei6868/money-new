@@ -62,18 +62,29 @@
 
 @media (max-width: 640px) {
   .headerBar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
     background: transparent;
     border: none;
     box-shadow: none;
     padding: 0.5rem 0.5rem 0.25rem;
+    gap: 0.65rem;
+  }
+
+  .headerLeft {
+    flex: 1 1 auto;
   }
 
   .headerRight {
+    flex: 0 0 auto;
     justify-content: flex-end;
+    width: auto;
   }
 
   .addButton {
-    width: 100%;
+    width: auto;
     justify-content: center;
+    padding: 0.5rem 0.9rem;
   }
 }

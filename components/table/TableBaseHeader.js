@@ -144,6 +144,8 @@ export function TableBaseHeader({
     const isLoading = isSorted && isFetching;
     const ariaSort = isSorted ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none';
 
+    const isTaskColumn = id === 'task';
+
     const headerClassName = [
       headerStyles.headerCell,
       styles.bodyCell,
@@ -155,6 +157,7 @@ export function TableBaseHeader({
       isColumnReorderMode ? headerStyles.headerReorder : '',
       isDropTarget ? headerStyles.headerDropTarget : '',
       isHidden && isColumnReorderMode ? headerStyles.headerHidden : '',
+      isTaskColumn ? headerStyles.taskHeaderCell : '',
     ]
       .filter(Boolean)
       .join(' ');
@@ -189,8 +192,24 @@ export function TableBaseHeader({
     const showActiveState = isSorted && !isSortDisabledForData;
     const glyphDirection = isSortDisabledForData ? null : sortDirection;
 
-    const effectiveMinWidth = isColumnReorderMode ? Math.max(minWidth, 160) : minWidth;
-    const effectiveWidth = isColumnReorderMode ? Math.max(width, effectiveMinWidth) : width;
+    const baseMinWidth = isColumnReorderMode ? Math.max(minWidth, 160) : minWidth;
+    const baseWidth = isColumnReorderMode ? Math.max(width, baseMinWidth) : width;
+    const effectiveMinWidth = isTaskColumn ? Math.max(baseMinWidth, 80) : baseMinWidth;
+    const effectiveWidth = isTaskColumn ? Math.max(baseWidth, effectiveMinWidth) : baseWidth;
+
+    const headerLabelClassName = [
+      headerStyles.headerLabel,
+      isTaskColumn ? headerStyles.taskHeaderLabel : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    const headerLabelTextClassName = [
+      headerStyles.headerLabelText,
+      isTaskColumn ? headerStyles.taskHeaderText : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
 
     const columnToggleControl = isColumnReorderMode ? (
       <label
@@ -241,11 +260,11 @@ export function TableBaseHeader({
         aria-sort={ariaSort}
       >
         <div className={shellClassName}>
-          <div className={headerStyles.headerContent}>
-            <div className={headerStyles.headerLabel}>
-              <span className={headerStyles.headerLabelText}>{title}</span>
-            </div>
+        <div className={headerStyles.headerContent}>
+          <div className={headerLabelClassName}>
+            <span className={headerLabelTextClassName}>{title}</span>
           </div>
+        </div>
           {isColumnReorderMode ? (
             columnToggleControl
           ) : (

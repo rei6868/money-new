@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import styles from './TableBase.module.css';
+import LoadingOverlay from '../common/LoadingOverlay';
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
 import {
   ACTIONS_COLUMN_WIDTH,
@@ -513,10 +514,7 @@ const TableBaseInner = (
           </table>
         </div>
         {isFetching ? (
-          <div className={styles.loadingOverlay} role="status" aria-live="polite">
-            <div className={styles.loadingSpinner} aria-hidden />
-            <span className={styles.loadingLabel}>Refreshing data…</span>
-          </div>
+          <LoadingOverlay className={styles.loadingIndicator} message="Refreshing data…" />
         ) : null}
         {shouldRenderPagination ? (
           <div
