@@ -52,7 +52,11 @@ export function FabAccounts({ onAction, isVisible = true }: FabAccountsProps) {
       onSelect={onAction}
       storageKey="accounts-fab-corner"
       className={styles.accountsFab}
-      style={{ bottom: 'clamp(88px, 10vh, 128px)' }}
+      style={{
+        bottom: 'clamp(1.5rem, 12vh, 6.5rem)',
+        right: 'clamp(1rem, 5vw, 2.5rem)',
+      }}
+      hideWhenKeyboardOpens
     />
   );
 }

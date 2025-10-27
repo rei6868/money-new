@@ -33,10 +33,10 @@
 .tableScroll {
   position: relative;
   flex: 1 1 auto;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
   background: transparent;
   scrollbar-gutter: stable both-edges;
-  max-height: clamp(420px, 60vh, 720px);
 }
 
 .table {
@@ -190,7 +190,7 @@
   border-top: 1px solid rgba(148, 163, 184, 0.2);
   color: var(--table-text);
   position: relative;
-  z-index: 5;
+  z-index: 2000;
   overflow: visible;
 }
 

@@ -55,6 +55,7 @@ export type FabSmartProps = {
   autoCollapseDelay?: number;
   tooltip?: string;
   style?: React.CSSProperties;
+  hideWhenKeyboardOpens?: boolean;
 };
 
 function readCorner(key: string | undefined): FabCorner {
@@ -95,13 +96,16 @@ export function FabSmart({
   autoCollapseDelay = 1_500,
   tooltip,
   style,
+  hideWhenKeyboardOpens = false,
 }: FabSmartProps) {
   const [corner, setCorner] = useState<FabCorner>(() => readCorner(storageKey));
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAutoCollapsing, setIsAutoCollapsing] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const pointerTypeRef = useRef<'touch' | 'mouse'>('mouse');
+  const keyboardBaselineRef = useRef<number | null>(null);
 
   const handleGlobalPointer = useCallback((event: PointerEvent) => {
     pointerTypeRef.current = event.pointerType === 'touch' ? 'touch' : 'mouse';
@@ -111,6 +115,44 @@ export function FabSmart({
     window.addEventListener('pointerdown', handleGlobalPointer, { passive: true });
     return () => window.removeEventListener('pointerdown', handleGlobalPointer);
   }, [handleGlobalPointer]);
+
+  useEffect(() => {
+    if (!hideWhenKeyboardOpens || typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const viewport = window.visualViewport;
+
+    const updateKeyboardState = () => {
+      const viewportHeight = viewport?.height ?? window.innerHeight;
+      if (!viewportHeight || Number.isNaN(viewportHeight)) {
+        setIsKeyboardVisible(false);
+        return;
+      }
+
+      if (keyboardBaselineRef.current === null || viewportHeight > keyboardBaselineRef.current) {
+        keyboardBaselineRef.current = viewportHeight;
+      }
+
+      const baseline = keyboardBaselineRef.current ?? viewportHeight;
+      const delta = baseline - viewportHeight;
+      setIsKeyboardVisible(delta > 120);
+    };
+
+    updateKeyboardState();
+
+    const handleResize = () => updateKeyboardState();
+
+    viewport?.addEventListener('resize', handleResize);
+    viewport?.addEventListener('scroll', handleResize);
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      viewport?.removeEventListener('resize', handleResize);
+      viewport?.removeEventListener('scroll', handleResize);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [hideWhenKeyboardOpens]);
 
   useEffect(() => {
     const handleOutside = (event: MouseEvent | TouchEvent) => {
@@ -129,6 +171,12 @@ export function FabSmart({
       document.removeEventListener('touchstart', handleOutside);
     };
   }, []);
+
+  useEffect(() => {
+    if (hideWhenKeyboardOpens && isKeyboardVisible) {
+      setIsExpanded(false);
+    }
+  }, [hideWhenKeyboardOpens, isKeyboardVisible]);
 
   const startAutoCollapse = useCallback(() => {
     if (autoCollapseDelay <= 0) {
@@ -245,6 +293,10 @@ export function FabSmart({
   ) : (
     mainButton
   );
+
+  if (hideWhenKeyboardOpens && isKeyboardVisible) {
+    return null;
+  }
 
   return (
     <motion.div

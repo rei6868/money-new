@@ -69,6 +69,7 @@ export function TransactionsToolbar({
 
   const isSearchDisabled = isReorderMode;
   const isSearchEmpty = !searchValue?.trim();
+  const showRefreshButton = !isReorderMode;
 
   return (
     <section
@@ -143,17 +144,19 @@ export function TransactionsToolbar({
             <span className={styles.resetButtonText}>Reset</span>
           </button>
 
-          <button
-            type="button"
-            className={`${styles.secondaryButton} ${styles.toolbarIconButton}`.trim()}
-            onClick={handleRefresh}
-            data-testid="transactions-refresh"
-            disabled={isSearchDisabled}
-            aria-label="Refresh transactions"
-          >
-            <FiRefreshCw aria-hidden />
-            <span className={styles.resetButtonText}>Refresh</span>
-          </button>
+          {showRefreshButton ? (
+            <button
+              type="button"
+              className={`${styles.secondaryButton} ${styles.toolbarIconButton}`.trim()}
+              onClick={handleRefresh}
+              data-testid="transactions-refresh"
+              disabled={isSearchDisabled}
+              aria-label="Refresh transactions"
+            >
+              <FiRefreshCw aria-hidden />
+              <span className={styles.resetButtonText}>Refresh</span>
+            </button>
+          ) : null}
         </div>
       </div>
 

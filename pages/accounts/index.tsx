@@ -526,7 +526,7 @@ export default function AccountsPage() {
 
   const isDisabled = isFetching;
   const showToolbarRefresh = !isCustomizeMode;
-  const showHeaderRefresh = isCustomizeMode;
+  const showHeaderRefresh = false;
   const showAddButton = !isCustomizeMode;
   const showFab = !isCustomizeMode && !isCompactScreen;
 

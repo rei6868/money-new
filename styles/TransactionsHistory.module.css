@@ -24,11 +24,11 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  min-height: 0;
   width: 100%;
   flex: 1 1 auto;
-  height: 100vh;
-  overflow: hidden;
+  min-height: clamp(320px, calc(100vh - 200px), 100vh);
+  max-height: none;
+  overflow: visible;
 }
 
 .selectionCount {
@@ -536,15 +536,17 @@
 
 .toolbarSearchRow {
   display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .searchButtonGroup {
   display: inline-flex;
+  align-items: stretch;
   gap: 0.5rem;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .toolbarCustomizeRow {
@@ -1722,6 +1724,12 @@
     gap: 0.65rem;
   }
 
+  .toolbarSearchRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
   .searchGroup {
     width: 100%;
     min-width: 0;
@@ -1730,6 +1738,12 @@
   .searchButtonGroup {
     width: 100%;
     justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .searchButtonGroup > button {
+    flex: 1 1 calc(33.333% - 0.35rem);
+    min-width: 140px;
   }
 
   .toolbarCustomizeRow {
@@ -1741,6 +1755,22 @@
   .selectionActions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .primaryButton,
+  .secondaryButton,
+  .toolbarIconButton,
+  .searchSubmitButton {
+    font-size: 0.9rem;
+  }
+
+  .toggleLabel {
+    display: none;
+  }
+
+  .toggleSwitch {
+    padding: 0.35rem;
+    min-width: 44px;
   }
 
   .toolbarCard {
@@ -2029,6 +2059,20 @@
 }
 
 @media (max-width: 480px) {
+  .toolbarSearchRow {
+    flex-direction: column;
+  }
+
+  .searchButtonGroup {
+    justify-content: flex-start;
+    gap: 0.4rem;
+  }
+
+  .searchButtonGroup > button {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
   .modalContent {
     border-radius: 16px;
     width: 100%;

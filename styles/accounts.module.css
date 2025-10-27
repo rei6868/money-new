@@ -139,7 +139,7 @@
 .toolbarSearchRow {
   display: flex;
   flex-wrap: wrap;
-  align-items: stretch;
+  align-items: center;
   gap: 0.75rem;
 }
 
@@ -150,9 +150,10 @@
 
 .searchButtonGroup {
   display: inline-flex;
-  align-items: center;
+  align-items: stretch;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .toolbarActionRow {
@@ -445,6 +446,11 @@
 
 .tableWrapper {
   composes: tableCard from './TransactionsHistory.module.css';
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-x: auto;
 }
 
 .tableHeader {
@@ -588,12 +594,20 @@
   }
 
   .toolbarSearchRow {
+    flex-direction: column;
+    align-items: stretch;
     gap: 0.5rem;
   }
 
   .searchButtonGroup {
     width: 100%;
     justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .searchButtonGroup > button {
+    flex: 1 1 calc(33.333% - 0.35rem);
+    min-width: 140px;
   }
 
   .toolbarActionRow {
@@ -620,6 +634,11 @@
   .searchButtonGroup {
     justify-content: flex-start;
     gap: 0.4rem;
+  }
+
+  .searchButtonGroup > button {
+    flex: 1 1 100%;
+    min-width: 0;
   }
 
   .toolbarActionRow {
@@ -667,11 +686,12 @@
 }
 
 .accountsFab {
-  bottom: clamp(88px, 10vh, 128px);
+  bottom: clamp(1.5rem, 12vh, 6.5rem);
+  right: clamp(1rem, 5vw, 2.5rem);
 }
 
 @media (max-width: 720px) {
   .accountsFab {
-    bottom: clamp(80px, 12vh, 120px);
+    bottom: clamp(1.5rem, 16vh, 5.5rem);
   }
 }
