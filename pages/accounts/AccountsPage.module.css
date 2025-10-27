@@ -1,11 +1,12 @@
 .pageContainer {
   width: 100%;
-  max-width: 72rem;
+  max-width: none;
   margin: 0 auto;
-  padding: 1.5rem 1.5rem 3rem;
+  padding: 1.25rem 0.75rem 3rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  box-sizing: border-box;
 }
 
 .headerActions {
@@ -21,11 +22,13 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem 1.5rem;
-  padding: 1rem 1.25rem;
-  border-radius: 1.5rem;
-  border: 1px solid var(--mf-border-subtle);
+  padding: 0.85rem 1.1rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(99, 102, 241, 0.16);
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(59, 130, 246, 0.05));
-  box-shadow: var(--mf-elevation-sm);
+  box-shadow: 0 24px 40px rgba(99, 102, 241, 0.08);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .toolbarLeft {
@@ -49,10 +52,11 @@
   padding: 2.25rem 2rem;
   border-radius: 1.5rem;
   border: 1px dashed rgba(99, 102, 241, 0.35);
-  background: rgba(99, 102, 241, 0.06);
+  background: linear-gradient(160deg, rgba(99, 102, 241, 0.06), rgba(59, 130, 246, 0.04));
   color: var(--mf-text-primary);
   box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.08);
   text-align: left;
+  max-width: min(48rem, 100%);
 }
 
 .stateTitle {
@@ -69,13 +73,21 @@
   line-height: 1.6;
 }
 
-@media (max-width: 768px) {
+@media (min-width: 640px) {
   .pageContainer {
-    padding-inline: 1rem;
+    padding-inline: 1.5rem;
   }
+}
 
+@media (min-width: 1024px) {
+  .pageContainer {
+    padding-inline: 2.5rem;
+  }
+}
+
+@media (max-width: 768px) {
   .toolbar {
-    padding: 0.85rem 1rem;
+    padding: 0.75rem 1rem;
   }
 
   .toolbarLeft {

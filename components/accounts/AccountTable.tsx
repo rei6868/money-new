@@ -36,38 +36,40 @@ function renderOwner(account: AccountRow) {
 export default function AccountTable({ accounts, formatCurrency }: AccountTableProps) {
   return (
     <div className={styles.tableContainer}>
-      <table className={styles.table}>
-        <caption className={`${styles.caption} hidden`}>Accounts table view</caption>
-        <thead>
-          <tr>
-            <th scope="col">Account</th>
-            <th scope="col">Type</th>
-            <th scope="col">Owner</th>
-            <th scope="col">Current balance</th>
-            <th scope="col">Status</th>
-            <th scope="col">Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          {accounts.map((account) => (
-            <tr key={account.id}>
-              <th scope="row">
-                <span className={styles.accountName}>{account.name}</span>
-                <span className={styles.accountId}>{account.id}</span>
-              </th>
-              <td>{account.typeLabel}</td>
-              <td>{renderOwner(account)}</td>
-              <td className={styles.numeric}>{formatCurrency(account.balance)}</td>
-              <td>
-                <span className={styles.statusBadge} data-status={account.status}>
-                  {account.statusLabel}
-                </span>
-              </td>
-              <td>{account.notes ?? "—"}</td>
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
+          <caption className={`${styles.caption} hidden`}>Accounts table view</caption>
+          <thead>
+            <tr>
+              <th scope="col">Account</th>
+              <th scope="col">Type</th>
+              <th scope="col">Owner</th>
+              <th scope="col">Current balance</th>
+              <th scope="col">Status</th>
+              <th scope="col">Notes</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {accounts.map((account) => (
+              <tr key={account.id}>
+                <th scope="row">
+                  <span className={styles.accountName}>{account.name}</span>
+                  <span className={styles.accountId}>{account.id}</span>
+                </th>
+                <td>{account.typeLabel}</td>
+                <td>{renderOwner(account)}</td>
+                <td className={styles.numeric}>{formatCurrency(account.balance)}</td>
+                <td>
+                  <span className={styles.statusBadge} data-status={account.status}>
+                    {account.statusLabel}
+                  </span>
+                </td>
+                <td>{account.notes ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

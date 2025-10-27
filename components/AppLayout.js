@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import {
   FiGrid,
   FiRepeat,
+  FiCreditCard,
   FiSettings,
   FiLogOut,
   FiMoon,
@@ -29,6 +30,12 @@ const NAV_ITEMS = [
     label: 'Transactions History',
     href: '/transactions',
     icon: FiRepeat,
+  },
+  {
+    key: 'accounts',
+    label: 'Accounts',
+    href: '/accounts',
+    icon: FiCreditCard,
   },
 ];
 
