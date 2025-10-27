@@ -1,0 +1,592 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import AppLayout from '../../components/AppLayout';
+import AccountsCardsView from '../../components/accounts/AccountsCardsView';
+import AccountsPageHeader from '../../components/accounts/AccountsPageHeader';
+import FabAccounts from '../../components/accounts/FabAccounts';
+import TableAccounts from '../../components/accounts/TableAccounts';
+import ToolbarAccounts from '../../components/accounts/ToolbarAccounts';
+import {
+  ACCOUNT_COLUMN_DEFINITIONS,
+  ACCOUNT_SORTERS,
+  AccountColumnDefinition,
+  AccountRow,
+  createDefaultColumnState,
+} from '../../components/accounts/accountColumns';
+import { useRequireAuth } from '../../hooks/useRequireAuth';
+import { useSearchState } from '../../lib/ui/useSearchState';
+import styles from '../../styles/accounts.module.css';
+
+type ColumnState = ReturnType<typeof createDefaultColumnState>[number];
+
+type NormalizedAccount = AccountRow & {
+  raw: Record<string, unknown>;
+};
+
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
+
+function parseNumber(value: unknown, fallback = 0): number {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function normalizeAccount(raw: Record<string, unknown>): NormalizedAccount | null {
+  const accountId =
+    (raw.accountId as string | undefined) ?? (raw.account_id as string | undefined) ?? null;
+  if (!accountId) {
+    return null;
+  }
+
+  return {
+    accountId,
+    accountName:
+      (raw.accountName as string | undefined) ??
+      (raw.account_name as string | undefined) ??
+      'Unnamed account',
+    accountType:
+      (raw.accountType as string | undefined) ??
+      (raw.account_type as string | undefined) ??
+      'other',
+    ownerId:
+      (raw.ownerId as string | undefined) ??
+      (raw.owner_id as string | undefined) ??
+      'unknown',
+    ownerName: (raw.ownerName as string | undefined) ?? null,
+    openingBalance: parseNumber(raw.openingBalance ?? raw.opening_balance),
+    currentBalance: parseNumber(raw.currentBalance ?? raw.current_balance),
+    totalIn: parseNumber(raw.totalIn ?? raw.total_in),
+    totalOut: parseNumber(raw.totalOut ?? raw.total_out),
+    status: (raw.status as string | undefined) ?? 'inactive',
+    notes: (raw.notes as string | undefined) ?? '',
+    parentAccountId:
+      (raw.parentAccountId as string | undefined) ??
+      (raw.parent_account_id as string | undefined) ??
+      null,
+    imgUrl: (raw.imgUrl as string | undefined) ?? (raw.img_url as string | undefined) ?? null,
+    raw,
+  };
+}
+
+function includesSearchMatch(account: NormalizedAccount, query: string) {
+  if (!query) {
+    return true;
+  }
+  const needle = query.toLowerCase();
+  return (
+    account.accountName.toLowerCase().includes(needle) ||
+    account.accountType.toLowerCase().includes(needle) ||
+    account.ownerId.toLowerCase().includes(needle) ||
+    (account.ownerName ?? '').toLowerCase().includes(needle) ||
+    (account.notes ?? '').toLowerCase().includes(needle) ||
+    (account.parentAccountId ?? '').toLowerCase().includes(needle)
+  );
+}
+
+function resolveSortedAccounts(
+  accounts: NormalizedAccount[],
+  sorterId: string | null,
+  direction: 'asc' | 'desc' | null,
+) {
+  if (!sorterId || !direction) {
+    return accounts.slice();
+  }
+  const accessor = ACCOUNT_SORTERS[sorterId];
+  if (!accessor) {
+    return accounts.slice();
+  }
+  const multiplier = direction === 'desc' ? -1 : 1;
+  return accounts.slice().sort((a, b) => {
+    const left = accessor(a);
+    const right = accessor(b);
+    if (typeof left === 'number' && typeof right === 'number') {
+      return (left - right) * multiplier;
+    }
+    const leftStr = String(left ?? '').toLowerCase();
+    const rightStr = String(right ?? '').toLowerCase();
+    if (leftStr === rightStr) {
+      return 0;
+    }
+    return leftStr > rightStr ? multiplier : -multiplier;
+  });
+}
+
+export default function AccountsPage() {
+  const { isAuthenticated, isLoading } = useRequireAuth();
+  const [accounts, setAccounts] = useState<NormalizedAccount[]>([]);
+  const [isFetching, setIsFetching] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const {
+    value: searchValue,
+    applied: appliedQuery,
+    clearedDraft: clearedDraftQuery,
+    setValue: setSearchValue,
+    apply: applySearch,
+    clear: clearSearch,
+    restore: restoreSearch,
+    reset: resetSearchState,
+  } = useSearchState();
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
+  const [isCustomizeMode, setIsCustomizeMode] = useState(false);
+  const [columnState, setColumnState] = useState(() =>
+    createDefaultColumnState(ACCOUNT_COLUMN_DEFINITIONS),
+  );
+  const [defaultColumnState] = useState(() =>
+    createDefaultColumnState(ACCOUNT_COLUMN_DEFINITIONS),
+  );
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1] ?? PAGE_SIZE_OPTIONS[0]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortState, setSortState] = useState<{
+    columnId: string | null;
+    direction: 'asc' | 'desc' | null;
+  }>({
+    columnId: 'accountName',
+    direction: 'asc',
+  });
+  const [activeTab, setActiveTab] = useState<'table' | 'cards'>('table');
+
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const definitionLookup = useMemo(
+    () => new Map(ACCOUNT_COLUMN_DEFINITIONS.map((definition) => [definition.id, definition])),
+    [],
+  );
+
+  const orderedColumns = useMemo<ColumnState[]>(() => {
+    if (columnState.length === 0) {
+      return [];
+    }
+    return columnState
+      .slice()
+      .sort((a, b) => a.order - b.order)
+      .map((state) => {
+        const definition = definitionLookup.get(state.id) as AccountColumnDefinition | undefined;
+        const minWidth = definition?.minWidth ?? 160;
+        const defaultVisible = definition?.defaultVisible !== false;
+        const normalizedWidth = Math.max(
+          state.width ?? definition?.defaultWidth ?? minWidth,
+          minWidth,
+        );
+
+        return {
+          ...state,
+          width: normalizedWidth,
+          visible: state.visible ?? defaultVisible,
+          optional: Boolean(state.optional ?? definition?.optional),
+        };
+      });
+  }, [columnState, definitionLookup]);
+
+  const visibleColumns = useMemo<ColumnState[]>(
+    () => orderedColumns.filter((column) => column.visible !== false),
+    [orderedColumns],
+  );
+
+  const allColumnsVisible = useMemo(
+    () => orderedColumns.every((column) => column.visible !== false),
+    [orderedColumns],
+  );
+
+  const optionalColumnsVisible = useMemo(() => {
+    const optionalColumns = orderedColumns.filter((column) => column.optional);
+    if (optionalColumns.length === 0) {
+      return false;
+    }
+    return optionalColumns.every((column) => column.visible !== false);
+  }, [orderedColumns]);
+
+  const fetchAccounts = useCallback(async () => {
+    setIsFetching(true);
+    setFetchError(null);
+    try {
+      const response = await fetch('/api/accounts');
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || 'Failed to load accounts');
+      }
+      const payload = await response.json();
+      const rows = Array.isArray(payload) ? payload : payload?.accounts;
+      if (!Array.isArray(rows)) {
+        setAccounts([]);
+        return;
+      }
+      const normalized = rows
+        .map((row) => normalizeAccount(row as Record<string, unknown>))
+        .filter((row): row is NormalizedAccount => Boolean(row));
+      setAccounts(normalized);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to fetch accounts at the moment.';
+      setFetchError(message);
+      setAccounts([]);
+    } finally {
+      setIsFetching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    void fetchAccounts();
+  }, [isAuthenticated, fetchAccounts]);
+
+  useEffect(() => {
+    if (selectedIds.length === 0) {
+      setShowSelectedOnly(false);
+      return;
+    }
+    const availableIds = new Set(accounts.map((account) => account.accountId));
+    setSelectedIds((prev) => prev.filter((id) => availableIds.has(id)));
+  }, [accounts, selectedIds.length]);
+
+  const filteredAccounts = useMemo(() => {
+    const query = appliedQuery.trim().toLowerCase();
+    const base = accounts;
+    if (!query) {
+      return base;
+    }
+    return base.filter((account) => includesSearchMatch(account, query));
+  }, [accounts, appliedQuery]);
+
+  const sortedAccounts = useMemo(
+    () => resolveSortedAccounts(filteredAccounts, sortState.columnId, sortState.direction),
+    [filteredAccounts, sortState],
+  );
+
+  const totalPages = useMemo(() => {
+    if (sortedAccounts.length === 0) {
+      return 1;
+    }
+    return Math.max(1, Math.ceil(sortedAccounts.length / pageSize));
+  }, [sortedAccounts.length, pageSize]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedAccounts = useMemo(() => {
+    if (activeTab === 'cards') {
+      return sortedAccounts;
+    }
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return sortedAccounts.slice(start, end);
+  }, [sortedAccounts, currentPage, pageSize, activeTab]);
+
+  const selectedLookup = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  const displayedAccounts = useMemo(() => {
+    if (!showSelectedOnly) {
+      return paginatedAccounts;
+    }
+    return paginatedAccounts.filter((account) => selectedLookup.has(account.accountId));
+  }, [paginatedAccounts, showSelectedOnly, selectedLookup]);
+
+  const selectionSummary = useMemo(() => {
+    if (selectedIds.length === 0) {
+      return { count: 0, amount: 0, totalBack: 0, finalPrice: 0 };
+    }
+    const lookup = new Set(selectedIds);
+    const amount = accounts.reduce((sum, account) => {
+      if (lookup.has(account.accountId)) {
+        return sum + (account.currentBalance ?? 0);
+      }
+      return sum;
+    }, 0);
+    return {
+      count: lookup.size,
+      amount,
+      totalBack: 0,
+      finalPrice: 0,
+    };
+  }, [accounts, selectedIds]);
+
+  const totalBalance = useMemo(
+    () => accounts.reduce((sum, account) => sum + (account.currentBalance ?? 0), 0),
+    [accounts],
+  );
+
+  const handleSelectRow = useCallback((id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      if (checked) {
+        if (prev.includes(id)) {
+          return prev;
+        }
+        return [...prev, id];
+      }
+      return prev.filter((value) => value !== id);
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      if (!checked) {
+        setSelectedIds([]);
+        return;
+      }
+      const source = showSelectedOnly ? displayedAccounts : paginatedAccounts;
+      setSelectedIds((prev) => {
+        const merged = new Set(prev);
+        source.forEach((account) => merged.add(account.accountId));
+        return Array.from(merged);
+      });
+    },
+    [displayedAccounts, paginatedAccounts, showSelectedOnly],
+  );
+
+  const handleDeselectAll = useCallback(() => {
+    setSelectedIds([]);
+  }, []);
+
+  const handleToggleShowSelected = useCallback(() => {
+    setShowSelectedOnly((prev) => {
+      if (!prev && selectedIds.length === 0) {
+        return prev;
+      }
+      return !prev;
+    });
+  }, [selectedIds.length]);
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchValue(value);
+    },
+    [setSearchValue],
+  );
+
+  const handleSubmitSearch = useCallback(() => {
+    applySearch();
+    setCurrentPage(1);
+  }, [applySearch]);
+
+  const handleClearSearch = useCallback(() => {
+    clearSearch();
+    setCurrentPage(1);
+  }, [clearSearch]);
+
+  const handleRestoreSearch = useCallback(() => {
+    restoreSearch();
+  }, [restoreSearch]);
+
+  const handleResetFilters = useCallback(() => {
+    resetSearchState();
+    setSortState({ columnId: 'accountName', direction: 'asc' });
+    setCurrentPage(1);
+  }, [resetSearchState]);
+
+  const handleToggleCustomizeMode = useCallback(() => {
+    setIsCustomizeMode((prev) => {
+      const next = !prev;
+      if (next) {
+        setSelectedIds([]);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleColumnVisibilityChange = useCallback((columnId: string, visible: boolean) => {
+    setColumnState((prev) =>
+      prev.map((column) =>
+        column.id === columnId ? { ...column, visible: Boolean(visible) } : column,
+      ),
+    );
+  }, []);
+
+  const handleColumnOrderChange = useCallback((orderedVisibleIds: string[]) => {
+    setColumnState((prev) => {
+      if (!Array.isArray(orderedVisibleIds) || orderedVisibleIds.length === 0) {
+        return prev;
+      }
+
+      const visibleLookup = new Map(orderedVisibleIds.map((id, index) => [id, index]));
+      const detached = prev.slice();
+      const visibleOnly = detached.filter((column) => visibleLookup.has(column.id));
+      const hidden = detached.filter((column) => !visibleLookup.has(column.id));
+
+      visibleOnly.sort(
+        (a, b) => (visibleLookup.get(a.id) ?? 0) - (visibleLookup.get(b.id) ?? 0),
+      );
+
+      const merged = [...visibleOnly, ...hidden];
+      return merged.map((column, index) => ({ ...column, order: index }));
+    });
+  }, []);
+
+  const updateOptionalColumns = useCallback((visible: boolean) => {
+    setColumnState((prev) =>
+      prev.map((column) =>
+        column.optional ? { ...column, visible } : column,
+      ),
+    );
+  }, []);
+
+  const handleToggleOptionalColumns = useCallback(
+    (checked: boolean) => {
+      updateOptionalColumns(checked);
+    },
+    [updateOptionalColumns],
+  );
+
+  const handleToggleAllColumns = useCallback(
+    (checked: boolean) => {
+      setColumnState((prev) =>
+        prev.map((column) => ({
+          ...column,
+          visible: checked ? true : !column.optional,
+        })),
+      );
+    },
+    [],
+  );
+
+  const handleResetColumns = useCallback(() => {
+    setColumnState(
+      defaultColumnState.map((column, index) => ({
+        ...column,
+        order: column.order ?? index,
+      })),
+    );
+  }, [defaultColumnState]);
+
+  const handleDoneCustomize = useCallback(() => {
+    setIsCustomizeMode(false);
+  }, []);
+
+  const handleSortChange = useCallback(
+    (columnId: string | null, direction: 'asc' | 'desc' | null) => {
+      if (isCustomizeMode) {
+        return;
+      }
+      if (!columnId || !direction) {
+        setSortState({ columnId: null, direction: null });
+        return;
+      }
+      setSortState({ columnId, direction });
+    },
+    [isCustomizeMode],
+  );
+
+  const pagination = useMemo(
+    () => ({
+      pageSize,
+      pageSizeOptions: PAGE_SIZE_OPTIONS,
+      currentPage,
+      totalPages,
+      onPageSizeChange: (value: number) => {
+        const normalized = PAGE_SIZE_OPTIONS.includes(value) ? value : PAGE_SIZE_OPTIONS[0];
+        setPageSize(normalized);
+        setCurrentPage(1);
+      },
+      onPageChange: (page: number) => {
+        const clamped = Math.min(Math.max(page, 1), totalPages);
+        setCurrentPage(clamped);
+      },
+    }),
+    [currentPage, pageSize, totalPages],
+  );
+
+  const handleRefresh = useCallback(() => {
+    void fetchAccounts();
+  }, [fetchAccounts]);
+
+  const handleFabAction = useCallback((actionId: string) => {
+    console.info('Quick account action placeholder:', actionId);
+  }, []);
+
+  const isDisabled = isFetching;
+
+  if (isLoading || !isAuthenticated) {
+    return null;
+  }
+
+  return (
+    <AppLayout title="Accounts" subtitle="Manage bank, cash, and credit accounts in one place.">
+      <div className={styles.screen}>
+        <AccountsPageHeader
+          accountCount={accounts.length}
+          totalBalance={totalBalance}
+          onRefresh={handleRefresh}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          isRefreshing={isFetching}
+        />
+
+        <ToolbarAccounts
+          searchValue={searchValue}
+          clearedDraftQuery={clearedDraftQuery}
+          appliedQuery={appliedQuery}
+          onSearchChange={handleSearchChange}
+          onSubmitSearch={handleSubmitSearch}
+          onClearSearch={handleClearSearch}
+          onRestoreSearch={handleRestoreSearch}
+          onRefresh={handleRefresh}
+          onResetFilters={handleResetFilters}
+          isCustomizeMode={isCustomizeMode}
+          onToggleCustomizeMode={handleToggleCustomizeMode}
+          onResetColumns={handleResetColumns}
+          onDoneCustomize={handleDoneCustomize}
+          onToggleAllColumns={handleToggleAllColumns}
+          allColumnsVisible={allColumnsVisible}
+          optionalColumnsVisible={optionalColumnsVisible}
+          onToggleOptionalColumns={handleToggleOptionalColumns}
+          selectedCount={selectedIds.length}
+          onDeselectAll={handleDeselectAll}
+          onToggleShowSelected={handleToggleShowSelected}
+          isShowingSelectedOnly={showSelectedOnly}
+          disabled={isDisabled}
+        />
+
+        {fetchError ? (
+          <div className={styles.tableCard} role="alert">
+            <div className={styles.emptyState}>
+              <p>{fetchError}</p>
+              <button
+                type="button"
+                className={styles.primaryButton}
+                onClick={handleRefresh}
+                disabled={isFetching}
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        ) : activeTab === 'cards' ? (
+          <AccountsCardsView accounts={sortedAccounts} onQuickAction={handleFabAction} />
+        ) : (
+          <div className={styles.tableWrapper}>
+            <TableAccounts
+              tableScrollRef={tableScrollRef}
+              accounts={displayedAccounts}
+              selectedIds={selectedIds}
+              onSelectRow={handleSelectRow}
+              onSelectAll={handleSelectAll}
+              selectionSummary={selectionSummary}
+              pagination={pagination}
+              columnDefinitions={ACCOUNT_COLUMN_DEFINITIONS}
+              allColumns={orderedColumns}
+              visibleColumns={visibleColumns}
+              isColumnReorderMode={isCustomizeMode}
+              onColumnVisibilityChange={handleColumnVisibilityChange}
+              onColumnOrderChange={handleColumnOrderChange}
+              sortState={sortState}
+              onSortChange={handleSortChange}
+              isFetching={isFetching}
+              isShowingSelectedOnly={showSelectedOnly}
+              onQuickAction={(actionId, account) => handleFabAction(`${actionId}:${account.accountId}`)}
+            />
+          </div>
+        )}
+      </div>
+
+      <FabAccounts onAction={handleFabAction} />
+    </AppLayout>
+  );
+}
+
+
