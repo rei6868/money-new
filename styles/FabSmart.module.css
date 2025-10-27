@@ -1,0 +1,134 @@
+.fabContainer {
+  position: fixed;
+  z-index: 1600;
+  display: flex;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.fabContainer[data-orientation='vertical'] {
+  flex-direction: column;
+}
+
+.fabContainer[data-orientation='vertical'][data-align='end'] {
+  align-items: flex-end;
+}
+
+.fabContainer[data-orientation='vertical'][data-align='start'] {
+  align-items: flex-start;
+}
+
+.fabMainButton {
+  border: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+  color: #ffffff;
+  box-shadow: 0 14px 28px rgba(79, 70, 229, 0.32);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.fabMainButton:focus-visible {
+  outline: 3px solid rgba(99, 102, 241, 0.35);
+  outline-offset: 3px;
+}
+
+.fabMainButton:active {
+  transform: scale(0.96);
+}
+
+.fabActionStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.fabActionStack[data-expand-direction='down'] {
+  flex-direction: column-reverse;
+  margin-bottom: 0;
+  margin-top: 0.85rem;
+}
+
+.fabActionButton {
+  border: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(34, 41, 80, 0.92);
+  color: #ffffff;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.28);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.fabActionButton span {
+  pointer-events: none;
+}
+
+.fabActionButton:hover,
+.fabActionButton:focus-visible {
+  transform: translateY(-2px);
+  background: rgba(82, 93, 178, 0.95);
+  box-shadow: 0 14px 30px rgba(79, 114, 205, 0.32);
+}
+
+.fabActionButton:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.45);
+  outline-offset: 3px;
+}
+
+.fabActionButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.cornerBottomRight {
+  bottom: 24px;
+  right: 24px;
+}
+
+.cornerBottomLeft {
+  bottom: 24px;
+  left: 24px;
+}
+
+.cornerTopRight {
+  top: 24px;
+  right: 24px;
+}
+
+.cornerTopLeft {
+  top: 24px;
+  left: 24px;
+}
+
+.fabLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  margin-top: 0.4rem;
+  color: rgba(28, 28, 60, 0.8);
+}
+
+@media (max-width: 720px) {
+  .fabMainButton {
+    width: 52px;
+    height: 52px;
+  }
+
+  .fabActionButton {
+    width: 44px;
+    height: 44px;
+  }
+}

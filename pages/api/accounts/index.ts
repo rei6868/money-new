@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 import { db } from "../../../lib/db/client";
 import { accounts, accountTypeEnum, accountStatusEnum, type NewAccount } from "../../../src/db/schema/accounts";
+import { people } from "../../../src/db/schema/people";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const database = db;
@@ -16,8 +17,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "GET") {
     try {
-      const result = await database.select().from(accounts).orderBy(asc(accounts.accountName));
-      res.status(200).json(result);
+      const result = await database
+        .select({
+          accountId: accounts.accountId,
+          accountName: accounts.accountName,
+          accountType: accounts.accountType,
+          ownerId: accounts.ownerId,
+          ownerName: people.fullName,
+          openingBalance: accounts.openingBalance,
+          currentBalance: accounts.currentBalance,
+          totalIn: accounts.totalIn,
+          totalOut: accounts.totalOut,
+          status: accounts.status,
+          notes: accounts.notes,
+          parentAccountId: accounts.parentAccountId,
+          imgUrl: accounts.imgUrl,
+        })
+        .from(accounts)
+        .leftJoin(people, eq(accounts.ownerId, people.personId))
+        .orderBy(asc(accounts.accountName));
+
+      const payload = result.map((row) => ({
+        ...row,
+        openingBalance: Number(row.openingBalance ?? 0),
+        currentBalance: Number(row.currentBalance ?? 0),
+        totalIn: Number(row.totalIn ?? 0),
+        totalOut: Number(row.totalOut ?? 0),
+      }));
+
+      res.status(200).json(payload);
     } catch (error) {
       console.error("Failed to fetch accounts", error);
       const message = error instanceof Error ? error.message : "Unknown error";
