@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import styles from './TableBase.module.css';
+import LoadingOverlay from '../common/LoadingOverlay';
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
 import {
   ACTIONS_COLUMN_WIDTH,
@@ -118,6 +119,9 @@ const TableBaseInner = (
     onSortChange,
     isShowingSelectedOnly = false,
     isFetching = false,
+    rowIdKey = 'id',
+    rowIdAccessor,
+    renderRowActionsCell,
   },
   forwardedRef,
 ) => {
@@ -139,8 +143,23 @@ const TableBaseInner = (
   const actionRegistry = useActionMenuRegistry();
 
   const selectionSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const resolveRowId = useCallback(
+    (row) => {
+      if (!row) {
+        return null;
+      }
+      if (typeof rowIdAccessor === 'function') {
+        return rowIdAccessor(row);
+      }
+      if (rowIdKey && row[rowIdKey] !== undefined) {
+        return row[rowIdKey];
+      }
+      return row.id ?? null;
+    },
+    [rowIdAccessor, rowIdKey],
+  );
   const allSelected =
-    transactions.length > 0 && transactions.every((txn) => selectionSet.has(txn.id));
+    transactions.length > 0 && transactions.every((txn) => selectionSet.has(resolveRowId(txn)));
   const isIndeterminate = selectionSet.size > 0 && !allSelected;
   const totals = useMemo(() => normalizeTotals(selectionSummary), [selectionSummary]);
   const selectionCount = Number(selectionSummary?.count ?? selectionSet.size);
@@ -409,25 +428,27 @@ const TableBaseInner = (
               transactions={transactions}
             />
             <TableBaseBody
-              transactions={transactions}
-              columns={columnDescriptors}
-              selectionSet={selectionSet}
-              onSelectRow={onSelectRow}
-              actionRegistry={actionRegistry}
+            transactions={transactions}
+            columns={columnDescriptors}
+            selectionSet={selectionSet}
+            onSelectRow={onSelectRow}
+            actionRegistry={actionRegistry}
               openActionId={openActionId}
               openActionSubmenu={openActionSubmenu}
               onActionTriggerEnter={handleActionTriggerEnter}
               onActionTriggerLeave={handleActionTriggerLeave}
               onActionFocus={handleActionFocus}
               onActionBlur={handleActionBlur}
-              onAction={handleAction}
-              onSubmenuEnter={handleSubmenuEnter}
-              registerActionMenu={actionRegistry.registerMenu}
-              isSubmenuFlipped={isSubmenuFlipped}
-              hiddenColumnIds={hiddenColumnIds}
-              isColumnReorderMode={isColumnReorderMode}
-              isShowingSelectedOnly={isShowingSelectedOnly}
-            />
+            onAction={handleAction}
+            onSubmenuEnter={handleSubmenuEnter}
+            registerActionMenu={actionRegistry.registerMenu}
+            isSubmenuFlipped={isSubmenuFlipped}
+            hiddenColumnIds={hiddenColumnIds}
+            isColumnReorderMode={isColumnReorderMode}
+            isShowingSelectedOnly={isShowingSelectedOnly}
+            getRowId={resolveRowId}
+            renderRowActionsCell={renderRowActionsCell}
+          />
             {shouldShowTotals ? (
               <tfoot>
                 <tr className={styles.totalRow}>
@@ -493,10 +514,7 @@ const TableBaseInner = (
           </table>
         </div>
         {isFetching ? (
-          <div className={styles.loadingOverlay} role="status" aria-live="polite">
-            <div className={styles.loadingSpinner} aria-hidden />
-            <span className={styles.loadingLabel}>Refreshing data…</span>
-          </div>
+          <LoadingOverlay className={styles.loadingIndicator} message="Refreshing data…" />
         ) : null}
         {shouldRenderPagination ? (
           <div

@@ -56,6 +56,19 @@
   white-space: nowrap;
 }
 
+.taskHeaderCell {
+  text-align: center;
+}
+
+.taskHeaderLabel {
+  justify-content: center;
+  align-items: center;
+}
+
+.taskHeaderText {
+  white-space: nowrap;
+}
+
 .headerReorder {
   cursor: grab;
 }
@@ -114,6 +127,10 @@
 @media (max-width: 640px) {
   .headerLabelText {
     white-space: normal;
+  }
+
+  .taskHeaderText {
+    white-space: nowrap;
   }
 }
 

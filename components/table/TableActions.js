@@ -57,7 +57,7 @@ export function TableActionMenuPortal({
     anchor,
     isOpen,
     minWidth: ACTION_MENU_MIN_WIDTH,
-    verticalOffset: 6,
+    verticalOffset: 20,
   });
 
   useGlobalEscape(onClose, isOpen);

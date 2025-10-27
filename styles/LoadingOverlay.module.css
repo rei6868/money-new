@@ -1,0 +1,33 @@
+.container {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+  color: #1f2240;
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.015em;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid rgba(99, 102, 241, 0.28);
+  border-top-color: #6f68f7;
+  animation: overlaySpin 1s linear infinite;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+}
+
+@keyframes overlaySpin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -14,7 +14,7 @@
   min-height: 100vh;
   background: var(--mf-canvas);
   color: var(--mf-text-primary);
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 .sidebar {
@@ -270,9 +270,8 @@
   display: flex;
   flex-direction: column;
   gap: 1.35rem;
-  overflow: hidden;
-  height: 0;
-  /* main content/container overflow-x: hidden to guarantee no page-level horizontal scrolling */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .sidebarCollapsed .brandCopy,

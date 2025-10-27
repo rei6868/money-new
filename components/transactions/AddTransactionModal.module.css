@@ -7,10 +7,14 @@
   align-items: center;
   justify-content: center;
   padding: 2rem 1.5rem;
-  z-index: 1300;
+  z-index: 70;
 }
 
 .modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: min(720px, 96vw);
   max-height: 90vh;
   background: var(--mf-surface, #ffffff);
@@ -19,8 +23,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  position: relative;
-  z-index: 1310;
+  z-index: 80;
 }
 
 .modalBody {

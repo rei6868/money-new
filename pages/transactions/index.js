@@ -2,13 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import AppLayout from '../../components/AppLayout';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
-import { TransactionsToolbar } from '../../components/transactions/TransactionsToolbar';
 
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
 import TransactionAdvancedModal from '../../components/transactions/TransactionAdvancedModal';
-import AddTransactionModal from '../../components/transactions/AddTransactionModal';
-import { ConfirmationModal } from '../../components/common/ConfirmationModal';
+import QuickAddMenu from '../../components/common/QuickAddMenu';
+import LoadingOverlay from '../../components/common/LoadingOverlay';
+import AddModalGlobal from '../../components/common/AddModalGlobal';
+import headerStyles from '../../styles/HeaderActionBar.module.css';
+import { FiPlus } from 'react-icons/fi';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
 
@@ -16,15 +18,10 @@ export default function TransactionsHistoryPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
   const [transactions, setTransactions] = useState([]);
   const [isFetching, setIsFetching] = useState(true);
-  const [draftQuery, setDraftQuery] = useState('');
-  const [appliedQuery, setAppliedQuery] = useState('');
-  const [clearedDraftQuery, setClearedDraftQuery] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [advancedPanel, setAdvancedPanel] = useState(null);
   const [columnDefinitions, setColumnDefinitions] = useState([]);
   const [columnState, setColumnState] = useState([]);
-  const [defaultColumnState, setDefaultColumnState] = useState([]);
-  const [isReorderMode, setIsReorderMode] = useState(false);
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1] ?? PAGE_SIZE_OPTIONS[0]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -36,9 +33,8 @@ export default function TransactionsHistoryPage() {
   });
   const [sortState, setSortState] = useState({ columnId: null, direction: null });
   const [serverPagination, setServerPagination] = useState({ totalPages: 1, totalRows: 0 });
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const discardResolverRef = useRef(null);
-  const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false);
+  const [addModalType, setAddModalType] = useState(null);
+  const [quickAction, setQuickAction] = useState(null);
   const tableScrollRef = useRef(null);
   const savedScrollLeftRef = useRef(0);
 
@@ -57,7 +53,7 @@ export default function TransactionsHistoryPage() {
       return undefined;
     }
 
-    if (!isAddModalOpen) {
+    if (!addModalType) {
       return undefined;
     }
 
@@ -67,17 +63,7 @@ export default function TransactionsHistoryPage() {
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [isAddModalOpen]);
-
-  useEffect(
-    () => () => {
-      if (discardResolverRef.current) {
-        discardResolverRef.current(false);
-        discardResolverRef.current = null;
-      }
-    },
-    [],
-  );
+  }, [addModalType]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -119,7 +105,6 @@ export default function TransactionsHistoryPage() {
 
         setColumnDefinitions(definitions);
         setColumnState(normalizedState);
-        setDefaultColumnState(normalizedState.map((column) => ({ ...column })));
       })
       .catch((error) => {
         if (!isCancelled) {
@@ -152,9 +137,6 @@ export default function TransactionsHistoryPage() {
     setIsFetching(true);
 
     const params = new URLSearchParams();
-    if (appliedQuery) {
-      params.set('search', appliedQuery);
-    }
     params.set('page', String(currentPage));
     params.set('pageSize', String(pageSize));
     if (sortState?.columnId) {
@@ -230,7 +212,6 @@ export default function TransactionsHistoryPage() {
   }, [
     isAuthenticated,
     columnDefinitions,
-    appliedQuery,
     currentPage,
     pageSize,
     sortState?.columnId,
@@ -267,21 +248,6 @@ export default function TransactionsHistoryPage() {
     () => orderedColumns.filter((column) => column.visible),
     [orderedColumns],
   );
-
-  const toggleableColumns = useMemo(
-    () => orderedColumns.filter((column) => column.id !== 'notes'),
-    [orderedColumns],
-  );
-
-  const toggleableVisibleCount = useMemo(
-    () => toggleableColumns.filter((column) => column.visible !== false).length,
-    [toggleableColumns],
-  );
-
-  const allToggleableVisible =
-    toggleableColumns.length > 0 && toggleableVisibleCount === toggleableColumns.length;
-  const someToggleableVisible =
-    toggleableVisibleCount > 0 && toggleableVisibleCount < toggleableColumns.length;
 
   useEffect(() => {
     const filteredIds = new Set(transactions.map((txn) => txn.id));
@@ -352,10 +318,6 @@ export default function TransactionsHistoryPage() {
 
   const handleSortStateChange = useCallback(
     (columnId, direction) => {
-      if (isReorderMode) {
-        return;
-      }
-
       if (!columnId || !direction) {
         if (sortState.columnId === null && sortState.direction === null) {
           return;
@@ -372,7 +334,7 @@ export default function TransactionsHistoryPage() {
       setSortState({ columnId, direction });
       setCurrentPage(1);
     },
-    [isReorderMode, sortState],
+    [sortState],
   );
 
   const handleSelectRow = (id, checked) => {
@@ -398,100 +360,37 @@ export default function TransactionsHistoryPage() {
     setSelectedIds(mapped);
   };
 
-  const handleDeselectAll = () => {
-    setSelectedIds([]);
-  };
-
-  const handleToggleShowSelected = () => {
-    if (showSelectedOnly) {
-      setShowSelectedOnly(false);
-      return;
-    }
-
-    if (selectedIds.length === 0) {
-      return;
-    }
-
-    setShowSelectedOnly(true);
-  };
-
-  const handleSearchInputChange = useCallback((value) => {
-    setDraftQuery(value);
-    setClearedDraftQuery((prev) => (prev !== null ? null : prev));
+  const handleOpenAddTransaction = useCallback(() => {
+    setQuickAction(null);
+    setAddModalType('transaction');
   }, []);
 
-  const handleSubmitQuery = useCallback(() => {
-    const normalized = draftQuery.trim();
-    if (normalized === appliedQuery.trim()) {
-      return;
-    }
-
-    setAppliedQuery(normalized);
-    setClearedDraftQuery(null);
-    setCurrentPage(1);
-  }, [draftQuery, appliedQuery]);
-
-  const handleClearSearch = useCallback(() => {
-    if (draftQuery.trim().length > 0) {
-      setClearedDraftQuery(draftQuery);
-    } else {
-      setClearedDraftQuery(null);
-    }
-
-    setDraftQuery('');
-  }, [draftQuery]);
-
-  const handleRestoreSearch = useCallback(() => {
-    if (clearedDraftQuery !== null) {
-      setDraftQuery(clearedDraftQuery);
-      setClearedDraftQuery(null);
-    } else if (appliedQuery && draftQuery !== appliedQuery) {
-      setDraftQuery(appliedQuery);
-    }
-  }, [clearedDraftQuery, appliedQuery, draftQuery]);
-
-  const handleAddTransaction = () => {
-    setIsAddModalOpen(true);
-  };
-
-  const handleRequestCloseAddModal = useCallback(() => {
-    if (isDiscardDialogOpen) {
-      return Promise.resolve(false);
-    }
-
-    return new Promise((resolve) => {
-      discardResolverRef.current = resolve;
-      setIsDiscardDialogOpen(true);
-    });
-  }, [isDiscardDialogOpen]);
-
-  const handleCloseAddTransaction = useCallback(() => {
-    setIsAddModalOpen(false);
-    setIsDiscardDialogOpen(false);
-    discardResolverRef.current = null;
+  const handleQuickActionSelect = useCallback((actionId) => {
+    setQuickAction(actionId);
+    setAddModalType('transaction');
   }, []);
 
-  const handleSaveNewTransaction = useCallback((payload) => {
-    // eslint-disable-next-line no-console
-    console.log('Save new transaction placeholder', payload);
-    setIsAddModalOpen(false);
+  const handleCloseAddModal = useCallback(() => {
+    setAddModalType(null);
+    setQuickAction(null);
   }, []);
 
-  const handleConfirmDiscardDraft = useCallback(() => {
-    if (discardResolverRef.current) {
-      discardResolverRef.current(true);
-    }
-    discardResolverRef.current = null;
-    setIsDiscardDialogOpen(false);
-  }, []);
-
-  const handleCancelDiscardDraft = useCallback(() => {
-    if (discardResolverRef.current) {
-      discardResolverRef.current(false);
-    }
-    discardResolverRef.current = null;
-    setIsDiscardDialogOpen(false);
-  }, []);
+  const handleSubmitAdd = useCallback(
+    async (modalType, payload) => {
+      try {
+        if (modalType === 'transaction') {
+          console.info('Create transaction placeholder', { action: quickAction, payload });
+        } else if (modalType === 'account') {
+          console.info('Create account placeholder from transactions page', payload);
+        } else if (modalType === 'person') {
+          console.info('Create person placeholder from transactions page', payload);
+        }
+      } catch (error) {
+        console.error('Failed to submit add modal', error);
+      }
+    },
+    [quickAction],
+  );
 
   const handleAdvanced = (payload) => {
     setAdvancedPanel(payload);
@@ -558,58 +457,11 @@ export default function TransactionsHistoryPage() {
     });
   }, []);
 
-  const handleResetColumns = useCallback(() => {
-    if (defaultColumnState.length === 0) {
-      return;
-    }
-    setColumnState(
-      defaultColumnState.map((column, index) => ({
-        ...column,
-        order: column.order ?? index,
-      })),
-    );
-  }, [defaultColumnState]);
-
-  const handleToggleAllColumnsVisibility = useCallback((visible) => {
-    setColumnState((prev) =>
-      prev.map((column) => {
-        if (column.id === 'notes') {
-          return column;
-        }
-        const isCurrentlyVisible = column.visible !== false;
-        if (isCurrentlyVisible === visible) {
-          return column;
-        }
-        return { ...column, visible: Boolean(visible) };
-      }),
-    );
-  }, []);
-
-  const handleToggleReorderMode = useCallback(() => {
-    setIsReorderMode((prev) => {
-      const next = !prev;
-      if (next) {
-        setSelectedIds([]);
-      }
-      return next;
-    });
-  }, []);
-
-  const handleExitReorderMode = useCallback(() => {
-    setIsReorderMode(false);
-  }, []);
-
-  const handleResetFilters = useCallback(() => {
-    setDraftQuery('');
-    setAppliedQuery('');
-    setClearedDraftQuery(null);
-    setCurrentPage(1);
-    setSortState({ columnId: null, direction: null });
-  }, []);
-
   if (isLoading || !isAuthenticated) {
     return null;
   }
+
+  const isAddModalOpen = addModalType !== null;
 
   return (
     <AppLayout
@@ -617,34 +469,28 @@ export default function TransactionsHistoryPage() {
       subtitle="Monitor every inflow, cashback, debt movement, and adjustment inside Money Flow."
     >
       <div className={styles.screen}>
-        <TransactionsToolbar
-          searchValue={draftQuery}
-          clearedDraftQuery={clearedDraftQuery}
-          appliedQuery={appliedQuery}
-          onSearchChange={handleSearchInputChange}
-          onSubmitSearch={handleSubmitQuery}
-          onClearSearch={handleClearSearch}
-          onRestoreSearch={handleRestoreSearch}
-          onAddTransaction={handleAddTransaction}
-          onCustomizeColumns={handleToggleReorderMode}
-          isReorderMode={isReorderMode}
-          onToggleAllColumns={handleToggleAllColumnsVisibility}
-          allToggleableVisible={allToggleableVisible}
-          someToggleableVisible={someToggleableVisible}
-          onResetColumns={handleResetColumns}
-          onDoneCustomize={handleExitReorderMode}
-          selectedCount={selectedIds.length}
-          onDeselectAll={handleDeselectAll}
-          onToggleShowSelected={handleToggleShowSelected}
-          isShowingSelectedOnly={showSelectedOnly}
-          onResetFilters={handleResetFilters}
-        />
-
-
+        <div className={headerStyles.headerBar}>
+          <div className={headerStyles.headerLeft}>
+            <QuickAddMenu onSelect={handleQuickActionSelect} />
+          </div>
+          <div className={headerStyles.headerRight}>
+            <button
+              type="button"
+              className={headerStyles.addButton}
+              onClick={handleOpenAddTransaction}
+              disabled={isFetching}
+            >
+              <FiPlus aria-hidden />
+              <span>Add Transaction</span>
+            </button>
+          </div>
+        </div>
 
         {columnDefinitions.length === 0 ? (
           <div className={styles.tableCard} data-testid="transactions-loading">
-            <div className={styles.emptyState}>Loading transactions...</div>
+            <div className={styles.emptyState}>
+              <LoadingOverlay message="Refreshing data…" />
+            </div>
           </div>
         ) : (
           <TransactionsTable
@@ -677,7 +523,7 @@ export default function TransactionsHistoryPage() {
                   return next;
                 }),
             }}
-            isColumnReorderMode={isReorderMode}
+            isColumnReorderMode={false}
             onColumnVisibilityChange={handleColumnVisibilityChange}
             onColumnOrderChange={handleColumnOrderChange}
             sortState={sortState}
@@ -693,21 +539,11 @@ export default function TransactionsHistoryPage() {
         onClose={handleCloseAdvanced}
         onQuickEditSave={handleQuickEditSave}
       />
-      <AddTransactionModal
+      <AddModalGlobal
+        type={addModalType ?? 'transaction'}
         isOpen={isAddModalOpen}
-        onClose={handleCloseAddTransaction}
-        onSave={handleSaveNewTransaction}
-        onRequestClose={handleRequestCloseAddModal}
-      />
-      <ConfirmationModal
-        isOpen={isDiscardDialogOpen}
-        title="Discard unsaved changes?"
-        message="You have transaction details that haven't been saved. If you close now, your changes will be lost."
-        confirmLabel="Discard"
-        cancelLabel="Keep editing"
-        confirmTone="danger"
-        onConfirm={handleConfirmDiscardDraft}
-        onCancel={handleCancelDiscardDraft}
+        onClose={handleCloseAddModal}
+        onSubmit={handleSubmitAdd}
       />
     </AppLayout>
   );

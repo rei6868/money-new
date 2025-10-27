@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "../../../lib/db/client";
 import { accounts, accountTypeEnum, accountStatusEnum, type NewAccount } from "../../../src/db/schema/accounts";
+import { people } from "../../../src/db/schema/people";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const database = db;
@@ -23,12 +24,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "GET") {
     try {
-      const result = await database.select().from(accounts).where(eq(accounts.accountId, accountId));
+      const result = await database
+        .select({
+          accountId: accounts.accountId,
+          accountName: accounts.accountName,
+          accountType: accounts.accountType,
+          ownerId: accounts.ownerId,
+          ownerName: people.fullName,
+          openingBalance: accounts.openingBalance,
+          currentBalance: accounts.currentBalance,
+          totalIn: accounts.totalIn,
+          totalOut: accounts.totalOut,
+          status: accounts.status,
+          notes: accounts.notes,
+          parentAccountId: accounts.parentAccountId,
+          imgUrl: accounts.imgUrl,
+          assetRef: accounts.assetRef,
+        })
+        .from(accounts)
+        .leftJoin(people, eq(accounts.ownerId, people.personId))
+        .where(eq(accounts.accountId, accountId));
+
       if (result.length === 0) {
         res.status(404).json({ message: "Account not found" });
         return;
       }
-      res.status(200).json(result[0]);
+
+      const [row] = result;
+      res.status(200).json({
+        ...row,
+        openingBalance: Number(row.openingBalance ?? 0),
+        currentBalance: Number(row.currentBalance ?? 0),
+        totalIn: Number(row.totalIn ?? 0),
+        totalOut: Number(row.totalOut ?? 0),
+      });
     } catch (error) {
       console.error(`Failed to fetch account with id ${accountId}`, error);
       const message = error instanceof Error ? error.message : "Unknown error";

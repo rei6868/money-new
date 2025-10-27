@@ -10,6 +10,7 @@ import {
   FiSun,
   FiChevronDown,
   FiMenu,
+  FiCreditCard,
 } from 'react-icons/fi';
 
 import { useAuth } from '../context/AuthContext';
@@ -29,6 +30,13 @@ const NAV_ITEMS = [
     label: 'Transactions History',
     href: '/transactions',
     icon: FiRepeat,
+  },
+  {
+    key: 'accounts',
+    label: 'Accounts',
+    href: '/accounts',
+    icon: FiCreditCard,
+    description: 'Accounts – overview and management',
   },
 ];
 
@@ -230,9 +238,9 @@ export default function AppLayout({ title, subtitle, children }) {
         href={item.href}
         className={`${styles.navLink} ${isActive ? styles.navLinkActive : ''}`}
         data-testid={`sidebar-link-${item.key}`}
-        title={item.label}
+        title={item.description ?? item.label}
         aria-current={isActive ? 'page' : undefined}
-        aria-label={item.label}
+        aria-label={item.description ?? item.label}
       >
         <span className={styles.iconSlot}>
           <Icon />
@@ -263,8 +271,8 @@ export default function AppLayout({ title, subtitle, children }) {
           aria-expanded={isCollapsed ? isFlyoutOpen : isExpanded}
           aria-controls={isCollapsed ? `sidebar-flyout-${item.key}` : `sidebar-submenu-${item.key}`}
           data-testid={`sidebar-group-${item.key}`}
-          title={item.label}
-          aria-label={item.label}
+          title={item.description ?? item.label}
+          aria-label={item.description ?? item.label}
         >
           <span className={styles.iconSlot}>
             <Icon />
@@ -441,3 +449,4 @@ export default function AppLayout({ title, subtitle, children }) {
     </div>
   );
 }
+
