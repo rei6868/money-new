@@ -1,5 +1,4 @@
 import React from 'react';
-import { FiPlus, FiRefreshCw } from 'react-icons/fi';
 
 import styles from '../../styles/accounts.module.css';
 
@@ -10,11 +9,6 @@ type AccountsPageHeaderProps = {
   totalBalance: number;
   activeTab: ActiveTab;
   onTabChange?: (tab: ActiveTab) => void;
-  onRefresh?: () => void;
-  onAddAccount?: () => void;
-  isRefreshing?: boolean;
-  showRefresh?: boolean;
-  showAddButton?: boolean;
 };
 
 function formatCountLabel(count: number) {
@@ -32,11 +26,6 @@ export function AccountsPageHeader({
   totalBalance,
   activeTab,
   onTabChange,
-  onRefresh,
-  onAddAccount,
-  isRefreshing = false,
-  showRefresh = true,
-  showAddButton = true,
 }: AccountsPageHeaderProps) {
   const formattedBalance = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -46,11 +35,7 @@ export function AccountsPageHeader({
   return (
     <header className={styles.pageHeader}>
       <div className={styles.pageTitleGroup}>
-        <h1 className={styles.pageTitle}>Accounts overview</h1>
-        <p className={styles.pageSubtitle}>
-          Monitor balances across every connected account, switch between detailed rows and cards,
-          and keep financial insights in sync with your transactions workspace.
-        </p>
+        <h1 className={styles.pageTitle}>Accounts</h1>
         <div className={styles.headerMeta}>
           <span className={styles.summaryPill}>{formatCountLabel(accountCount)}</span>
           <span className={styles.summaryPill}>
@@ -85,30 +70,6 @@ export function AccountsPageHeader({
           </div>
         </div>
 
-        <div className={styles.headerActionButtons}>
-          {showRefresh ? (
-            <button
-              type="button"
-              className={`${styles.secondaryButton} ${styles.toolbarIconButton}`.trim()}
-              onClick={onRefresh}
-              disabled={isRefreshing}
-            >
-              <FiRefreshCw aria-hidden />
-              Refresh
-            </button>
-          ) : null}
-          {showAddButton ? (
-            <button
-              type="button"
-              className={styles.primaryButton}
-              onClick={onAddAccount}
-              disabled
-            >
-              <FiPlus aria-hidden />
-              Add account (coming soon)
-            </button>
-          ) : null}
-        </div>
       </div>
     </header>
   );

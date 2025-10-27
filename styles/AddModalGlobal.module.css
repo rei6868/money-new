@@ -1,0 +1,156 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 60;
+}
+
+.dialog {
+  width: min(520px, 100%);
+  max-height: 92vh;
+  background: #ffffff;
+  border-radius: 1.25rem;
+  box-shadow: 0 28px 60px rgba(15, 23, 42, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(111, 104, 247, 0.12);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1f2240;
+}
+
+.closeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: none;
+  background: rgba(111, 104, 247, 0.12);
+  color: #453c9f;
+  cursor: pointer;
+  transition: transform 150ms ease, background-color 150ms ease;
+}
+
+.closeButton:hover,
+.closeButton:focus-visible {
+  transform: scale(1.05);
+  background: rgba(111, 104, 247, 0.22);
+  outline: none;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.fieldLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4b4f6c;
+  letter-spacing: 0.02em;
+}
+
+.input,
+.textarea {
+  border: 1px solid rgba(31, 34, 64, 0.16);
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.95rem;
+  color: #1f2240;
+  background: rgba(249, 249, 255, 0.82);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.input:focus-visible,
+.textarea:focus-visible {
+  border-color: #6f68f7;
+  box-shadow: 0 0 0 3px rgba(111, 104, 247, 0.18);
+  outline: none;
+}
+
+.textarea {
+  resize: vertical;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(111, 104, 247, 0.12);
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  border: none;
+  padding: 0.6rem 1.25rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.primaryButton {
+  background: linear-gradient(135deg, #6f68f7, #9d7bff);
+  color: #ffffff;
+  box-shadow: 0 16px 32px rgba(111, 104, 247, 0.25);
+}
+
+.primaryButton:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.secondaryButton {
+  background: rgba(111, 104, 247, 0.12);
+  color: #453c9f;
+}
+
+.secondaryButton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .overlay {
+    padding: 1rem;
+  }
+
+  .dialog {
+    width: 100%;
+    max-height: 94vh;
+  }
+}

@@ -1,0 +1,124 @@
+.container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #6f68f7, #9d7bff);
+  color: #ffffff;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(54, 39, 140, 0.2);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.trigger:hover,
+.trigger:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px rgba(54, 39, 140, 0.28);
+  outline: none;
+}
+
+.triggerIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+
+.triggerLabel {
+  font-size: 0.95rem;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  min-width: 15.5rem;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.18);
+  border: 1px solid rgba(111, 104, 247, 0.15);
+  padding: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transition: opacity 150ms ease, transform 150ms ease;
+  z-index: 20;
+}
+
+.menu[data-open='true'] {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: none;
+  border: none;
+  text-align: left;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+  border-radius: 0.5rem;
+}
+
+.menuItem:hover,
+.menuItem:focus-visible {
+  background-color: rgba(111, 104, 247, 0.08);
+  outline: none;
+}
+
+.menuIcon {
+  font-size: 1.15rem;
+  color: #6f68f7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menuContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.menuLabel {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1f2240;
+}
+
+.menuDescription {
+  font-size: 0.8rem;
+  color: #5f6781;
+}
+
+@media (max-width: 640px) {
+  .container {
+    position: fixed;
+    left: 1rem;
+    bottom: 1.5rem;
+    z-index: 40;
+  }
+
+  .menu {
+    top: auto;
+    bottom: calc(100% + 0.75rem);
+  }
+}

@@ -5,7 +5,8 @@ import AccountsCardsView from '../../components/accounts/AccountsCardsView';
 import AccountsPageHeader from '../../components/accounts/AccountsPageHeader';
 import FabAccounts from '../../components/accounts/FabAccounts';
 import TableAccounts from '../../components/accounts/TableAccounts';
-import ToolbarAccounts from '../../components/accounts/ToolbarAccounts';
+import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGlobal';
+import QuickAddMenu, { QuickAddActionId } from '../../components/common/QuickAddMenu';
 import {
   ACCOUNT_COLUMN_DEFINITIONS,
   ACCOUNT_SORTERS,
@@ -14,8 +15,9 @@ import {
   createDefaultColumnState,
 } from '../../components/accounts/accountColumns';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
-import { useSearchState } from '../../lib/ui/useSearchState';
 import styles from '../../styles/accounts.module.css';
+import headerStyles from '../../styles/HeaderActionBar.module.css';
+import { FiPlus } from 'react-icons/fi';
 
 type ColumnState = ReturnType<typeof createDefaultColumnState>[number];
 
@@ -70,21 +72,6 @@ function normalizeAccount(raw: Record<string, unknown>): NormalizedAccount | nul
   };
 }
 
-function includesSearchMatch(account: NormalizedAccount, query: string) {
-  if (!query) {
-    return true;
-  }
-  const needle = query.toLowerCase();
-  return (
-    account.accountName.toLowerCase().includes(needle) ||
-    account.accountType.toLowerCase().includes(needle) ||
-    account.ownerId.toLowerCase().includes(needle) ||
-    (account.ownerName ?? '').toLowerCase().includes(needle) ||
-    (account.notes ?? '').toLowerCase().includes(needle) ||
-    (account.parentAccountId ?? '').toLowerCase().includes(needle)
-  );
-}
-
 function resolveSortedAccounts(
   accounts: NormalizedAccount[],
   sorterId: string | null,
@@ -118,19 +105,8 @@ export default function AccountsPage() {
   const [accounts, setAccounts] = useState<NormalizedAccount[]>([]);
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const {
-    value: searchValue,
-    applied: appliedQuery,
-    clearedDraft: clearedDraftQuery,
-    setValue: setSearchValue,
-    apply: applySearch,
-    clear: clearSearch,
-    restore: restoreSearch,
-    reset: resetSearchState,
-  } = useSearchState();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
-  const [isCustomizeMode, setIsCustomizeMode] = useState(false);
   const [columnState, setColumnState] = useState(() =>
     createDefaultColumnState(ACCOUNT_COLUMN_DEFINITIONS),
   );
@@ -148,6 +124,8 @@ export default function AccountsPage() {
   });
   const [activeTab, setActiveTab] = useState<'table' | 'cards'>('table');
   const [isCompactScreen, setIsCompactScreen] = useState(false);
+  const [addModalType, setAddModalType] = useState<AddModalType | null>(null);
+  const [quickAction, setQuickAction] = useState<QuickAddActionId | null>(null);
 
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -266,18 +244,9 @@ export default function AccountsPage() {
     setSelectedIds((prev) => prev.filter((id) => availableIds.has(id)));
   }, [accounts, selectedIds.length]);
 
-  const filteredAccounts = useMemo(() => {
-    const query = appliedQuery.trim().toLowerCase();
-    const base = accounts;
-    if (!query) {
-      return base;
-    }
-    return base.filter((account) => includesSearchMatch(account, query));
-  }, [accounts, appliedQuery]);
-
   const sortedAccounts = useMemo(
-    () => resolveSortedAccounts(filteredAccounts, sortState.columnId, sortState.direction),
-    [filteredAccounts, sortState],
+    () => resolveSortedAccounts(accounts, sortState.columnId, sortState.direction),
+    [accounts, sortState],
   );
 
   const totalPages = useMemo(() => {
@@ -363,56 +332,6 @@ export default function AccountsPage() {
     [displayedAccounts, paginatedAccounts, showSelectedOnly],
   );
 
-  const handleDeselectAll = useCallback(() => {
-    setSelectedIds([]);
-  }, []);
-
-  const handleToggleShowSelected = useCallback(() => {
-    setShowSelectedOnly((prev) => {
-      if (!prev && selectedIds.length === 0) {
-        return prev;
-      }
-      return !prev;
-    });
-  }, [selectedIds.length]);
-
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setSearchValue(value);
-    },
-    [setSearchValue],
-  );
-
-  const handleSubmitSearch = useCallback(() => {
-    applySearch();
-    setCurrentPage(1);
-  }, [applySearch]);
-
-  const handleClearSearch = useCallback(() => {
-    clearSearch();
-    setCurrentPage(1);
-  }, [clearSearch]);
-
-  const handleRestoreSearch = useCallback(() => {
-    restoreSearch();
-  }, [restoreSearch]);
-
-  const handleResetFilters = useCallback(() => {
-    resetSearchState();
-    setSortState({ columnId: 'accountName', direction: 'asc' });
-    setCurrentPage(1);
-  }, [resetSearchState]);
-
-  const handleToggleCustomizeMode = useCallback(() => {
-    setIsCustomizeMode((prev) => {
-      const next = !prev;
-      if (next) {
-        setSelectedIds([]);
-      }
-      return next;
-    });
-  }, []);
-
   const handleColumnVisibilityChange = useCallback((columnId: string, visible: boolean) => {
     setColumnState((prev) =>
       prev.map((column) =>
@@ -441,61 +360,13 @@ export default function AccountsPage() {
     });
   }, []);
 
-  const updateOptionalColumns = useCallback((visible: boolean) => {
-    setColumnState((prev) =>
-      prev.map((column) =>
-        column.optional ? { ...column, visible } : column,
-      ),
-    );
+  const handleSortChange = useCallback((columnId: string | null, direction: 'asc' | 'desc' | null) => {
+    if (!columnId || !direction) {
+      setSortState({ columnId: null, direction: null });
+      return;
+    }
+    setSortState({ columnId, direction });
   }, []);
-
-  const handleToggleOptionalColumns = useCallback(
-    (checked: boolean) => {
-      updateOptionalColumns(checked);
-    },
-    [updateOptionalColumns],
-  );
-
-  const handleToggleAllColumns = useCallback(
-    (checked: boolean) => {
-      setColumnState((prev) =>
-        prev.map((column) => ({
-          ...column,
-          visible: checked ? true : !column.optional,
-        })),
-      );
-    },
-    [],
-  );
-
-  const handleResetColumns = useCallback(() => {
-    setColumnState(
-      defaultColumnState.map((column, index) => ({
-        ...column,
-        order: column.order ?? index,
-      })),
-    );
-  }, [defaultColumnState]);
-
-  const handleDoneCustomize = useCallback(() => {
-    setIsCustomizeMode(false);
-    setSelectedIds([]);
-    setShowSelectedOnly(false);
-  }, []);
-
-  const handleSortChange = useCallback(
-    (columnId: string | null, direction: 'asc' | 'desc' | null) => {
-      if (isCustomizeMode) {
-        return;
-      }
-      if (!columnId || !direction) {
-        setSortState({ columnId: null, direction: null });
-        return;
-      }
-      setSortState({ columnId, direction });
-    },
-    [isCustomizeMode],
-  );
 
   const pagination = useMemo(
     () => ({
@@ -520,59 +391,83 @@ export default function AccountsPage() {
     void fetchAccounts();
   }, [fetchAccounts]);
 
-  const handleFabAction = useCallback((actionId: string) => {
-    console.info('Quick account action placeholder:', actionId);
+  const handleQuickActionSelect = useCallback((actionId: QuickAddActionId) => {
+    setQuickAction(actionId);
+    setAddModalType('transaction');
   }, []);
 
-  const isDisabled = isFetching;
-  const showToolbarRefresh = !isCustomizeMode;
-  const showHeaderRefresh = false;
-  const showAddButton = !isCustomizeMode;
-  const showFab = !isCustomizeMode && !isCompactScreen;
+  const handleAddAccountClick = useCallback(() => {
+    setQuickAction(null);
+    setAddModalType('account');
+  }, []);
+
+  const handleCloseAddModal = useCallback(() => {
+    setAddModalType(null);
+    setQuickAction(null);
+  }, []);
+
+  const handleAddSubmit = useCallback(
+    async (modalType: AddModalType, payload: Record<string, unknown>) => {
+      try {
+        if (modalType === 'account') {
+          console.info('Account creation placeholder', payload);
+          await fetchAccounts();
+        } else if (modalType === 'transaction') {
+          console.info('Transaction quick add placeholder', {
+            action: quickAction,
+            payload,
+          });
+        } else if (modalType === 'person') {
+          console.info('Person creation placeholder', payload);
+        }
+      } catch (error) {
+        console.error('Failed to submit add modal', error);
+      }
+    },
+    [fetchAccounts, quickAction],
+  );
+
+  const handleFabAction = useCallback(
+    (actionId: string) => {
+      handleQuickActionSelect(actionId as QuickAddActionId);
+    },
+    [handleQuickActionSelect],
+  );
+
+  const showFab = !isCompactScreen;
 
   if (isLoading || !isAuthenticated) {
     return null;
   }
 
+  const isAddModalOpen = addModalType !== null;
+
   return (
-    <AppLayout title="Accounts" subtitle="Manage bank, cash, and credit accounts in one place.">
+    <AppLayout title="Accounts" subtitle="">
       <div className={styles.screen}>
         <AccountsPageHeader
           accountCount={accounts.length}
           totalBalance={totalBalance}
-          onRefresh={handleRefresh}
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          isRefreshing={isFetching}
-          showRefresh={showHeaderRefresh}
-          showAddButton={showAddButton}
         />
 
-        <ToolbarAccounts
-          searchValue={searchValue}
-          clearedDraftQuery={clearedDraftQuery}
-          appliedQuery={appliedQuery}
-          onSearchChange={handleSearchChange}
-          onSubmitSearch={handleSubmitSearch}
-          onClearSearch={handleClearSearch}
-          onRestoreSearch={handleRestoreSearch}
-          onRefresh={handleRefresh}
-          onResetFilters={handleResetFilters}
-          isCustomizeMode={isCustomizeMode}
-          onToggleCustomizeMode={handleToggleCustomizeMode}
-          onResetColumns={handleResetColumns}
-          onDoneCustomize={handleDoneCustomize}
-          onToggleAllColumns={handleToggleAllColumns}
-          allColumnsVisible={allColumnsVisible}
-          optionalColumnsVisible={optionalColumnsVisible}
-          onToggleOptionalColumns={handleToggleOptionalColumns}
-          selectedCount={selectedIds.length}
-          onDeselectAll={handleDeselectAll}
-          onToggleShowSelected={handleToggleShowSelected}
-          isShowingSelectedOnly={showSelectedOnly}
-          disabled={isDisabled}
-          showRefresh={showToolbarRefresh}
-        />
+        <div className={headerStyles.headerBar}>
+          <div className={headerStyles.headerLeft}>
+            <QuickAddMenu onSelect={handleQuickActionSelect} />
+          </div>
+          <div className={headerStyles.headerRight}>
+            <button
+              type="button"
+              className={headerStyles.addButton}
+              onClick={handleAddAccountClick}
+              disabled={isFetching}
+            >
+              <FiPlus aria-hidden />
+              <span>Add Account</span>
+            </button>
+          </div>
+        </div>
 
         {fetchError ? (
           <div className={styles.tableCard} role="alert">
@@ -589,7 +484,7 @@ export default function AccountsPage() {
             </div>
           </div>
         ) : activeTab === 'cards' ? (
-          <AccountsCardsView accounts={sortedAccounts} onQuickAction={handleFabAction} />
+          <AccountsCardsView accounts={sortedAccounts} onQuickAction={(actionId) => handleQuickActionSelect(actionId as QuickAddActionId)} />
         ) : (
           <div className={styles.tableWrapper}>
             <TableAccounts
@@ -603,20 +498,27 @@ export default function AccountsPage() {
               columnDefinitions={ACCOUNT_COLUMN_DEFINITIONS}
               allColumns={orderedColumns}
               visibleColumns={visibleColumns}
-              isColumnReorderMode={isCustomizeMode}
+              isColumnReorderMode={false}
               onColumnVisibilityChange={handleColumnVisibilityChange}
               onColumnOrderChange={handleColumnOrderChange}
               sortState={sortState}
               onSortChange={handleSortChange}
               isFetching={isFetching}
               isShowingSelectedOnly={showSelectedOnly}
-              onQuickAction={(actionId, account) => handleFabAction(`${actionId}:${account.accountId}`)}
+              onQuickAction={(actionId) => handleQuickActionSelect(actionId as QuickAddActionId)}
             />
           </div>
         )}
       </div>
 
       <FabAccounts onAction={handleFabAction} isVisible={showFab} />
+
+      <AddModalGlobal
+        type={addModalType ?? 'account'}
+        isOpen={isAddModalOpen}
+        onClose={handleCloseAddModal}
+        onSubmit={handleAddSubmit}
+      />
     </AppLayout>
   );
 }
