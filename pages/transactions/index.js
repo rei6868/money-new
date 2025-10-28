@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import AppLayout from '../../components/AppLayout';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
-import { FiPlus, FiSettings } from 'react-icons/fi';
+import { FiPlus, FiSettings, FiSearch, FiX } from 'react-icons/fi';
 
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
@@ -11,11 +11,7 @@ import LoadingOverlay from '../../components/common/LoadingOverlay';
 import AddModalGlobal from '../../components/common/AddModalGlobal';
 import QuickAddModal from '../../components/common/QuickAddModal';
 import ColumnsCustomizeModal from '../../components/customize/ColumnsCustomizeModal';
-import FilterBar from '../../components/filters/FilterBar';
-import FilterModal from '../../components/filters/FilterModal';
-import { createEmptyFilters } from '../../components/filters/filterTypes';
 import TxnTabs from '../../components/transactions/TxnTabs';
-import { useMediaQuery } from '../../components/common/ActionBar';
 import {
   TRANSACTION_TYPE_VALUES,
   getTransactionTypeLabel,
@@ -35,56 +31,9 @@ function extractString(value) {
   return null;
 }
 
-function ensureStringArray(value) {
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => extractString(item))
-      .filter((item) => Boolean(item));
-  }
-  if (typeof value === 'string') {
-    return value
-      .split(',')
-      .map((item) => extractString(item))
-      .filter((item) => Boolean(item));
-  }
-  return [];
-}
 
-function getTransactionField(txn, keys) {
-  for (const key of keys) {
-    if (key in txn) {
-      const extracted = extractString(txn[key]);
-      if (extracted) {
-        return extracted;
-      }
-    }
-  }
-  return null;
-}
 
-function getTransactionDate(txn) {
-  const candidates = [
-    txn.date,
-    txn.transactionDate,
-    txn.transaction_date,
-    txn.postedAt,
-    txn.posted_at,
-    txn.createdAt,
-    txn.created_at,
-  ];
-  for (const candidate of candidates) {
-    if (candidate instanceof Date && !Number.isNaN(candidate.getTime())) {
-      return candidate;
-    }
-    if (typeof candidate === 'string' || typeof candidate === 'number') {
-      const parsed = new Date(candidate);
-      if (!Number.isNaN(parsed.getTime())) {
-        return parsed;
-      }
-    }
-  }
-  return null;
-}
+
 
 function getTransactionTypeValue(txn) {
   const typeFields = [
@@ -124,90 +73,9 @@ function applyTypeMetadata(txn) {
   };
 }
 
-function buildTransactionPredicate(filterState, normalizedQuery, transferOnly = false) {
-  const accountFilter = new Set(
-    (filterState.accounts || []).map((value) => value.toLowerCase()),
-  );
-  const peopleFilter = new Set((filterState.people || []).map((value) => value.toLowerCase()));
-  const tagFilter = new Set((filterState.debtTags || []).map((value) => value.toLowerCase()));
-  const categoryFilter = new Set(
-    (filterState.categories || []).map((value) => value.toLowerCase()),
-  );
-  const typeFilter = typeof filterState.type === 'string'
-    ? filterState.type.trim().toLowerCase()
-    : null;
-
-  const rangeStart = filterState.dateRange?.start ? new Date(filterState.dateRange.start) : null;
-  const rangeEnd = filterState.dateRange?.end ? new Date(filterState.dateRange.end) : null;
-
-  let adjustedEnd = null;
-  if (rangeEnd) {
-    adjustedEnd = new Date(rangeEnd);
-    adjustedEnd.setHours(23, 59, 59, 999);
-  }
-
+function buildTransactionPredicate(normalizedQuery, transferOnly = false) {
   return (txn) => {
-    if (accountFilter.size > 0) {
-      const accountCandidates = [
-        txn.account,
-        txn.accountName,
-        txn.account_name,
-        txn.fromAccount,
-        txn.from_account,
-        txn.toAccount,
-        txn.to_account,
-      ];
-      const accounts = [
-        ...ensureStringArray(txn.accounts),
-        ...accountCandidates.map((candidate) => extractString(candidate)).filter(Boolean),
-      ].map((value) => value.toLowerCase());
-      if (!accounts.some((value) => accountFilter.has(value))) {
-        return false;
-      }
-    }
-
-    if (peopleFilter.size > 0) {
-      const peopleCandidates = [
-        txn.person,
-        txn.people,
-        txn.contact,
-        txn.contactName,
-        txn.contact_name,
-        txn.customer,
-        txn.vendor,
-        txn.owner,
-      ];
-      const peopleValues = [
-        ...peopleCandidates.map((candidate) => extractString(candidate)).filter(Boolean),
-        ...ensureStringArray(txn.peopleList),
-      ].map((value) => value.toLowerCase());
-      if (!peopleValues.some((value) => peopleFilter.has(value))) {
-        return false;
-      }
-    }
-
-    if (categoryFilter.size > 0) {
-      const categories = [
-        txn.category,
-        txn.categoryName,
-        txn.category_name,
-        txn.segment,
-      ]
-        .map((candidate) => extractString(candidate))
-        .filter(Boolean)
-        .map((value) => value.toLowerCase());
-      if (!categories.some((value) => categoryFilter.has(value))) {
-        return false;
-      }
-    }
-
-    if (typeFilter) {
-      const rawType = extractString(txn.typeRaw ?? txn.type);
-      if (!rawType || rawType.toLowerCase() !== typeFilter) {
-        return false;
-      }
-    }
-
+    // Filter by transfer type if needed
     if (transferOnly) {
       const transferType = extractString(txn.typeRaw ?? txn.type);
       const linkedId = extractString(txn.linkedTxn);
@@ -217,30 +85,7 @@ function buildTransactionPredicate(filterState, normalizedQuery, transferOnly = 
       }
     }
 
-    if (tagFilter.size > 0) {
-      const tags = [
-        ...ensureStringArray(txn.tags),
-        ...ensureStringArray(txn.debtTags),
-        ...ensureStringArray(txn.labels),
-      ].map((value) => value.toLowerCase());
-      if (!tags.some((value) => tagFilter.has(value))) {
-        return false;
-      }
-    }
-
-    if (rangeStart || adjustedEnd) {
-      const txnDate = getTransactionDate(txn);
-      if (!txnDate) {
-        return false;
-      }
-      if (rangeStart && txnDate < rangeStart) {
-        return false;
-      }
-      if (adjustedEnd && txnDate > adjustedEnd) {
-        return false;
-      }
-    }
-
+    // Apply search query
     if (!normalizedQuery) {
       return true;
     }
@@ -288,13 +133,10 @@ export default function TransactionsHistoryPage() {
   const [addModalType, setAddModalType] = useState(null);
   const [quickAction, setQuickAction] = useState(null);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState(() => createEmptyFilters());
   const [activeTab, setActiveTab] = useState('all');
   const [availableTypes, setAvailableTypes] = useState([]);
   const [transferOnly, setTransferOnly] = useState(false);
-  const isMobileLayout = useMediaQuery('(max-width: 600px)');
   const tableScrollRef = useRef(null);
   const savedScrollLeftRef = useRef(0);
 
@@ -544,81 +386,7 @@ export default function TransactionsHistoryPage() {
     [orderedColumns],
   );
 
-  const filterOptions = useMemo(() => {
-    const base = Array.isArray(transactions) ? transactions : [];
-    const accountSet = new Set();
-    const peopleSet = new Set();
-    const tagSet = new Set();
-    const categorySet = new Set();
 
-    base.forEach((txn) => {
-      const accountCandidates = [
-        txn.account,
-        txn.accountName,
-        txn.account_name,
-        txn.fromAccount,
-        txn.from_account,
-        txn.toAccount,
-        txn.to_account,
-      ];
-      ensureStringArray(txn.accounts).forEach((value) => accountSet.add(value));
-      accountCandidates.forEach((candidate) => {
-        const value = extractString(candidate);
-        if (value) {
-          accountSet.add(value);
-        }
-      });
-
-      const peopleCandidates = [
-        txn.person,
-        txn.people,
-        txn.contact,
-        txn.contactName,
-        txn.contact_name,
-        txn.customer,
-        txn.vendor,
-        txn.owner,
-      ];
-      peopleCandidates.forEach((candidate) => {
-        const value = extractString(candidate);
-        if (value) {
-          peopleSet.add(value);
-        }
-      });
-      ensureStringArray(txn.peopleList).forEach((value) => peopleSet.add(value));
-
-      ensureStringArray(txn.tags).forEach((value) => tagSet.add(value));
-      ensureStringArray(txn.debtTags).forEach((value) => tagSet.add(value));
-      ensureStringArray(txn.labels).forEach((value) => tagSet.add(value));
-
-      const categoryCandidates = [
-        txn.category,
-        txn.categoryName,
-        txn.category_name,
-        txn.segment,
-      ];
-      categoryCandidates.forEach((candidate) => {
-        const value = extractString(candidate);
-        if (value) {
-          categorySet.add(value);
-        }
-      });
-
-    });
-
-    const toOptions = (set) =>
-      Array.from(set).map((value) => ({
-        label: value,
-        value,
-      }));
-
-    return {
-      accounts: toOptions(accountSet),
-      people: toOptions(peopleSet),
-      debtTags: toOptions(tagSet),
-      categories: toOptions(categorySet),
-    };
-  }, [transactions]);
 
   const resolvedTypeList = useMemo(() => {
     if (availableTypes.length > 0) {
@@ -654,9 +422,9 @@ export default function TransactionsHistoryPage() {
   const filteredTransactions = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
     const normalizedQuery = searchQuery.trim().toLowerCase();
-    const predicate = buildTransactionPredicate(filters, normalizedQuery, transferOnly);
+    const predicate = buildTransactionPredicate(normalizedQuery, transferOnly);
     return base.filter(predicate);
-  }, [transactions, filters, searchQuery, transferOnly]);
+  }, [transactions, searchQuery, transferOnly]);
 
   // Sync selected IDs with available transactions (remove IDs that no longer exist)
   useEffect(() => {
@@ -1036,31 +804,34 @@ export default function TransactionsHistoryPage() {
     >
       <div className={styles.screen}>
         <div className={styles.controlsRegion}>
-          {isMobileLayout ? (
-            <>
-              <TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />
-              <FilterBar
-                searchQuery={searchQuery}
-                onSearchChange={handleSearchChange}
-                filters={filters}
-                onFiltersChange={setFilters}
-                onOpenFilters={() => setIsFilterOpen(true)}
-                savedViewStorageKey="mf.transactions.views"
-                leadingActions={filterActionButtons}
+          {/* Tabs */}
+          <TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />
+
+          {/* Search and Action Buttons */}
+          <div className={styles.topBar}>
+            <div className={styles.searchContainer}>
+              <FiSearch className={styles.searchIcon} aria-hidden />
+              <input
+                type="search"
+                className={styles.searchInput}
+                placeholder="Search transactions…"
+                value={searchQuery}
+                onChange={handleSearchChange}
+                aria-label="Search transactions"
               />
-            </>
-          ) : (
-            <FilterBar
-              searchQuery={searchQuery}
-              onSearchChange={handleSearchChange}
-              filters={filters}
-              onFiltersChange={setFilters}
-              onOpenFilters={() => setIsFilterOpen(true)}
-              savedViewStorageKey="mf.transactions.views"
-              leadingActions={filterActionButtons}
-              tabs={<TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />}
-            />
-          )}
+              {searchQuery && (
+                <button
+                  type="button"
+                  className={styles.searchClearButton}
+                  onClick={() => handleSearchChange('')}
+                  aria-label="Clear search"
+                >
+                  <FiX aria-hidden />
+                </button>
+              )}
+            </div>
+            {filterActionButtons}
+          </div>
         </div>
 
         {columnDefinitions.length === 0 ? (
@@ -1096,12 +867,11 @@ export default function TransactionsHistoryPage() {
                 setPageSize(normalized);
                 setCurrentPage(1);
               },
-              onPageChange: (page) =>
-                setCurrentPage((prev) => {
-                  const maxPages = Math.max(1, serverPagination.totalPages || 1);
-                  const next = Math.min(Math.max(page, 1), maxPages);
-                  return next;
-                }),
+              onPageChange: (page) => {
+                const maxPages = Math.max(1, serverPagination.totalPages || 1);
+                const next = Math.min(Math.max(page, 1), maxPages);
+                setCurrentPage(next);
+              },
             }}
             isColumnReorderMode={false}
             onColumnVisibilityChange={handleColumnVisibilityChange}
@@ -1132,13 +902,6 @@ export default function TransactionsHistoryPage() {
         columns={customizeColumns}
         defaultColumns={defaultCustomizeColumns}
         onChange={handleCustomizeChange}
-      />
-      <FilterModal
-        open={isFilterOpen}
-        filters={filters}
-        onApply={setFilters}
-        onClose={() => setIsFilterOpen(false)}
-        options={filterOptions}
       />
     </AppLayout>
   );

@@ -19,10 +19,73 @@
   gap: 1.5rem;
 }
 
-.filtersSection {
+.topBar {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 1rem;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.searchContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 300px;
+  min-width: 200px;
+  position: relative;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(248, 250, 255, 0.8);
+  padding: 0.5rem 0.75rem;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.searchContainer:focus-within {
+  border-color: var(--mf-primary, #1d4ed8);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.18);
+  background: #ffffff;
+}
+
+.searchIcon {
+  width: 18px;
+  height: 18px;
+  color: var(--table-muted, #64748b);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1 1 auto;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.95rem;
+  color: inherit;
+  min-width: 0;
+}
+
+.searchInput::placeholder {
+  color: var(--table-muted, #94a3b8);
+}
+
+.searchClearButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--table-muted, #64748b);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.searchClearButton:hover {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--mf-text-primary);
 }
 
 .filterActions {
