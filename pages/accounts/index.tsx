@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppLayout from '../../components/AppLayout';
 import AccountsCardsView from '../../components/accounts/AccountsCardsView';
 import AccountsPageHeader from '../../components/accounts/AccountsPageHeader';
+import AccountTypeTabs from '../../components/accounts/AccountTypeTabs';
 import TableAccounts from '../../components/accounts/TableAccounts';
 import AccountEditModal, { AccountEditPayload } from '../../components/accounts/AccountEditModal';
 import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGlobal';
@@ -19,6 +20,8 @@ import {
   createDefaultColumnState,
 } from '../../components/accounts/accountColumns';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
+import { useAccounts } from '../../hooks/useAccounts';
+import { getAccountTypeLabel } from '../../lib/accounts/accountTypes';
 import styles from '../../styles/accounts.module.css';
 
 type ColumnState = ReturnType<typeof createDefaultColumnState>[number] & {
@@ -181,6 +184,8 @@ function resolveSortedAccounts(
 
 export default function AccountsPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
+  const { accounts: accountsData, refetch: refetchAccounts, createAccount } = useAccounts();
+
   const [accounts, setAccounts] = useState<NormalizedAccount[]>([]);
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -208,6 +213,13 @@ export default function AccountsPage() {
     direction: 'asc',
   });
   const [activeTab, setActiveTab] = useState<'table' | 'cards'>('table');
+  const [activeTypeTab, setActiveTypeTab] = useState<string>(() => {
+    // Load from localStorage if available
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('accountsTypeFilter') || 'all';
+    }
+    return 'all';
+  });
   const [addModalType, setAddModalType] = useState<AddModalType | null>(null);
   const [quickAction, setQuickAction] = useState<string | null>(null);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
@@ -216,6 +228,13 @@ export default function AccountsPage() {
   const [accountTypes, setAccountTypes] = useState<string[]>([]);
 
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Persist active type tab to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('accountsTypeFilter', activeTypeTab);
+    }
+  }, [activeTypeTab]);
 
   const definitionLookup = useMemo(
     () => new Map(ACCOUNT_COLUMN_DEFINITIONS.map((definition) => [definition.id, definition])),
@@ -326,41 +345,13 @@ export default function AccountsPage() {
     });
   }, [defaultColumnState, definitionLookup, customizeColumns]);
 
-  const fetchAccounts = useCallback(async () => {
-    setIsFetching(true);
-    setFetchError(null);
-    try {
-      const response = await fetch('/api/accounts');
-      if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || 'Failed to load accounts');
-      }
-      const payload = await response.json();
-      const rows = Array.isArray(payload) ? payload : payload?.accounts;
-      if (!Array.isArray(rows)) {
-        setAccounts([]);
-        return;
-      }
-      const normalized = rows
-        .map((row) => normalizeAccount(row as Record<string, unknown>))
-        .filter((row): row is NormalizedAccount => Boolean(row));
-      setAccounts(normalized);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Unable to fetch accounts at the moment.';
-      setFetchError(message);
-      setAccounts([]);
-    } finally {
-      setIsFetching(false);
-    }
-  }, []);
-
+  // Sync accounts from hook to local state
   useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
-    void fetchAccounts();
-  }, [isAuthenticated, fetchAccounts]);
+    const normalized = accountsData
+      .map((row) => normalizeAccount(row as unknown as Record<string, unknown>))
+      .filter((row): row is NormalizedAccount => Boolean(row));
+    setAccounts(normalized);
+  }, [accountsData]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -420,6 +411,12 @@ export default function AccountsPage() {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
     return sortedAccounts.filter((account) => {
+      // Filter by account type tab
+      if (activeTypeTab !== 'all' && account.accountType !== activeTypeTab) {
+        return false;
+      }
+
+      // Filter by search query
       if (!normalizedQuery) {
         return true;
       }
@@ -436,7 +433,7 @@ export default function AccountsPage() {
         typeof value === 'string' && value.toLowerCase().includes(normalizedQuery),
       );
     });
-  }, [searchQuery, sortedAccounts]);
+  }, [searchQuery, sortedAccounts, activeTypeTab]);
 
 
 
@@ -574,8 +571,52 @@ export default function AccountsPage() {
   );
 
   const handleRefresh = useCallback(() => {
-    void fetchAccounts();
-  }, [fetchAccounts]);
+    void refetchAccounts();
+  }, [refetchAccounts]);
+
+  // Calculate tab metrics for account type tabs
+  const accountTypeTabMetrics = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    // Filter by search first
+    const searchFiltered = sortedAccounts.filter((account) => {
+      if (!normalizedQuery) {
+        return true;
+      }
+      const haystack = [
+        account.accountName,
+        account.accountType,
+        account.ownerName,
+        account.status,
+        account.notes,
+        account.accountId,
+      ];
+      return haystack.some((value) =>
+        typeof value === 'string' && value.toLowerCase().includes(normalizedQuery),
+      );
+    });
+
+    // Count by type
+    const counts = new Map<string, number>();
+    searchFiltered.forEach((account) => {
+      const type = account.accountType;
+      counts.set(type, (counts.get(type) || 0) + 1);
+    });
+
+    // Get unique types
+    const uniqueTypes = Array.from(new Set(sortedAccounts.map((a) => a.accountType))).sort();
+
+    const tabs = [
+      { id: 'all', label: 'All', count: searchFiltered.length },
+      ...uniqueTypes.map((type) => ({
+        id: type,
+        label: getAccountTypeLabel(type as any),
+        count: counts.get(type) || 0,
+      })),
+    ];
+
+    return tabs;
+  }, [searchQuery, sortedAccounts]);
 
   const handleQuickActionSelect = useCallback((_: string, actionId: string) => {
     setQuickAction(actionId);
@@ -629,8 +670,22 @@ export default function AccountsPage() {
     async (modalType: AddModalType, payload: Record<string, unknown>) => {
       try {
         if (modalType === 'account') {
-          console.info('Account creation placeholder', payload);
-          await fetchAccounts();
+          const accountPayload = {
+            accountName: String(payload.accountName || ''),
+            accountType: String(payload.accountType || 'other'),
+            ownerId: String(payload.ownerId || ''),
+            openingBalance: Number(payload.openingBalance || 0),
+            currentBalance: Number(payload.currentBalance || 0),
+            status: String(payload.status || 'active'),
+            notes: payload.notes ? String(payload.notes) : undefined,
+          };
+
+          const created = await createAccount(accountPayload);
+          if (!created) {
+            throw new Error('Failed to create account');
+          }
+
+          console.info('Account created successfully', created);
         } else if (modalType === 'transaction') {
           console.info('Transaction quick add placeholder', {
             action: quickAction,
@@ -641,9 +696,10 @@ export default function AccountsPage() {
         }
       } catch (error) {
         console.error('Failed to submit add modal', error);
+        alert(error instanceof Error ? error.message : 'Failed to save');
       }
     },
-    [fetchAccounts, quickAction],
+    [createAccount, quickAction],
   );
 
   const handleEditAccount = useCallback(
@@ -729,8 +785,9 @@ export default function AccountsPage() {
     <AppLayout title="Accounts" subtitle="">
       <div className={styles.pageShell}>
         <div className={styles.pageContent}>
-          <div className={styles.topBar}>
-            {/* Left: Toggle */}
+          {/* Unified top bar with all controls */}
+          <div className={styles.unifiedTopBar}>
+            {/* Left: Table/Card Toggle */}
             <div className={styles.headerTabGroup} role="tablist" aria-label="Accounts view mode">
               <div className={styles.viewTabs}>
                 <span className={styles.tabIndicator} data-position={activeTab === 'cards' ? 'cards' : 'table'} aria-hidden />
@@ -757,6 +814,13 @@ export default function AccountsPage() {
               </div>
             </div>
 
+            {/* Center: Account Type Tabs */}
+            <AccountTypeTabs
+              activeTab={activeTypeTab}
+              onTabChange={setActiveTypeTab}
+              tabs={accountTypeTabMetrics}
+            />
+
             {/* Right: Search */}
             <div className={styles.searchContainer}>
               <FiSearch className={styles.searchIcon} aria-hidden />
@@ -779,10 +843,8 @@ export default function AccountsPage() {
                 </button>
               )}
             </div>
-          </div>
 
-          {/* Action buttons on second line */}
-          <div className={styles.actionBar}>
+            {/* Right: Action Buttons */}
             {filterActionButtons}
           </div>
 

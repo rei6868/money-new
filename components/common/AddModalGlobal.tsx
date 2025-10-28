@@ -2,6 +2,8 @@ import React, { FormEvent, useEffect, useMemo, useState } from 'react';
 import { FiX } from 'react-icons/fi';
 
 import AddTransactionModal from '../transactions/AddTransactionModal';
+import { usePeople } from '../../hooks/usePeople';
+import { getAccountTypeOptions, getAccountStatusOptions } from '../../lib/accounts/accountTypes';
 import styles from '../../styles/AddModalGlobal.module.css';
 
 export type AddModalType = 'transaction' | 'account' | 'person';
@@ -13,27 +15,22 @@ export interface AddModalProps {
   onSubmit?: (type: AddModalType, payload: Record<string, unknown>) => Promise<void> | void;
 }
 
-const ACCOUNT_TYPES = [
-  { value: 'cash', label: 'Cash' },
-  { value: 'bank', label: 'Bank' },
-  { value: 'credit', label: 'Credit' },
-  { value: 'investment', label: 'Investment' },
-];
-
-const ACCOUNT_STATUSES = [
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-];
+const ACCOUNT_TYPES = getAccountTypeOptions();
+const ACCOUNT_STATUSES = getAccountStatusOptions();
 
 const PERSON_STATUSES = [
   { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
   { value: 'archived', label: 'Archived' },
 ];
 
 export function AddModalGlobal({ type, isOpen, onClose, onSubmit }: AddModalProps) {
+  const { activePeople, isLoading: isPeopleLoading } = usePeople();
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [accountName, setAccountName] = useState('');
-  const [accountType, setAccountType] = useState(ACCOUNT_TYPES[0]?.value ?? 'cash');
+  const [accountType, setAccountType] = useState(ACCOUNT_TYPES[0]?.value ?? 'bank');
+  const [ownerId, setOwnerId] = useState('');
   const [openingBalance, setOpeningBalance] = useState('0');
   const [accountStatus, setAccountStatus] = useState(ACCOUNT_STATUSES[0]?.value ?? 'active');
   const [accountNote, setAccountNote] = useState('');
@@ -41,6 +38,13 @@ export function AddModalGlobal({ type, isOpen, onClose, onSubmit }: AddModalProp
   const [personName, setPersonName] = useState('');
   const [personEmail, setPersonEmail] = useState('');
   const [personStatus, setPersonStatus] = useState(PERSON_STATUSES[0]?.value ?? 'active');
+
+  // Auto-select first active person as default owner
+  useEffect(() => {
+    if (type === 'account' && !ownerId && activePeople.length > 0) {
+      setOwnerId(activePeople[0].personId);
+    }
+  }, [type, activePeople, ownerId]);
 
   const modalTitle = useMemo(() => {
     switch (type) {
@@ -60,14 +64,15 @@ export function AddModalGlobal({ type, isOpen, onClose, onSubmit }: AddModalProp
     }
     setIsSubmitting(false);
     setAccountName('');
-    setAccountType(ACCOUNT_TYPES[0]?.value ?? 'cash');
+    setAccountType(ACCOUNT_TYPES[0]?.value ?? 'bank');
+    setOwnerId(activePeople.length > 0 ? activePeople[0].personId : '');
     setOpeningBalance('0');
     setAccountStatus(ACCOUNT_STATUSES[0]?.value ?? 'active');
     setAccountNote('');
     setPersonName('');
     setPersonEmail('');
     setPersonStatus(PERSON_STATUSES[0]?.value ?? 'active');
-  }, [isOpen]);
+  }, [isOpen, activePeople]);
 
   useEffect(() => {
     if (!isOpen || typeof document === 'undefined') {
@@ -113,13 +118,22 @@ export function AddModalGlobal({ type, isOpen, onClose, onSubmit }: AddModalProp
     if (isSubmitting) {
       return;
     }
+
+    if (type === 'account' && !ownerId) {
+      alert('Please select an account owner');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       if (type === 'account') {
+        const openingBalanceNum = parseFloat(openingBalance) || 0;
         const payload = {
           accountName: accountName.trim(),
           accountType,
-          openingBalance,
+          ownerId,
+          openingBalance: openingBalanceNum,
+          currentBalance: openingBalanceNum,
           status: accountStatus,
           notes: accountNote.trim(),
         };
@@ -127,7 +141,7 @@ export function AddModalGlobal({ type, isOpen, onClose, onSubmit }: AddModalProp
       } else if (type === 'person') {
         const payload = {
           fullName: personName.trim(),
-          email: personEmail.trim(),
+          contactInfo: personEmail.trim(),
           status: personStatus,
         };
         await onSubmit?.('person', payload);
@@ -158,6 +172,7 @@ export function AddModalGlobal({ type, isOpen, onClose, onSubmit }: AddModalProp
                   value={accountName}
                   onChange={(event) => setAccountName(event.target.value)}
                   required
+                  placeholder="e.g., Vietcombank Savings"
                 />
               </label>
               <label className={styles.field} htmlFor="add-modal-field-accountType">
@@ -175,6 +190,27 @@ export function AddModalGlobal({ type, isOpen, onClose, onSubmit }: AddModalProp
                   ))}
                 </select>
               </label>
+              <label className={styles.field} htmlFor="add-modal-field-ownerId">
+                <span className={styles.fieldLabel}>Owner</span>
+                <select
+                  id="add-modal-field-ownerId"
+                  className={styles.input}
+                  value={ownerId}
+                  onChange={(event) => setOwnerId(event.target.value)}
+                  required
+                  disabled={isPeopleLoading || activePeople.length === 0}
+                >
+                  {activePeople.length === 0 ? (
+                    <option value="">No active people available</option>
+                  ) : (
+                    activePeople.map((person) => (
+                      <option key={person.personId} value={person.personId}>
+                        {person.fullName}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </label>
               <label className={styles.field} htmlFor="add-modal-field-openingBalance">
                 <span className={styles.fieldLabel}>Opening balance</span>
                 <input
@@ -186,6 +222,7 @@ export function AddModalGlobal({ type, isOpen, onClose, onSubmit }: AddModalProp
                   value={openingBalance}
                   onChange={(event) => setOpeningBalance(event.target.value)}
                   required
+                  placeholder="0.00"
                 />
               </label>
               <label className={styles.field} htmlFor="add-modal-field-accountStatus">
@@ -211,6 +248,7 @@ export function AddModalGlobal({ type, isOpen, onClose, onSubmit }: AddModalProp
                   rows={3}
                   value={accountNote}
                   onChange={(event) => setAccountNote(event.target.value)}
+                  placeholder="Optional notes about this account"
                 />
               </label>
             </>
