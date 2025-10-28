@@ -413,11 +413,12 @@ export default function AccountsPage() {
         if (isCancelled) {
           return;
         }
-        const types = Array.isArray(data?.types) ? data.types : [];
+        const rawTypes: unknown[] = Array.isArray(data?.types) ? data.types : [];
         const normalized = Array.from(
           new Set(
-            types
-              .map((value) => (typeof value === 'string' ? value.trim() : ''))
+            rawTypes
+              .filter((value): value is string => typeof value === 'string')
+              .map((value) => value.trim())
               .filter((value) => value.length > 0),
           ),
         );

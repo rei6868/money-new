@@ -725,7 +725,7 @@ export default function TransactionsHistoryPage() {
     });
 
     return tabs;
-  }, [filters, searchQuery, transactions, resolvedTypeList, transferOnly]);
+  }, [filters, searchQuery, transactions, resolvedTypeList]);
 
   useEffect(() => {
     if (selectedIds.length === 0) {
