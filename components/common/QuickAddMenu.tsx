@@ -41,7 +41,7 @@ const ACTIONS: { id: QuickAddActionId; label: string; description: string; icon:
 export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const panelRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
   const [isHoverable, setIsHoverable] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 248 });
   const closeTimerRef = useRef<number | null>(null);
@@ -185,7 +185,7 @@ type QuickAddPanelProps = {
   menuPosition: { top: number; left: number; width: number };
   onReposition: () => void;
   open: boolean;
-  panelRef: React.MutableRefObject<HTMLDivElement | null>;
+  panelRef: React.MutableRefObject<HTMLElement | null>;
 };
 
 function QuickAddPanel({
