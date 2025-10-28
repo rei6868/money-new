@@ -12,9 +12,100 @@ import { debtLedger, debtLedgerStatusEnum, type NewDebtLedger } from "../../../s
 import { accounts } from "../../../src/db/schema/accounts";
 import { eq, and, isNull } from "drizzle-orm";
 
+// Mock data for development when database is not configured
+const MOCK_TRANSACTIONS = [
+  {
+    transactionId: "mock-txn-1",
+    transactionType: "expense",
+    amount: 150000,
+    transactionDate: new Date().toISOString(),
+    accountId: "mock-acc-1",
+    accountName: "Vietcombank Savings",
+    categoryId: "mock-cat-1",
+    categoryName: "Groceries",
+    personId: "mock-person-1",
+    personName: "John Doe",
+    shopId: null,
+    shopName: null,
+    notes: "Weekly groceries",
+    status: "completed",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    transactionId: "mock-txn-2",
+    transactionType: "income",
+    amount: 5000000,
+    transactionDate: new Date().toISOString(),
+    accountId: "mock-acc-1",
+    accountName: "Vietcombank Savings",
+    categoryId: "mock-cat-2",
+    categoryName: "Salary",
+    personId: "mock-person-1",
+    personName: "John Doe",
+    shopId: null,
+    shopName: null,
+    notes: "Monthly salary",
+    status: "completed",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const database = db;
-  if (!database) return res.status(500).json({ error: "No database configured" });
+
+  if (!database) {
+    console.warn("Database connection is not configured - using mock data");
+
+    if (req.method === "GET") {
+      // Return mock transactions with pagination support
+      const page = Number(req.query.page) || 1;
+      const pageSize = Number(req.query.pageSize) || 50;
+      const start = (page - 1) * pageSize;
+      const end = start + pageSize;
+
+      const paginatedData = MOCK_TRANSACTIONS.slice(start, end);
+
+      res.status(200).json({
+        transactions: paginatedData,
+        totalCount: MOCK_TRANSACTIONS.length,
+        page,
+        pageSize,
+        totalPages: Math.ceil(MOCK_TRANSACTIONS.length / pageSize),
+      });
+      return;
+    }
+
+    if (req.method === "POST") {
+      const body = req.body || {};
+      const newTransaction = {
+        transactionId: `mock-txn-${Date.now()}`,
+        transactionType: body.transactionType || "expense",
+        amount: Number(body.amount || 0),
+        transactionDate: body.transactionDate || new Date().toISOString(),
+        accountId: body.accountId || "mock-acc-1",
+        accountName: "Vietcombank Savings",
+        categoryId: body.categoryId || null,
+        categoryName: null,
+        personId: body.personId || "mock-person-1",
+        personName: "John Doe",
+        shopId: body.shopId || null,
+        shopName: null,
+        notes: body.notes || null,
+        status: body.status || "completed",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      MOCK_TRANSACTIONS.unshift(newTransaction);
+      res.status(201).json(newTransaction);
+      return;
+    }
+
+    res.status(405).json({ error: "Method not allowed" });
+    return;
+  }
 
   if (req.method === "GET") {
     try {
