@@ -202,10 +202,35 @@ const TableBaseInner = (
           minWidth: sizing.minWidth,
           width: sizing.width,
           align,
+          pinned: column.pinned ?? null,
         };
       }),
     [displayColumns, definitionMap],
   );
+
+  const pinnedLeftOffsets = useMemo(() => {
+    let offset = CHECKBOX_COLUMN_WIDTH;
+    const offsets = new Map();
+    columnDescriptors.forEach((descriptor) => {
+      if (descriptor.pinned === 'left') {
+        offsets.set(descriptor.id, offset);
+        offset += descriptor.width;
+      }
+    });
+    return offsets;
+  }, [columnDescriptors]);
+
+  const pinnedRightOffsets = useMemo(() => {
+    let offset = ACTIONS_COLUMN_WIDTH;
+    const offsets = new Map();
+    [...columnDescriptors].reverse().forEach((descriptor) => {
+      if (descriptor.pinned === 'right') {
+        offsets.set(descriptor.id, offset);
+        offset += descriptor.width;
+      }
+    });
+    return offsets;
+  }, [columnDescriptors]);
 
   const reorderableColumnIds = useMemo(
     () => columnDescriptors.map((descriptor) => descriptor.id),
@@ -371,6 +396,8 @@ const TableBaseInner = (
               onSortChange={onSortChange}
               isFetching={isFetching}
               transactions={transactions}
+              pinnedLeftOffsets={pinnedLeftOffsets}
+              pinnedRightOffsets={pinnedRightOffsets}
             />
             <TableBaseBody
               transactions={transactions}
@@ -383,6 +410,8 @@ const TableBaseInner = (
               getRowId={resolveRowId}
               renderRowActionsCell={renderRowActionsCell}
               onEditRow={handleEditRow}
+              pinnedLeftOffsets={pinnedLeftOffsets}
+              pinnedRightOffsets={pinnedRightOffsets}
             />
             {shouldShowTotals ? (
               <tfoot>
@@ -402,6 +431,8 @@ const TableBaseInner = (
                     const { id, minWidth, width, align } = descriptor;
                     const value = totals[id];
                     const isHidden = hiddenColumnIds.has(id);
+                    const isPinnedLeft = descriptor.pinned === 'left';
+                    const isPinnedRight = descriptor.pinned === 'right';
                     const cellClassName = [
                       styles.bodyCell,
                       styles.totalCell,
@@ -410,15 +441,22 @@ const TableBaseInner = (
                         : align === 'center'
                         ? styles.cellAlignCenter
                         : '',
+                      isPinnedLeft ? styles.stickyLeft : '',
+                      isPinnedRight ? styles.stickyRight : '',
                       isHidden && isColumnReorderMode ? styles.bodyCellHidden : '',
                     ]
                       .filter(Boolean)
                       .join(' ');
+                    const stickyStyle = isPinnedLeft
+                      ? { left: `${pinnedLeftOffsets.get(id) ?? 0}px` }
+                      : isPinnedRight
+                      ? { right: `${pinnedRightOffsets.get(id) ?? 0}px` }
+                      : undefined;
                     return (
                       <td
                         key={`total-${id}`}
                         className={cellClassName}
-                        style={{ minWidth: `${minWidth}px`, width: `${width}px` }}
+                        style={{ minWidth: `${minWidth}px`, width: `${width}px`, ...stickyStyle }}
                         aria-hidden={isHidden && isColumnReorderMode ? 'true' : undefined}
                       >
                         {value ? (

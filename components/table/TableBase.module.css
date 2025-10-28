@@ -139,7 +139,11 @@
 }
 
 .stickyRight {
-  position: static;
+  position: sticky;
+  right: 0;
+  z-index: 11;
+  background-color: var(--table-sticky-surface);
+  box-shadow: inset 1px 0 0 rgba(148, 163, 184, 0.18);
 }
 
 .bodyCellHidden {
