@@ -5,35 +5,83 @@
   width: 100%;
 }
 
-.primaryRow {
+.trailingArea {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
+  justify-content: flex-end;
 }
 
-.leadingActions {
+.leadingActions,
+.trailingActions {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.searchInput {
-  flex: 1 1 260px;
-  min-width: 200px;
+.searchShell {
   display: flex;
   align-items: center;
-  border-radius: 9999px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(248, 250, 255, 0.6);
-  padding: 0.35rem 0.75rem;
-  transition: border 0.2s ease, box-shadow 0.2s ease;
+  gap: 0.5rem;
+  justify-content: center;
 }
 
-.searchInput:focus-within {
+.searchIconButton {
+  display: none;
+  border: none;
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--table-muted, #475569);
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.searchIconButton[data-visible='true'] {
+  display: inline-flex;
+}
+
+.searchIconButton:hover {
+  background: rgba(37, 99, 235, 0.15);
+}
+
+.searchFieldShell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(248, 250, 255, 0.8);
+  padding: 0.4rem 0.75rem;
+  transition: border 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease,
+    max-width 0.2s ease;
+  max-width: min(55vw, 520px);
+  flex: 1 1 360px;
+}
+
+.searchFieldShell[data-open='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.searchFieldShell[data-open='true']:focus-within {
   border-color: var(--mf-primary, #6366f1);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-  background: var(--table-surface, #ffffff);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  background: #ffffff;
+}
+
+.searchFieldShell[data-open='false'] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.searchIcon {
+  width: 18px;
+  height: 18px;
+  color: var(--table-muted, #64748b);
 }
 
 .searchField {
@@ -42,78 +90,77 @@
   background: transparent;
   outline: none;
   font-size: 0.95rem;
-  padding: 0.25rem 0.35rem;
   color: inherit;
+  min-width: 0;
 }
 
-.searchInput svg {
-  width: 18px;
-  height: 18px;
-  color: var(--table-muted, #64748b);
+.searchActions {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.searchActionButton {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(148, 163, 184, 0.18);
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.searchActionButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.searchActionButton:not([disabled]):hover {
+  background: rgba(37, 99, 235, 0.2);
 }
 
 .actionsGroup {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.primaryButton {
+.primaryButton,
+.secondaryButton {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  border-radius: 9999px;
-  padding: 0.45rem 0.95rem;
+  border-radius: 14px;
+  padding: 0.5rem 1rem;
   font-weight: 600;
   border: none;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primaryButton {
   background: #2563eb;
   color: #ffffff;
 }
 
 .primaryButton:hover:not([disabled]) {
   transform: translateY(-1px);
-  box-shadow: 0 10px 18px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 12px 22px rgba(37, 99, 235, 0.25);
 }
 
 .secondaryButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border-radius: 9999px;
-  padding: 0.45rem 0.9rem;
+  background: rgba(248, 250, 255, 0.95);
   border: 1px solid rgba(148, 163, 184, 0.35);
-  background: #ffffff;
   color: inherit;
   font-weight: 500;
-  cursor: pointer;
 }
 
 .secondaryButton[disabled] {
   opacity: 0.55;
   cursor: not-allowed;
-}
-
-.analyticsCard {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 0.6rem 0.9rem;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(129, 140, 248, 0.12));
-}
-
-.analyticsValue {
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-
-.analyticsLabel {
-  font-size: 0.75rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--table-muted, #64748b);
 }
 
 .filtersRow {
@@ -142,39 +189,71 @@
   color: inherit;
 }
 
-.mobileActions {
-  display: none;
+@media (max-width: 900px) {
+  .trailingArea {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
 }
 
-@media (max-width: 768px) {
-  .primaryRow {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .leadingActions {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .actionsGroup {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .mobileActions {
-    display: flex;
+@media (max-width: 600px) {
+  .root {
     gap: 0.5rem;
   }
 
-  .primaryButton,
-  .secondaryButton {
-    flex: 1 1 0;
-    justify-content: center;
-  }
-
-  .analyticsCard {
+  .trailingArea {
     width: 100%;
     justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .leadingActions,
+  .trailingActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .searchFieldShell {
+    max-width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .searchFieldShell[data-open='false'] {
+    max-width: 0;
+  }
+
+  .actionsGroup {
+    flex: 1 1 auto;
+    justify-content: space-between;
+  }
+
+  .primaryButton span,
+  .secondaryButton span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+
+  .primaryButton,
+  .secondaryButton,
+  .leadingActions > *,
+  .trailingActions > * {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 12px;
+  }
+
+  .leadingActions,
+  .actionsGroup,
+  .trailingActions {
+    gap: 0.4rem;
   }
 }

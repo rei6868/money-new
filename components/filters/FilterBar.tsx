@@ -1,9 +1,10 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { FiFilter, FiSave, FiSearch, FiX } from 'react-icons/fi';
+import { FiFilter, FiRefreshCw, FiSave, FiSearch, FiX } from 'react-icons/fi';
 
-import type { FilterAnalytics, TableFilters } from './filterTypes';
+import type { TableFilters } from './filterTypes';
 import { createEmptyFilters, formatDateRange, hasActiveFilters } from './filterTypes';
+import { ActionBar, useMediaQuery } from '../common/ActionBar';
 
 import styles from './FilterBar.module.css';
 
@@ -13,9 +14,10 @@ export type FilterBarProps = {
   filters: TableFilters;
   onFiltersChange: (filters: TableFilters) => void;
   onOpenFilters: () => void;
-  analytics?: FilterAnalytics;
   savedViewStorageKey?: string;
   leadingActions?: ReactNode;
+  trailingActions?: ReactNode;
+  tabs?: ReactNode;
 };
 
 function removeFilterValue(values: string[], target: string) {
@@ -66,10 +68,28 @@ export function FilterBar({
   filters,
   onFiltersChange,
   onOpenFilters,
-  analytics,
   savedViewStorageKey = 'mf.tableFilters.views',
   leadingActions,
+  trailingActions,
+  tabs,
 }: FilterBarProps) {
+  const isMobile = useMediaQuery('(max-width: 600px)');
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const lastSearchRef = useRef<string>('');
+
+  useEffect(() => {
+    if (!isMobile) {
+      setIsMobileSearchOpen(false);
+    }
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (searchQuery.trim().length > 0) {
+      lastSearchRef.current = searchQuery;
+    }
+  }, [searchQuery]);
+
   const summaryChips = useMemo(() => {
     const chips: { key: string; label: string; onRemove: () => void }[] = [];
 
@@ -134,10 +154,64 @@ export function FilterBar({
     [onSearchChange],
   );
 
+  const handleSearchClear = useCallback(() => {
+    if (searchQuery.trim().length === 0) {
+      return;
+    }
+    lastSearchRef.current = searchQuery;
+    onSearchChange('');
+    if (isMobile) {
+      setIsMobileSearchOpen(false);
+    }
+  }, [isMobile, onSearchChange, searchQuery]);
+
+  const handleSearchRestore = useCallback(() => {
+    const previous = lastSearchRef.current;
+    if (!previous || previous === searchQuery) {
+      return;
+    }
+    onSearchChange(previous);
+    if (isMobile) {
+      setIsMobileSearchOpen(true);
+      window.requestAnimationFrame(() => searchInputRef.current?.focus());
+    }
+  }, [isMobile, onSearchChange, searchQuery]);
+
+  const handleMobileSearchToggle = useCallback(() => {
+    if (!isMobile) {
+      return;
+    }
+    setIsMobileSearchOpen((current) => {
+      const next = !current;
+      if (!next) {
+        searchInputRef.current?.blur();
+      } else {
+        window.requestAnimationFrame(() => searchInputRef.current?.focus());
+      }
+      return next;
+    });
+  }, [isMobile]);
+
+  const handleMobileSearchBlur = useCallback(() => {
+    if (!isMobile) {
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      const activeElement = document.activeElement as HTMLElement | null;
+      if (activeElement && searchInputRef.current?.parentElement?.contains(activeElement)) {
+        return;
+      }
+      setIsMobileSearchOpen(false);
+    });
+  }, [isMobile]);
+
   const resetAll = useCallback(() => {
     onFiltersChange(createEmptyFilters());
     onSearchChange('');
-  }, [onFiltersChange, onSearchChange]);
+    if (isMobile) {
+      setIsMobileSearchOpen(false);
+    }
+  }, [isMobile, onFiltersChange, onSearchChange]);
 
   const handleSaveView = useCallback(() => {
     if (typeof window === 'undefined') {
@@ -165,62 +239,96 @@ export function FilterBar({
 
   const active = hasActiveFilters(filters, searchQuery);
 
+  const actionButtons = (
+    <div className={styles.actionsGroup}>
+      <button type="button" className={styles.primaryButton} onClick={onOpenFilters}>
+        <FiFilter aria-hidden />
+        <span>Filters</span>
+      </button>
+      <button type="button" className={styles.secondaryButton} onClick={handleSaveView}>
+        <FiSave aria-hidden />
+        <span>Save view</span>
+      </button>
+      <button
+        type="button"
+        className={styles.secondaryButton}
+        onClick={resetAll}
+        disabled={!active}
+      >
+        <FiRefreshCw aria-hidden />
+        <span>Reset all</span>
+      </button>
+    </div>
+  );
+
+  const isSearchOpen = !isMobile || isMobileSearchOpen;
+
   return (
     <div className={styles.root}>
-      <div className={styles.primaryRow}>
-        {leadingActions ? <div className={styles.leadingActions}>{leadingActions}</div> : null}
-        <label className={styles.searchInput} htmlFor="table-search">
-          <FiSearch aria-hidden />
-          <input
-            id="table-search"
-            className={styles.searchField}
-            type="search"
-            placeholder="Search transactions, accounts, notes…"
-            value={searchQuery}
-            onChange={handleSearchChange}
-          />
-        </label>
-
-        <div className={styles.actionsGroup}>
-          <button type="button" className={styles.primaryButton} onClick={onOpenFilters}>
-            <FiFilter aria-hidden />
-            Filters
-          </button>
-          <button type="button" className={styles.secondaryButton} onClick={handleSaveView}>
-            <FiSave aria-hidden />
-            Save view
-          </button>
-          <button
-            type="button"
-            className={styles.secondaryButton}
-            onClick={resetAll}
-            disabled={!active}
-          >
-            Reset all
-          </button>
-        </div>
-
-        {analytics ? (
-          <div className={styles.analyticsCard} role="status" aria-live="polite">
-            <div>
-              <div className={styles.analyticsLabel}>Matching</div>
-              <div className={styles.analyticsValue}>{analytics.resultCount}</div>
-            </div>
-            {analytics.totals?.amount !== undefined ? (
-              <div>
-                <div className={styles.analyticsLabel}>Total amount</div>
-                <div className={styles.analyticsValue}>
-                  {analytics.totals.amount.toLocaleString(undefined, {
-                    style: 'currency',
-                    currency: 'USD',
-                    maximumFractionDigits: 0,
-                  })}
-                </div>
+      <ActionBar
+        left={tabs}
+        center={
+          <div className={styles.searchShell} data-open={isSearchOpen ? 'true' : 'false'}>
+            <button
+              type="button"
+              className={styles.searchIconButton}
+              onClick={handleMobileSearchToggle}
+              aria-label={isMobileSearchOpen ? 'Hide search' : 'Show search'}
+              data-visible={isMobile ? 'true' : undefined}
+            >
+              <FiSearch aria-hidden />
+            </button>
+            <div
+              className={styles.searchFieldShell}
+              data-open={isSearchOpen ? 'true' : 'false'}
+            >
+              <FiSearch className={styles.searchIcon} aria-hidden />
+              <input
+                ref={searchInputRef}
+                id="table-search"
+                className={styles.searchField}
+                type="search"
+                placeholder="Search transactions, accounts, notes…"
+                value={searchQuery}
+                onChange={handleSearchChange}
+                onBlur={handleMobileSearchBlur}
+              />
+              <div className={styles.searchActions}>
+                {searchQuery ? (
+                  <button
+                    type="button"
+                    className={styles.searchActionButton}
+                    onClick={handleSearchClear}
+                    aria-label="Clear search"
+                  >
+                    <FiX aria-hidden />
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className={styles.searchActionButton}
+                  onClick={handleSearchRestore}
+                  aria-label="Restore previous search"
+                  disabled={!lastSearchRef.current || lastSearchRef.current === searchQuery}
+                >
+                  <FiRefreshCw aria-hidden />
+                </button>
               </div>
+            </div>
+          </div>
+        }
+        right={
+          <div className={styles.trailingArea}>
+            {leadingActions ? (
+              <div className={styles.leadingActions}>{leadingActions}</div>
+            ) : null}
+            {actionButtons}
+            {trailingActions ? (
+              <div className={styles.trailingActions}>{trailingActions}</div>
             ) : null}
           </div>
-        ) : null}
-      </div>
+        }
+      />
 
       {summaryChips.length > 0 ? (
         <div className={styles.filtersRow}>

@@ -34,9 +34,10 @@
   position: relative;
   flex: 1 1 auto;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto;
   background: transparent;
   scrollbar-gutter: stable both-edges;
+  max-height: clamp(420px, 68vh, 780px);
 }
 
 .table {

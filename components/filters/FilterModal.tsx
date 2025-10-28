@@ -84,7 +84,7 @@ export function FilterModal({ open, filters, onClose, onApply, options }: Filter
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className={styles.backdrop} aria-hidden="true" />
+          <Dialog.Overlay className={styles.backdrop} />
         </Transition.Child>
 
         <div className={styles.panelContainer}>

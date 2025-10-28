@@ -674,7 +674,33 @@
   .filterActions {
     width: 100%;
     justify-content: space-between;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+  }
+
+  .filterActions button,
+  .filterActionsQuickAdd button {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 12px;
+  }
+
+  .filterActions button span,
+  .filterActionsQuickAdd button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+
+  .filterActionsQuickAdd {
+    width: auto;
   }
 }
 

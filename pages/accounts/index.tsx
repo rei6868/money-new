@@ -7,6 +7,7 @@ import TableAccounts from '../../components/accounts/TableAccounts';
 import AccountEditModal, { AccountEditPayload } from '../../components/accounts/AccountEditModal';
 import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGlobal';
 import QuickAddModal from '../../components/common/QuickAddModal';
+import { FiPlus, FiSettings } from 'react-icons/fi';
 import ColumnsCustomizeModal, {
   ColumnConfig as CustomizeColumnConfig,
 } from '../../components/customize/ColumnsCustomizeModal';
@@ -531,19 +532,6 @@ export default function AccountsPage() {
     };
   }, [accounts, selectedIds]);
 
-  const filterAnalytics = useMemo(
-    () => ({
-      resultCount: filteredAccounts.length,
-      totals: {
-        amount: filteredAccounts.reduce(
-          (sum, account) => sum + (account.currentBalance ?? 0),
-          0,
-        ),
-      },
-    }),
-    [filteredAccounts],
-  );
-
   const handleSelectRow = useCallback((id: string, checked: boolean) => {
     setSelectedIds((prev) => {
       if (checked) {
@@ -740,6 +728,38 @@ export default function AccountsPage() {
     [],
   );
 
+  const filterActionButtons = (
+    <div className={styles.filterActions}>
+      <button
+        type="button"
+        className={styles.primaryButton}
+        onClick={handleAddAccountClick}
+        disabled={isFetching}
+        aria-label="Add account"
+      >
+        <FiPlus aria-hidden />
+        <span>Add account</span>
+      </button>
+      <QuickAddModal
+        context="accounts"
+        onSelect={handleQuickActionSelect}
+        disabled={isFetching}
+        triggerLabel="Quick add"
+        triggerAriaLabel="Open quick add actions"
+        className={styles.filterActionsQuickAdd}
+      />
+      <button
+        type="button"
+        className={styles.secondaryButton}
+        onClick={() => setIsCustomizeOpen(true)}
+        aria-label="Customize columns"
+      >
+        <FiSettings aria-hidden />
+        <span>Customize</span>
+      </button>
+    </div>
+  );
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
@@ -760,35 +780,8 @@ export default function AccountsPage() {
               filters={filters}
               onFiltersChange={setFilters}
               onOpenFilters={() => setIsFilterOpen(true)}
-              analytics={filterAnalytics}
               savedViewStorageKey="mf.accounts.views"
-              leadingActions={
-                <div className={styles.filterActions}>
-                  <button
-                    type="button"
-                    className={styles.primaryButton}
-                    onClick={handleAddAccountClick}
-                    disabled={isFetching}
-                  >
-                    Add account
-                  </button>
-                  <QuickAddModal
-                    context="accounts"
-                    onSelect={handleQuickActionSelect}
-                    disabled={isFetching}
-                    triggerLabel="Quick add"
-                    triggerAriaLabel="Open quick add actions"
-                    className={styles.filterActionsQuickAdd}
-                  />
-                  <button
-                    type="button"
-                    className={styles.secondaryButton}
-                    onClick={() => setIsCustomizeOpen(true)}
-                  >
-                    Customize
-                  </button>
-                </div>
-              }
+              leadingActions={filterActionButtons}
             />
           </div>
 

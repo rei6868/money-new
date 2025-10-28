@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import AppLayout from '../../components/AppLayout';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
+import { FiPlus, FiSettings } from 'react-icons/fi';
 
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
@@ -14,6 +15,12 @@ import FilterBar from '../../components/filters/FilterBar';
 import FilterModal from '../../components/filters/FilterModal';
 import { createEmptyFilters } from '../../components/filters/filterTypes';
 import TxnTabs from '../../components/transactions/TxnTabs';
+import { useMediaQuery } from '../../components/common/ActionBar';
+import {
+  TRANSACTION_TYPE_VALUES,
+  getTransactionTypeLabel,
+  normalizeTransactionType,
+} from '../../lib/transactions/transactionTypes';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
 
@@ -79,41 +86,38 @@ function getTransactionDate(txn) {
   return null;
 }
 
-function getTransactionType(txn) {
+function getTransactionTypeValue(txn) {
   const typeFields = [
-    txn.type,
-    txn.transactionType,
-    txn.transaction_type,
-    txn.categoryType,
-    txn.category_type,
+    txn?.typeValue,
+    txn?.type,
+    txn?.transactionType,
+    txn?.transaction_type,
+    txn?.categoryType,
+    txn?.category_type,
   ];
+
   for (const candidate of typeFields) {
-    const value = extractString(candidate);
-    if (value) {
-      return value.toLowerCase();
+    const normalized = normalizeTransactionType(candidate);
+    if (candidate !== undefined && candidate !== null) {
+      return normalized;
     }
   }
-  return null;
+
+  return TRANSACTION_TYPE_VALUES.OTHER;
 }
 
-function getTransactionAmount(txn) {
-  const candidates = [
-    txn.amount,
-    txn.total,
-    txn.totalAmount,
-    txn.total_amount,
-    txn.finalPrice,
-    txn.final_price,
-    txn.netAmount,
-    txn.net_amount,
-  ];
-  for (const candidate of candidates) {
-    const numeric = Number(candidate);
-    if (Number.isFinite(numeric)) {
-      return numeric;
-    }
+function applyTypeMetadata(txn) {
+  if (!txn || typeof txn !== 'object') {
+    return txn;
   }
-  return 0;
+  const typeValue = getTransactionTypeValue(txn);
+  const typeLabel = getTransactionTypeLabel(typeValue);
+  return {
+    ...txn,
+    typeValue,
+    typeLabel,
+    type: typeLabel,
+  };
 }
 
 function buildTransactionPredicate(filterState, normalizedQuery) {
@@ -125,7 +129,9 @@ function buildTransactionPredicate(filterState, normalizedQuery) {
   const categoryFilter = new Set(
     (filterState.categories || []).map((value) => value.toLowerCase()),
   );
-  const typeFilter = filterState.type ? String(filterState.type).toLowerCase() : null;
+  const typeFilter = filterState.type
+    ? normalizeTransactionType(filterState.type)
+    : null;
 
   const rangeStart = filterState.dateRange?.start ? new Date(filterState.dateRange.start) : null;
   const rangeEnd = filterState.dateRange?.end ? new Date(filterState.dateRange.end) : null;
@@ -182,7 +188,6 @@ function buildTransactionPredicate(filterState, normalizedQuery) {
         txn.categoryName,
         txn.category_name,
         txn.segment,
-        getTransactionType(txn),
       ]
         .map((candidate) => extractString(candidate))
         .filter(Boolean)
@@ -193,8 +198,8 @@ function buildTransactionPredicate(filterState, normalizedQuery) {
     }
 
     if (typeFilter) {
-      const txnType = getTransactionType(txn);
-      if (!txnType || txnType !== typeFilter) {
+      const txnType = getTransactionTypeValue(txn);
+      if (txnType !== typeFilter) {
         return false;
       }
     }
@@ -274,6 +279,7 @@ export default function TransactionsHistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState(() => createEmptyFilters());
   const [activeTab, setActiveTab] = useState('all');
+  const isMobileLayout = useMediaQuery('(max-width: 600px)');
   const tableScrollRef = useRef(null);
   const savedScrollLeftRef = useRef(0);
 
@@ -405,7 +411,7 @@ export default function TransactionsHistoryPage() {
           return;
         }
 
-        const rows = Array.isArray(data.rows) ? data.rows : [];
+        const rows = Array.isArray(data.rows) ? data.rows.map((row) => applyTypeMetadata(row)) : [];
         setTransactions(rows);
         setSelectedIds((prev) => {
           const available = new Set(rows.map((row) => row.id));
@@ -556,10 +562,6 @@ export default function TransactionsHistoryPage() {
         }
       });
 
-      const typeValue = getTransactionType(txn);
-      if (typeValue) {
-        categorySet.add(typeValue);
-      }
     });
 
     const toOptions = (set) =>
@@ -612,18 +614,19 @@ export default function TransactionsHistoryPage() {
     return filteredTransactions.filter((txn) => selectedLookup.has(txn.id));
   }, [filteredTransactions, selectedLookup, showSelectedOnly]);
 
-  const filterAnalytics = useMemo(() => {
-    const totalAmount = filteredTransactions.reduce(
-      (sum, txn) => sum + getTransactionAmount(txn),
-      0,
-    );
-    return {
-      resultCount: filteredTransactions.length,
-      totals: {
-        amount: totalAmount,
-      },
-    };
-  }, [filteredTransactions]);
+  const handleSelectAll = useCallback(
+    (checked) => {
+      if (!checked) {
+        setSelectedIds([]);
+        return;
+      }
+
+      const targetRows = showSelectedOnly ? displayedTransactions : filteredTransactions;
+      const mapped = Array.isArray(targetRows) ? targetRows.map((txn) => txn.id) : [];
+      setSelectedIds(mapped);
+    },
+    [displayedTransactions, filteredTransactions, showSelectedOnly],
+  );
 
   const tabMetrics = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
@@ -635,25 +638,37 @@ export default function TransactionsHistoryPage() {
     const predicate = buildTransactionPredicate(baseFilter, normalizedQuery);
     const baseMatches = base.filter(predicate);
     const counts = {
-      income: 0,
-      expenses: 0,
-      transfer: 0,
+      [TRANSACTION_TYPE_VALUES.INCOME]: 0,
+      [TRANSACTION_TYPE_VALUES.EXPENSES]: 0,
+      [TRANSACTION_TYPE_VALUES.TRANSFER]: 0,
     };
     baseMatches.forEach((txn) => {
-      const type = getTransactionType(txn) || '';
-      if (type.includes('transfer')) {
-        counts.transfer += 1;
-      } else if (type.includes('income')) {
-        counts.income += 1;
-      } else if (type.includes('expense') || type.includes('spend')) {
-        counts.expenses += 1;
+      const type = getTransactionTypeValue(txn);
+      if (type === TRANSACTION_TYPE_VALUES.TRANSFER) {
+        counts[TRANSACTION_TYPE_VALUES.TRANSFER] += 1;
+      } else if (type === TRANSACTION_TYPE_VALUES.INCOME) {
+        counts[TRANSACTION_TYPE_VALUES.INCOME] += 1;
+      } else if (type === TRANSACTION_TYPE_VALUES.EXPENSES) {
+        counts[TRANSACTION_TYPE_VALUES.EXPENSES] += 1;
       }
     });
     return [
       { id: 'all', label: 'All', count: baseMatches.length },
-      { id: 'income', label: 'Income', count: counts.income },
-      { id: 'expenses', label: 'Expenses', count: counts.expenses },
-      { id: 'transfer', label: 'Transfer', count: counts.transfer },
+      {
+        id: TRANSACTION_TYPE_VALUES.INCOME,
+        label: getTransactionTypeLabel(TRANSACTION_TYPE_VALUES.INCOME),
+        count: counts[TRANSACTION_TYPE_VALUES.INCOME],
+      },
+      {
+        id: TRANSACTION_TYPE_VALUES.EXPENSES,
+        label: getTransactionTypeLabel(TRANSACTION_TYPE_VALUES.EXPENSES),
+        count: counts[TRANSACTION_TYPE_VALUES.EXPENSES],
+      },
+      {
+        id: TRANSACTION_TYPE_VALUES.TRANSFER,
+        label: getTransactionTypeLabel(TRANSACTION_TYPE_VALUES.TRANSFER),
+        count: counts[TRANSACTION_TYPE_VALUES.TRANSFER],
+      },
     ];
   }, [filters, searchQuery, transactions]);
 
@@ -732,17 +747,6 @@ export default function TransactionsHistoryPage() {
     });
   };
 
-  const handleSelectAll = (checked) => {
-    if (!checked) {
-      setSelectedIds([]);
-      return;
-    }
-
-    const targetRows = showSelectedOnly ? displayedTransactions : transactions;
-    const mapped = Array.isArray(targetRows) ? targetRows.map((txn) => txn.id) : [];
-    setSelectedIds(mapped);
-  };
-
   const handleOpenAddTransaction = useCallback(() => {
     setQuickAction(null);
     setAddModalType('transaction');
@@ -797,7 +801,7 @@ export default function TransactionsHistoryPage() {
 
         if (updates && typeof updates === 'object') {
           didUpdate = true;
-          return { ...txn, ...updates };
+          return applyTypeMetadata({ ...txn, ...updates });
         }
 
         return txn;
@@ -869,15 +873,29 @@ export default function TransactionsHistoryPage() {
   }, []);
 
   useEffect(() => {
-    const typeValue = filters?.type ? String(filters.type).toLowerCase() : null;
-    if (!typeValue) {
+    if (!filters?.type) {
       if (activeTab !== 'all') {
         setActiveTab('all');
       }
       return;
     }
-    if (typeValue !== activeTab) {
-      setActiveTab(typeValue);
+
+    const normalizedType = normalizeTransactionType(filters.type);
+    const tabTypeValues = new Set([
+      TRANSACTION_TYPE_VALUES.INCOME,
+      TRANSACTION_TYPE_VALUES.EXPENSES,
+      TRANSACTION_TYPE_VALUES.TRANSFER,
+    ]);
+
+    if (!tabTypeValues.has(normalizedType)) {
+      if (activeTab !== 'all') {
+        setActiveTab('all');
+      }
+      return;
+    }
+
+    if (normalizedType !== activeTab) {
+      setActiveTab(normalizedType);
     }
   }, [activeTab, filters?.type]);
 
@@ -914,6 +932,38 @@ export default function TransactionsHistoryPage() {
     });
   }, [defaultColumnState, definitionLookup, customizeColumns]);
 
+  const filterActionButtons = (
+    <div className={styles.filterActions}>
+      <button
+        type="button"
+        className={styles.primaryButton}
+        onClick={handleOpenAddTransaction}
+        disabled={isFetching}
+        aria-label="Add transaction"
+      >
+        <FiPlus aria-hidden />
+        <span>Add transaction</span>
+      </button>
+      <QuickAddModal
+        context="transactions"
+        onSelect={handleQuickActionSelect}
+        disabled={isFetching}
+        triggerLabel="Quick add"
+        triggerAriaLabel="Quick add transaction"
+        className={styles.filterActionsQuickAdd}
+      />
+      <button
+        type="button"
+        className={styles.secondaryButton}
+        onClick={() => setIsCustomizeOpen(true)}
+        aria-label="Customize columns"
+      >
+        <FiSettings aria-hidden />
+        <span>Customize</span>
+      </button>
+    </div>
+  );
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
@@ -927,43 +977,31 @@ export default function TransactionsHistoryPage() {
     >
       <div className={styles.screen}>
         <div className={styles.controlsRegion}>
-          <TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />
-          <FilterBar
-            searchQuery={searchQuery}
-            onSearchChange={handleSearchChange}
-            filters={filters}
-            onFiltersChange={setFilters}
-            onOpenFilters={() => setIsFilterOpen(true)}
-            analytics={filterAnalytics}
-            savedViewStorageKey="mf.transactions.views"
-            leadingActions={
-              <div className={styles.filterActions}>
-                <button
-                  type="button"
-                  className={styles.primaryButton}
-                  onClick={handleOpenAddTransaction}
-                  disabled={isFetching}
-                >
-                  Add transaction
-                </button>
-                <QuickAddModal
-                  context="transactions"
-                  onSelect={handleQuickActionSelect}
-                  disabled={isFetching}
-                  triggerLabel="Quick add"
-                  triggerAriaLabel="Quick add transaction"
-                  className={styles.filterActionsQuickAdd}
-                />
-                <button
-                  type="button"
-                  className={styles.secondaryButton}
-                  onClick={() => setIsCustomizeOpen(true)}
-                >
-                  Customize
-                </button>
-              </div>
-            }
-          />
+          {isMobileLayout ? (
+            <>
+              <TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />
+              <FilterBar
+                searchQuery={searchQuery}
+                onSearchChange={handleSearchChange}
+                filters={filters}
+                onFiltersChange={setFilters}
+                onOpenFilters={() => setIsFilterOpen(true)}
+                savedViewStorageKey="mf.transactions.views"
+                leadingActions={filterActionButtons}
+              />
+            </>
+          ) : (
+            <FilterBar
+              searchQuery={searchQuery}
+              onSearchChange={handleSearchChange}
+              filters={filters}
+              onFiltersChange={setFilters}
+              onOpenFilters={() => setIsFilterOpen(true)}
+              savedViewStorageKey="mf.transactions.views"
+              leadingActions={filterActionButtons}
+              tabs={<TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />}
+            />
+          )}
         </div>
 
         {columnDefinitions.length === 0 ? (

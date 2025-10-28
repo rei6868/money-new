@@ -158,7 +158,7 @@ const TableBaseInner = (
     transactions.length > 0 && transactions.every((txn) => selectionSet.has(resolveRowId(txn)));
   const isIndeterminate = selectionSet.size > 0 && !allSelected;
   const totals = useMemo(() => normalizeTotals(selectionSummary), [selectionSummary]);
-  const selectionCount = Number(selectionSummary?.count ?? selectionSet.size);
+  const selectionCount = selectionSet.size;
   const shouldShowTotals = selectionCount > 0;
   const hasActiveSelection = selectionCount > 0;
 
