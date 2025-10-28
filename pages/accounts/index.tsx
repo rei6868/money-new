@@ -6,11 +6,18 @@ import AccountsPageHeader from '../../components/accounts/AccountsPageHeader';
 import TableAccounts from '../../components/accounts/TableAccounts';
 import AccountEditModal, { AccountEditPayload } from '../../components/accounts/AccountEditModal';
 import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGlobal';
-import HeaderActionBar from '../../components/common/HeaderActionBar';
-import CustomizeColumnsModal, {
+import QuickAddModal from '../../components/common/QuickAddModal';
+import { FiPlus, FiSettings } from 'react-icons/fi';
+import ColumnsCustomizeModal, {
   ColumnConfig as CustomizeColumnConfig,
-} from '../../components/common/CustomizeColumnsModal';
-import FilterComingSoonModal from '../../components/common/FilterComingSoonModal';
+} from '../../components/customize/ColumnsCustomizeModal';
+import FilterBar from '../../components/filters/FilterBar';
+import FilterModal from '../../components/filters/FilterModal';
+import {
+  createEmptyFilters,
+  type FilterOption,
+  type TableFilters,
+} from '../../components/filters/filterTypes';
 import {
   ACCOUNT_COLUMN_DEFINITIONS,
   ACCOUNT_SORTERS,
@@ -76,6 +83,81 @@ function normalizeAccount(raw: Record<string, unknown>): NormalizedAccount | nul
   };
 }
 
+function extractString(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  return null;
+}
+
+function toUniqueOptions(values: (string | null | undefined)[]): FilterOption[] {
+  const seen = new Set<string>();
+  const options: FilterOption[] = [];
+  values.forEach((value) => {
+    const normalized = extractString(value ?? null);
+    if (!normalized) {
+      return;
+    }
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    options.push({ label: normalized, value: normalized });
+  });
+  return options;
+}
+
+function extractDebtTags(account: NormalizedAccount): string[] {
+  const source = account.raw?.debtTags ?? account.raw?.debt_tags ?? account.raw?.tags ?? null;
+  if (Array.isArray(source)) {
+    return source
+      .map((value) => extractString(value))
+      .filter((value): value is string => Boolean(value));
+  }
+  if (typeof source === 'string') {
+    return source
+      .split(',')
+      .map((item) => extractString(item))
+      .filter((value): value is string => Boolean(value));
+  }
+  return [];
+}
+
+function extractAccountDate(account: NormalizedAccount): Date | null {
+  const candidates = [
+    account.raw?.createdAt,
+    account.raw?.created_at,
+    account.raw?.openedAt,
+    account.raw?.opened_at,
+    account.raw?.updatedAt,
+    account.raw?.updated_at,
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate instanceof Date && !Number.isNaN(candidate.getTime())) {
+      return candidate;
+    }
+    if (typeof candidate === 'string') {
+      const parsed = new Date(candidate);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+    if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+      const parsed = new Date(candidate);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+  }
+  return null;
+}
+
 function resolveSortedAccounts(
   accounts: NormalizedAccount[],
   sorterId: string | null,
@@ -138,7 +220,7 @@ export default function AccountsPage() {
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [previousSearchQuery, setPreviousSearchQuery] = useState('');
+  const [filters, setFilters] = useState<TableFilters>(() => createEmptyFilters());
   const [editingAccount, setEditingAccount] = useState<NormalizedAccount | null>(null);
 
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
@@ -147,6 +229,29 @@ export default function AccountsPage() {
     () => new Map(ACCOUNT_COLUMN_DEFINITIONS.map((definition) => [definition.id, definition])),
     [],
   );
+
+  const filterOptions = useMemo(() => {
+    const accountOptions = toUniqueOptions(accounts.map((account) => account.accountName));
+    const peopleOptions = toUniqueOptions(
+      accounts.map((account) => account.ownerName ?? account.ownerId ?? null),
+    );
+    const debtTagSet = new Set<string>();
+    accounts.forEach((account) => {
+      extractDebtTags(account).forEach((tag) => debtTagSet.add(tag));
+    });
+    const debtTagOptions: FilterOption[] = Array.from(debtTagSet).map((tag) => ({
+      label: tag,
+      value: tag,
+    }));
+    const categoryOptions = toUniqueOptions(accounts.map((account) => account.accountType));
+
+    return {
+      accounts: accountOptions,
+      people: peopleOptions,
+      debtTags: debtTagOptions,
+      categories: categoryOptions,
+    };
+  }, [accounts]);
 
   const validColumnIds = useMemo(
     () =>
@@ -226,7 +331,8 @@ export default function AccountsPage() {
         label: definition?.label ?? column.id,
         visible: column.visible !== false,
         pinned: column.pinned ?? null,
-        locked: column.id === 'notes',
+        locked: column.id === 'accountName',
+        mandatory: column.id === 'accountName',
       };
     });
   }, [columnState, definitionLookup]);
@@ -243,7 +349,8 @@ export default function AccountsPage() {
         label: definition?.label ?? column.id,
         visible: column.visible !== false,
         pinned: column.pinned ?? null,
-        locked: column.id === 'notes',
+        locked: column.id === 'accountName',
+        mandatory: column.id === 'accountName',
       };
     });
   }, [defaultColumnState, definitionLookup, customizeColumns]);
@@ -300,11 +407,61 @@ export default function AccountsPage() {
 
   const filteredAccounts = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
-    if (!normalizedQuery) {
-      return sortedAccounts;
-    }
+    const accountFilter = new Set(filters.accounts.map((value) => value.toLowerCase()));
+    const peopleFilter = new Set(filters.people.map((value) => value.toLowerCase()));
+    const debtFilter = new Set(filters.debtTags.map((value) => value.toLowerCase()));
+    const categoryFilter = new Set(filters.categories.map((value) => value.toLowerCase()));
+    const typeFilter = filters.type ? filters.type.toLowerCase() : null;
+
+    const rangeStart = filters.dateRange.start ? new Date(filters.dateRange.start) : null;
+    const rangeEnd = filters.dateRange.end ? new Date(filters.dateRange.end) : null;
 
     return sortedAccounts.filter((account) => {
+      if (accountFilter.size > 0 && !accountFilter.has(account.accountName.toLowerCase())) {
+        return false;
+      }
+
+      const owner = extractString(account.ownerName ?? account.ownerId) ?? '';
+      if (peopleFilter.size > 0 && !peopleFilter.has(owner.toLowerCase())) {
+        return false;
+      }
+
+      if (categoryFilter.size > 0 && !categoryFilter.has(account.accountType.toLowerCase())) {
+        return false;
+      }
+
+      if (typeFilter && account.accountType.toLowerCase() !== typeFilter) {
+        return false;
+      }
+
+      if (debtFilter.size > 0) {
+        const accountTags = extractDebtTags(account).map((tag) => tag.toLowerCase());
+        if (!accountTags.some((tag) => debtFilter.has(tag))) {
+          return false;
+        }
+      }
+
+      if (rangeStart || rangeEnd) {
+        const accountDate = extractAccountDate(account);
+        if (!accountDate) {
+          return false;
+        }
+        if (rangeStart && accountDate < rangeStart) {
+          return false;
+        }
+        if (rangeEnd) {
+          const adjustedEnd = new Date(rangeEnd);
+          adjustedEnd.setHours(23, 59, 59, 999);
+          if (accountDate > adjustedEnd) {
+            return false;
+          }
+        }
+      }
+
+      if (!normalizedQuery) {
+        return true;
+      }
+
       const haystack = [
         account.accountName,
         account.accountType,
@@ -317,7 +474,13 @@ export default function AccountsPage() {
         typeof value === 'string' && value.toLowerCase().includes(normalizedQuery),
       );
     });
-  }, [sortedAccounts, searchQuery]);
+  }, [filters, searchQuery, sortedAccounts]);
+
+  useEffect(() => {
+    if (selectedIds.length > 0) {
+      setSelectedIds([]);
+    }
+  }, [filters, searchQuery, selectedIds.length]);
 
   const totalPages = useMemo(() => {
     if (filteredAccounts.length === 0) {
@@ -494,15 +657,6 @@ export default function AccountsPage() {
     setSearchQuery(value);
   }, []);
 
-  const handleSearchClear = useCallback(() => {
-    setPreviousSearchQuery(searchQuery);
-    setSearchQuery('');
-  }, [searchQuery]);
-
-  const handleSearchRestore = useCallback(() => {
-    setSearchQuery(previousSearchQuery);
-  }, [previousSearchQuery]);
-
   const handleAddAccountClick = useCallback(() => {
     setQuickAction(null);
     setAddModalType('account');
@@ -574,6 +728,38 @@ export default function AccountsPage() {
     [],
   );
 
+  const filterActionButtons = (
+    <div className={styles.filterActions}>
+      <button
+        type="button"
+        className={styles.primaryButton}
+        onClick={handleAddAccountClick}
+        disabled={isFetching}
+        aria-label="Add account"
+      >
+        <FiPlus aria-hidden />
+        <span>Add account</span>
+      </button>
+      <QuickAddModal
+        context="accounts"
+        onSelect={handleQuickActionSelect}
+        disabled={isFetching}
+        triggerLabel="Quick add"
+        triggerAriaLabel="Open quick add actions"
+        className={styles.filterActionsQuickAdd}
+      />
+      <button
+        type="button"
+        className={styles.secondaryButton}
+        onClick={() => setIsCustomizeOpen(true)}
+        aria-label="Customize columns"
+      >
+        <FiSettings aria-hidden />
+        <span>Customize</span>
+      </button>
+    </div>
+  );
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
@@ -587,21 +773,17 @@ export default function AccountsPage() {
         <div className={styles.pageContent}>
           <AccountsPageHeader activeTab={activeTab} onTabChange={setActiveTab} />
 
-          <HeaderActionBar
-            context="accounts"
-            onAdd={handleAddAccountClick}
-            addLabel="Add Account"
-            addDisabled={isFetching}
-            onQuickAddSelect={handleQuickActionSelect}
-            quickAddDisabled={isFetching}
-            searchValue={searchQuery}
-            onSearchChange={handleSearchChange}
-            onSearchClear={handleSearchClear}
-            onSearchRestore={handleSearchRestore}
-            searchPlaceholder="Search accounts"
-            onFilterClick={() => setIsFilterOpen(true)}
-            onCustomizeClick={() => setIsCustomizeOpen(true)}
-          />
+          <div className={styles.filtersSection}>
+            <FilterBar
+              searchQuery={searchQuery}
+              onSearchChange={handleSearchChange}
+              filters={filters}
+              onFiltersChange={setFilters}
+              onOpenFilters={() => setIsFilterOpen(true)}
+              savedViewStorageKey="mf.accounts.views"
+              leadingActions={filterActionButtons}
+            />
+          </div>
 
           {fetchError ? (
             <div className={styles.tableCard} role="alert">
@@ -659,7 +841,7 @@ export default function AccountsPage() {
         onClose={handleCloseAddModal}
         onSubmit={handleAddSubmit}
       />
-      <CustomizeColumnsModal
+      <ColumnsCustomizeModal
         context="accounts"
         open={isCustomizeOpen}
         onClose={() => setIsCustomizeOpen(false)}
@@ -667,10 +849,12 @@ export default function AccountsPage() {
         defaultColumns={defaultCustomizeColumns}
         onChange={handleCustomizeChange}
       />
-      <FilterComingSoonModal
-        context="accounts"
+      <FilterModal
         open={isFilterOpen}
+        filters={filters}
+        onApply={setFilters}
         onClose={() => setIsFilterOpen(false)}
+        options={filterOptions}
       />
       <AccountEditModal
         account={editingAccount}

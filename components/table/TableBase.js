@@ -22,7 +22,7 @@ import {
 } from './tableUtils';
 import { TableBaseHeader } from './TableBaseHeader';
 import { TableBaseBody } from './TableBaseBody';
-import SelectionMiniToolbar from './SelectionMiniToolbar';
+import MiniToolbar from '../common/MiniToolbar';
 
 function useMergedRefs(...refs) {
   return useCallback(
@@ -158,7 +158,7 @@ const TableBaseInner = (
     transactions.length > 0 && transactions.every((txn) => selectionSet.has(resolveRowId(txn)));
   const isIndeterminate = selectionSet.size > 0 && !allSelected;
   const totals = useMemo(() => normalizeTotals(selectionSummary), [selectionSummary]);
-  const selectionCount = Number(selectionSummary?.count ?? selectionSet.size);
+  const selectionCount = selectionSet.size;
   const shouldShowTotals = selectionCount > 0;
   const hasActiveSelection = selectionCount > 0;
 
@@ -500,13 +500,11 @@ const TableBaseInner = (
         ) : null}
       </div>
       {hasActiveSelection ? (
-        <div className={styles.selectionToolbarDock}>
-          <SelectionMiniToolbar
-            count={selectionCount}
-            onDelete={handleBulkDelete}
-            onCancel={handleClearSelection}
-          />
-        </div>
+        <MiniToolbar
+          selectedCount={selectionCount}
+          onDelete={handleBulkDelete}
+          onCancel={handleClearSelection}
+        />
       ) : null}
     </section>
   );

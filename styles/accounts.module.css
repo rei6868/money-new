@@ -19,6 +19,45 @@
   gap: 1.5rem;
 }
 
+.filtersSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.filterActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.filterActions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.filterActionsQuickAdd {
+  display: inline-flex;
+}
+
+.filterActionsQuickAdd button {
+  border-radius: 999px;
+  padding: 0.45rem 0.95rem;
+  background: #1d4ed8;
+  color: #ffffff;
+  border: none;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
+}
+
+.filterActionsQuickAdd button:disabled {
+  opacity: 0.6;
+}
+
 .pageFooter {
   margin-top: auto;
   padding: 0.75rem 0.25rem 0;
@@ -626,6 +665,43 @@
   .toolbarActionRow {
     justify-content: flex-start;
   }
+
+  .filtersSection {
+    margin: 0 -0.5rem;
+    padding: 0 0.5rem;
+  }
+
+  .filterActions {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+  }
+
+  .filterActions button,
+  .filterActionsQuickAdd button {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 12px;
+  }
+
+  .filterActions button span,
+  .filterActionsQuickAdd button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+
+  .filterActionsQuickAdd {
+    width: auto;
+  }
 }
 
 @media (max-width: 640px) {
@@ -669,6 +745,19 @@
     justify-content: center;
     padding-top: 0.5rem;
     font-size: 0.8rem;
+  }
+
+  .filterActions {
+    gap: 0.5rem;
+  }
+
+  .filterActionsQuickAdd {
+    width: 100%;
+  }
+
+  .filterActionsQuickAdd button {
+    width: 100%;
+    justify-content: center;
   }
 }
 

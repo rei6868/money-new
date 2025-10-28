@@ -1,0 +1,259 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.trailingArea {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.leadingActions,
+.trailingActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.searchShell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.searchIconButton {
+  display: none;
+  border: none;
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--table-muted, #475569);
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.searchIconButton[data-visible='true'] {
+  display: inline-flex;
+}
+
+.searchIconButton:hover {
+  background: rgba(37, 99, 235, 0.15);
+}
+
+.searchFieldShell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(248, 250, 255, 0.8);
+  padding: 0.4rem 0.75rem;
+  transition: border 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease,
+    max-width 0.2s ease;
+  max-width: min(55vw, 520px);
+  flex: 1 1 360px;
+}
+
+.searchFieldShell[data-open='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.searchFieldShell[data-open='true']:focus-within {
+  border-color: var(--mf-primary, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  background: #ffffff;
+}
+
+.searchFieldShell[data-open='false'] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.searchIcon {
+  width: 18px;
+  height: 18px;
+  color: var(--table-muted, #64748b);
+}
+
+.searchField {
+  flex: 1 1 auto;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.95rem;
+  color: inherit;
+  min-width: 0;
+}
+
+.searchActions {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.searchActionButton {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(148, 163, 184, 0.18);
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.searchActionButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.searchActionButton:not([disabled]):hover {
+  background: rgba(37, 99, 235, 0.2);
+}
+
+.actionsGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 14px;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primaryButton {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.primaryButton:hover:not([disabled]) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(37, 99, 235, 0.25);
+}
+
+.secondaryButton {
+  background: rgba(248, 250, 255, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: inherit;
+  font-weight: 500;
+}
+
+.secondaryButton[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.filtersRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  font-size: 0.8rem;
+}
+
+.chip button {
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  color: inherit;
+}
+
+@media (max-width: 900px) {
+  .trailingArea {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .root {
+    gap: 0.5rem;
+  }
+
+  .trailingArea {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .leadingActions,
+  .trailingActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .searchFieldShell {
+    max-width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .searchFieldShell[data-open='false'] {
+    max-width: 0;
+  }
+
+  .actionsGroup {
+    flex: 1 1 auto;
+    justify-content: space-between;
+  }
+
+  .primaryButton span,
+  .secondaryButton span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+
+  .primaryButton,
+  .secondaryButton,
+  .leadingActions > *,
+  .trailingActions > * {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 12px;
+  }
+
+  .leadingActions,
+  .actionsGroup,
+  .trailingActions {
+    gap: 0.4rem;
+  }
+}

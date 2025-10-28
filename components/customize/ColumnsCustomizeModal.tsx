@@ -1,12 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Reorder } from 'framer-motion';
-import {
-  FiLock,
-  FiEye,
-  FiEyeOff,
-  FiX,
-} from 'react-icons/fi';
+import { FiEye, FiEyeOff, FiLock, FiX } from 'react-icons/fi';
 
 import styles from '../../styles/CustomizeColumnsModal.module.css';
 
@@ -18,9 +13,10 @@ export type ColumnConfig = {
   visible: boolean;
   pinned?: ColumnPinPosition;
   locked?: boolean;
+  mandatory?: boolean;
 };
 
-export type CustomizeColumnsModalProps = {
+export type ColumnsCustomizeModalProps = {
   context: 'transactions' | 'accounts';
   open: boolean;
   columns: ColumnConfig[];
@@ -29,30 +25,35 @@ export type CustomizeColumnsModalProps = {
   onChange: (columns: ColumnConfig[]) => void;
 };
 
-function normalizeColumns(columns: ColumnConfig[]) {
-  return columns.map((column) => ({
-    ...column,
-    pinned: column.pinned ?? null,
-    visible: column.visible !== false,
-    locked: column.locked || column.id === 'notes',
-  }));
+function normalizeColumns(context: ColumnsCustomizeModalProps['context'], columns: ColumnConfig[]) {
+  return columns.map((column) => {
+    const isAccountName = context === 'accounts' && column.id === 'accountName';
+    const mandatory = Boolean(column.mandatory || isAccountName);
+    return {
+      ...column,
+      pinned: column.pinned ?? null,
+      visible: mandatory ? true : column.visible !== false,
+      locked: column.locked || mandatory,
+      mandatory,
+    };
+  });
 }
 
-export function CustomizeColumnsModal({
+export function ColumnsCustomizeModal({
   context,
   open,
   columns,
   defaultColumns,
   onClose,
   onChange,
-}: CustomizeColumnsModalProps) {
-  const [draftColumns, setDraftColumns] = useState<ColumnConfig[]>(() => normalizeColumns(columns));
+}: ColumnsCustomizeModalProps) {
+  const [draftColumns, setDraftColumns] = useState<ColumnConfig[]>(() => normalizeColumns(context, columns));
 
   useEffect(() => {
     if (open) {
-      setDraftColumns(normalizeColumns(columns));
+      setDraftColumns(normalizeColumns(context, columns));
     }
-  }, [open, columns]);
+  }, [open, columns, context]);
 
   const modalTitle = useMemo(
     () => (context === 'accounts' ? 'Customize account columns' : 'Customize transaction columns'),
@@ -61,7 +62,7 @@ export function CustomizeColumnsModal({
 
   const emitChange = (nextColumns: ColumnConfig[]) => {
     setDraftColumns(nextColumns);
-    onChange(normalizeColumns(nextColumns));
+    onChange(normalizeColumns(context, nextColumns));
   };
 
   const handleToggleVisibility = (id: string) => {
@@ -73,17 +74,6 @@ export function CustomizeColumnsModal({
         return column;
       }
       return { ...column, visible: !column.visible };
-    });
-    emitChange(next);
-  };
-
-  const handlePin = (id: string, position: ColumnPinPosition) => {
-    const next = draftColumns.map((column) => {
-      if (column.id !== id) {
-        return column;
-      }
-      const nextPinned = column.pinned === position ? null : position;
-      return { ...column, pinned: nextPinned };
     });
     emitChange(next);
   };
@@ -100,7 +90,7 @@ export function CustomizeColumnsModal({
   };
 
   const handleReset = () => {
-    const next = normalizeColumns(defaultColumns);
+    const next = normalizeColumns(context, defaultColumns);
     emitChange(next);
   };
 
@@ -133,7 +123,7 @@ export function CustomizeColumnsModal({
               <header className={styles.header}>
                 <div>
                   <Dialog.Title className={styles.title}>{modalTitle}</Dialog.Title>
-                  <p className={styles.subtitle}>Drag to reorder, pin columns, or toggle visibility in real time.</p>
+                  <p className={styles.subtitle}>Drag to reorder and toggle visibility. Mandatory columns stay visible.</p>
                 </div>
                 <div className={styles.headerButtons}>
                   <button type="button" onClick={handleSelectAll} className={styles.headerButton}>
@@ -169,39 +159,17 @@ export function CustomizeColumnsModal({
                         {column.locked ? (
                           <span className={styles.lockBadge}>
                             <FiLock aria-hidden />
-                            Locked
+                            Mandatory
                           </span>
                         ) : (
-                          <>
-                            <button
-                              type="button"
-                              className={styles.columnControlButton}
-                              onClick={() => handleToggleVisibility(column.id)}
-                              aria-label={`${column.visible ? 'Hide' : 'Show'} ${column.label}`}
-                            >
-                              {column.visible ? <FiEye aria-hidden /> : <FiEyeOff aria-hidden />}
-                            </button>
-                            <div className={styles.pinControls}>
-                              <button
-                                type="button"
-                                className={styles.pinButton}
-                                data-active={column.pinned === 'left' ? 'true' : undefined}
-                                onClick={() => handlePin(column.id, 'left')}
-                                aria-label={`Pin ${column.label} to the left`}
-                              >
-                                Left
-                              </button>
-                              <button
-                                type="button"
-                                className={styles.pinButton}
-                                data-active={column.pinned === 'right' ? 'true' : undefined}
-                                onClick={() => handlePin(column.id, 'right')}
-                                aria-label={`Pin ${column.label} to the right`}
-                              >
-                                Right
-                              </button>
-                            </div>
-                          </>
+                          <button
+                            type="button"
+                            className={styles.columnControlButton}
+                            onClick={() => handleToggleVisibility(column.id)}
+                            aria-label={`${column.visible ? 'Hide' : 'Show'} ${column.label}`}
+                          >
+                            {column.visible ? <FiEye aria-hidden /> : <FiEyeOff aria-hidden />}
+                          </button>
                         )}
                       </div>
                     </div>
@@ -216,4 +184,4 @@ export function CustomizeColumnsModal({
   );
 }
 
-export default CustomizeColumnsModal;
+export default ColumnsCustomizeModal;

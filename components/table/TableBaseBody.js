@@ -1,6 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { FiEdit2 } from 'react-icons/fi';
 
+import {
+  TRANSACTION_TYPE_VALUES,
+  getTransactionTypeLabel,
+  normalizeTransactionType,
+} from '../../lib/transactions/transactionTypes';
+
 import styles from './TableBase.module.css';
 import bodyStyles from './TableBaseBody.module.css';
 import { formatAmount, formatPercent } from '../../lib/numberFormat';
@@ -62,14 +68,33 @@ function formatTransactionDate(value, format = 'DD/MM') {
   return formatter.format(dateValue);
 }
 
-function getAmountToneClass(type) {
-  if (type === 'Income') {
+function resolveTransactionType(transaction) {
+  const value = transaction?.typeValue ?? normalizeTransactionType(transaction?.type);
+  const label = transaction?.typeLabel ?? getTransactionTypeLabel(value);
+  return { value, label };
+}
+
+function getAmountToneClass(typeValue) {
+  if (typeValue === TRANSACTION_TYPE_VALUES.INCOME || typeValue === TRANSACTION_TYPE_VALUES.CASHBACK) {
     return bodyStyles.amountIncome;
   }
-  if (type === 'Transfer') {
+  if (typeValue === TRANSACTION_TYPE_VALUES.TRANSFER) {
     return bodyStyles.amountTransfer;
   }
   return bodyStyles.amountExpense;
+}
+
+function getTypePillClass(typeValue) {
+  if (typeValue === TRANSACTION_TYPE_VALUES.INCOME || typeValue === TRANSACTION_TYPE_VALUES.CASHBACK) {
+    return `${bodyStyles.pill} ${bodyStyles.pillIncome}`.trim();
+  }
+  if (typeValue === TRANSACTION_TYPE_VALUES.TRANSFER) {
+    return `${bodyStyles.pill} ${bodyStyles.pillTransfer}`.trim();
+  }
+  if (typeValue === TRANSACTION_TYPE_VALUES.EXPENSES || typeValue === TRANSACTION_TYPE_VALUES.DEBT) {
+    return `${bodyStyles.pill} ${bodyStyles.pillExpense}`.trim();
+  }
+  return `${bodyStyles.pill} ${bodyStyles.pillNeutral}`.trim();
 }
 
 function TotalBackCell({ transaction }) {
@@ -98,25 +123,19 @@ function TotalBackCell({ transaction }) {
 
 const columnRenderers = {
   date: (txn, descriptor) => formatTransactionDate(txn.date, descriptor.column.format),
-  type: (txn) => (
-    <span
-      className={
-        txn.type === 'Income'
-          ? `${bodyStyles.pill} ${bodyStyles.pillIncome}`
-          : `${bodyStyles.pill} ${bodyStyles.pillExpense}`
-      }
-    >
-      {txn.type ?? '—'}
-    </span>
-  ),
+  type: (txn) => {
+    const { value, label } = resolveTransactionType(txn);
+    return <span className={getTypePillClass(value)}>{label ?? '—'}</span>;
+  },
   account: (txn) => txn.account ?? '—',
   shop: (txn) => txn.shop ?? '—',
   notes: (txn) => txn.notes ?? '—',
   amount: (txn) => {
     const numeric = Math.abs(Number(txn.amount ?? 0));
+    const { value: typeValue } = resolveTransactionType(txn);
     return (
       <span
-        className={`${bodyStyles.amountValue} ${getAmountToneClass(txn.type)}`}
+        className={`${bodyStyles.amountValue} ${getAmountToneClass(typeValue)}`}
         data-testid={`transaction-amount-${txn.id}`}
       >
         {formatAmount(numeric)}
