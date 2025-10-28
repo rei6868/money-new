@@ -6,7 +6,7 @@ import AccountsPageHeader from '../../components/accounts/AccountsPageHeader';
 import TableAccounts from '../../components/accounts/TableAccounts';
 import AccountEditModal, { AccountEditPayload } from '../../components/accounts/AccountEditModal';
 import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGlobal';
-import HeaderActionsBar from '../../components/common/HeaderActionsBar';
+import HeaderActionBar from '../../components/common/HeaderActionBar';
 import CustomizeColumnsModal, {
   ColumnConfig as CustomizeColumnConfig,
 } from '../../components/common/CustomizeColumnsModal';
@@ -587,7 +587,7 @@ export default function AccountsPage() {
         <div className={styles.pageContent}>
           <AccountsPageHeader activeTab={activeTab} onTabChange={setActiveTab} />
 
-          <HeaderActionsBar
+          <HeaderActionBar
             context="accounts"
             onAdd={handleAddAccountClick}
             addLabel="Add Account"

@@ -2,11 +2,9 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Reorder } from 'framer-motion';
 import {
-  FiChevronsLeft,
-  FiChevronsRight,
+  FiLock,
   FiEye,
   FiEyeOff,
-  FiLock,
   FiX,
 } from 'react-icons/fi';
 
@@ -36,7 +34,7 @@ function normalizeColumns(columns: ColumnConfig[]) {
     ...column,
     pinned: column.pinned ?? null,
     visible: column.visible !== false,
-    locked: column.locked ?? false,
+    locked: column.locked || column.id === 'notes',
   }));
 }
 
@@ -152,44 +150,60 @@ export function CustomizeColumnsModal({
 
               <Reorder.Group axis="y" values={draftColumns} onReorder={handleReorder} className={styles.columnList}>
                 {draftColumns.map((column) => (
-                  <Reorder.Item key={column.id} value={column} className={styles.columnItem}>
-                    <div className={styles.columnLabelGroup}>
-                      <span className={styles.columnDragHandle} aria-hidden>
-                        ⠿
-                      </span>
+                  <Reorder.Item
+                    key={column.id}
+                    value={column}
+                    className={styles.columnItem}
+                    dragListener={!column.locked}
+                    aria-disabled={column.locked ? 'true' : undefined}
+                  >
+                    <span className={styles.columnDragHandle} aria-hidden>
+                      ⠿
+                    </span>
+                    <div className={styles.columnChipBody}>
                       <div className={styles.columnMeta}>
                         <span className={styles.columnLabel}>{column.label}</span>
                         {column.locked ? <span className={styles.columnHint}>Locked</span> : null}
                       </div>
-                    </div>
-                    <div className={styles.columnActions}>
-                      <button
-                        type="button"
-                        className={styles.columnActionButton}
-                        onClick={() => handlePin(column.id, 'left')}
-                        aria-pressed={column.pinned === 'left'}
-                        aria-label={`Pin ${column.label} to the left`}
-                      >
-                        <FiChevronsLeft aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.columnActionButton}
-                        onClick={() => handlePin(column.id, 'right')}
-                        aria-pressed={column.pinned === 'right'}
-                        aria-label={`Pin ${column.label} to the right`}
-                      >
-                        <FiChevronsRight aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.columnActionButton}
-                        onClick={() => handleToggleVisibility(column.id)}
-                        aria-label={`${column.visible ? 'Hide' : 'Show'} ${column.label}`}
-                        disabled={column.locked}
-                      >
-                        {column.locked ? <FiLock aria-hidden /> : column.visible ? <FiEye aria-hidden /> : <FiEyeOff aria-hidden />}
-                      </button>
+                      <div className={styles.columnControls}>
+                        {column.locked ? (
+                          <span className={styles.lockBadge}>
+                            <FiLock aria-hidden />
+                            Locked
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className={styles.columnControlButton}
+                              onClick={() => handleToggleVisibility(column.id)}
+                              aria-label={`${column.visible ? 'Hide' : 'Show'} ${column.label}`}
+                            >
+                              {column.visible ? <FiEye aria-hidden /> : <FiEyeOff aria-hidden />}
+                            </button>
+                            <div className={styles.pinControls}>
+                              <button
+                                type="button"
+                                className={styles.pinButton}
+                                data-active={column.pinned === 'left' ? 'true' : undefined}
+                                onClick={() => handlePin(column.id, 'left')}
+                                aria-label={`Pin ${column.label} to the left`}
+                              >
+                                Left
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.pinButton}
+                                data-active={column.pinned === 'right' ? 'true' : undefined}
+                                onClick={() => handlePin(column.id, 'right')}
+                                aria-label={`Pin ${column.label} to the right`}
+                              >
+                                Right
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </Reorder.Item>
                 ))}
