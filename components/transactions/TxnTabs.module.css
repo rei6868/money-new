@@ -18,15 +18,37 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   color: #475569;
   min-width: 90px;
 }
 
-.tabButton[data-active='true'] {
+/* Default color (All tab) */
+.tabButton[data-active='true'][data-color='default'] {
   background: #2563eb;
   color: #ffffff;
   box-shadow: 0 12px 25px rgba(37, 99, 235, 0.25);
+}
+
+/* Danger color (Expense tab) */
+.tabButton[data-active='true'][data-color='danger'] {
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 12px 25px rgba(220, 38, 38, 0.25);
+}
+
+/* Success color (Income tab) */
+.tabButton[data-active='true'][data-color='success'] {
+  background: #16a34a;
+  color: #ffffff;
+  box-shadow: 0 12px 25px rgba(22, 163, 74, 0.25);
+}
+
+/* Primary color (Transfer tab) */
+.tabButton[data-active='true'][data-color='primary'] {
+  background: #7c3aed;
+  color: #ffffff;
+  box-shadow: 0 12px 25px rgba(124, 58, 237, 0.25);
 }
 
 .tabLabel {

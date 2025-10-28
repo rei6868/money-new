@@ -139,10 +139,63 @@
   opacity: 0.65;
 }
 
+.selectionToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 12px;
+  width: 100%;
+}
+
 .selectionCount {
   font-size: 0.9rem;
   color: var(--mf-text-secondary);
   font-weight: 600;
+}
+
+.selectionActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.selectionActionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--mf-text-primary);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.selectionActionButton:hover {
+  background: rgba(99, 102, 241, 0.15);
+}
+
+.selectionActionButton[data-action='delete'] {
+  color: #dc2626;
+}
+
+.selectionActionButton[data-action='delete']:hover {
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.selectionActionButton[data-action='cancel'] {
+  color: #64748b;
+}
+
+.selectionActionButton[data-action='cancel']:hover {
+  background: rgba(100, 116, 139, 0.1);
 }
 
 .toolbarCard {

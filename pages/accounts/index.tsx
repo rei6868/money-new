@@ -729,9 +729,35 @@ export default function AccountsPage() {
     <AppLayout title="Accounts" subtitle="">
       <div className={styles.pageShell}>
         <div className={styles.pageContent}>
-          <AccountsPageHeader activeTab={activeTab} onTabChange={setActiveTab} />
-
           <div className={styles.topBar}>
+            {/* Left: Toggle */}
+            <div className={styles.headerTabGroup} role="tablist" aria-label="Accounts view mode">
+              <div className={styles.viewTabs}>
+                <span className={styles.tabIndicator} data-position={activeTab === 'cards' ? 'cards' : 'table'} aria-hidden />
+                <button
+                  type="button"
+                  className={styles.tabButton}
+                  data-active={activeTab === 'table' ? 'true' : 'false'}
+                  onClick={() => setActiveTab('table')}
+                  role="tab"
+                  aria-selected={activeTab === 'table'}
+                >
+                  Table
+                </button>
+                <button
+                  type="button"
+                  className={styles.tabButton}
+                  data-active={activeTab === 'cards' ? 'true' : 'false'}
+                  onClick={() => setActiveTab('cards')}
+                  role="tab"
+                  aria-selected={activeTab === 'cards'}
+                >
+                  Cards
+                </button>
+              </div>
+            </div>
+
+            {/* Right: Search */}
             <div className={styles.searchContainer}>
               <FiSearch className={styles.searchIcon} aria-hidden />
               <input
@@ -753,6 +779,10 @@ export default function AccountsPage() {
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Action buttons on second line */}
+          <div className={styles.actionBar}>
             {filterActionButtons}
           </div>
 

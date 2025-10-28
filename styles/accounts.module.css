@@ -22,7 +22,16 @@
 .topBar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.actionBar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   width: 100%;
   flex-wrap: wrap;
 }
@@ -180,6 +189,60 @@
   gap: 0.75rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.headerTabGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.viewTabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(15, 23, 42, 0.05);
+  padding: 0.3rem;
+  border-radius: 999px;
+  position: relative;
+}
+
+.tabIndicator {
+  position: absolute;
+  height: 100%;
+  width: calc(50% - 0.15rem);
+  background: #1d4ed8;
+  border-radius: 999px;
+  transition: left 0.3s ease;
+  left: 0.3rem;
+  z-index: 0;
+}
+
+.viewTabs[data-position='cards'] .tabIndicator {
+  left: calc(50% + 0.15rem);
+}
+
+.tabButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.95rem;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 600;
+  z-index: 1;
+  min-width: 60px;
+}
+
+.tabButton[data-active='true'] {
+  color: #ffffff;
 }
 
 .toolbarCard {
@@ -824,6 +887,29 @@
   }
 }
 
+@media (max-width: 640px) {
+  .topBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .searchContainer {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .actionBar {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.5rem;
+  }
+
+  .actionBar button {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
 @media (max-width: 480px) {
   .toolbarSearchRow {
     flex-direction: column;
@@ -869,6 +955,15 @@
   .toolbarIconButton,
   .searchSubmitButton {
     font-size: 0.9rem;
+  }
+
+  .actionBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actionBar button {
+    width: 100%;
   }
 }
 

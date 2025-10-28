@@ -1,7 +1,7 @@
 import { FiTrash2, FiX } from 'react-icons/fi';
-import styles from '../../styles/TransactionsHistory.module.css';
+import styles from '../../styles/MiniToolbar.module.css';
 
-export function SelectionActionBar({
+export default function MiniToolbar({
   selectedCount = 0,
   onDelete,
   onCancel,
@@ -11,18 +11,18 @@ export function SelectionActionBar({
   }
 
   return (
-    <div className={styles.selectionToolbar} data-testid="transactions-selection-toolbar">
-      <span className={styles.selectionCount} data-testid="transactions-selection-count">
+    <div className={styles.toolbar} data-testid="mini-toolbar">
+      <span className={styles.count} data-testid="mini-toolbar-count">
         {selectedCount} selected
       </span>
-      <div className={styles.selectionActions}>
+      <div className={styles.actions}>
         {onDelete && (
           <button
             type="button"
-            className={styles.selectionActionButton}
+            className={styles.actionButton}
             data-action="delete"
             onClick={onDelete}
-            aria-label={`Delete ${selectedCount} selected transaction${selectedCount !== 1 ? 's' : ''}`}
+            aria-label={`Delete ${selectedCount} selected item${selectedCount !== 1 ? 's' : ''}`}
           >
             <FiTrash2 aria-hidden />
             <span>Delete</span>
@@ -31,7 +31,7 @@ export function SelectionActionBar({
         {onCancel && (
           <button
             type="button"
-            className={styles.selectionActionButton}
+            className={styles.actionButton}
             data-action="cancel"
             onClick={onCancel}
             aria-label="Clear selection"
@@ -44,3 +44,4 @@ export function SelectionActionBar({
     </div>
   );
 }
+
