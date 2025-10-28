@@ -87,9 +87,9 @@ function extractString(value: unknown): string | null {
   return null;
 }
 
-function toUniqueOptions(values: (string | null | undefined)[]): FilterOption[] {
+function toUniqueOptions(values: (string | null | undefined)[]): Array<{ label: string; value: string }> {
   const seen = new Set<string>();
-  const options: FilterOption[] = [];
+  const options: Array<{ label: string; value: string }> = [];
   values.forEach((value) => {
     const normalized = extractString(value ?? null);
     if (!normalized) {
@@ -418,57 +418,8 @@ export default function AccountsPage() {
 
   const filteredAccounts = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
-    const accountFilter = new Set(filters.accounts.map((value) => value.toLowerCase()));
-    const peopleFilter = new Set(filters.people.map((value) => value.toLowerCase()));
-    const debtFilter = new Set(filters.debtTags.map((value) => value.toLowerCase()));
-    const categoryFilter = new Set(filters.categories.map((value) => value.toLowerCase()));
-    const typeFilter = filters.type ? filters.type.toLowerCase() : null;
-
-    const rangeStart = filters.dateRange.start ? new Date(filters.dateRange.start) : null;
-    const rangeEnd = filters.dateRange.end ? new Date(filters.dateRange.end) : null;
 
     return sortedAccounts.filter((account) => {
-      if (accountFilter.size > 0 && !accountFilter.has(account.accountName.toLowerCase())) {
-        return false;
-      }
-
-      const owner = extractString(account.ownerName ?? account.ownerId) ?? '';
-      if (peopleFilter.size > 0 && !peopleFilter.has(owner.toLowerCase())) {
-        return false;
-      }
-
-      if (categoryFilter.size > 0 && !categoryFilter.has(account.accountType.toLowerCase())) {
-        return false;
-      }
-
-      if (typeFilter && account.accountType.toLowerCase() !== typeFilter) {
-        return false;
-      }
-
-      if (debtFilter.size > 0) {
-        const accountTags = extractDebtTags(account).map((tag) => tag.toLowerCase());
-        if (!accountTags.some((tag) => debtFilter.has(tag))) {
-          return false;
-        }
-      }
-
-      if (rangeStart || rangeEnd) {
-        const accountDate = extractAccountDate(account);
-        if (!accountDate) {
-          return false;
-        }
-        if (rangeStart && accountDate < rangeStart) {
-          return false;
-        }
-        if (rangeEnd) {
-          const adjustedEnd = new Date(rangeEnd);
-          adjustedEnd.setHours(23, 59, 59, 999);
-          if (accountDate > adjustedEnd) {
-            return false;
-          }
-        }
-      }
-
       if (!normalizedQuery) {
         return true;
       }
@@ -485,13 +436,9 @@ export default function AccountsPage() {
         typeof value === 'string' && value.toLowerCase().includes(normalizedQuery),
       );
     });
-  }, [filters, searchQuery, sortedAccounts]);
+  }, [searchQuery, sortedAccounts]);
 
-  useEffect(() => {
-    if (selectedIds.length > 0) {
-      setSelectedIds([]);
-    }
-  }, [filters, searchQuery, selectedIds.length]);
+
 
   const totalPages = useMemo(() => {
     if (filteredAccounts.length === 0) {
@@ -792,7 +739,7 @@ export default function AccountsPage() {
                 className={styles.searchInput}
                 placeholder="Search accounts…"
                 value={searchQuery}
-                onChange={handleSearchChange}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 aria-label="Search accounts"
               />
               {searchQuery && (

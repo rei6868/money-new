@@ -459,11 +459,7 @@ export default function TransactionsHistoryPage() {
   const tabMetrics = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
     const normalizedQuery = searchQuery.trim().toLowerCase();
-    const baseFilter = {
-      ...filters,
-      type: null,
-    };
-    const predicate = buildTransactionPredicate(baseFilter, normalizedQuery, false);
+    const predicate = buildTransactionPredicate(normalizedQuery, false);
     const baseMatches = base.filter(predicate);
     const counts = new Map();
     baseMatches.forEach((txn) => {
@@ -496,7 +492,7 @@ export default function TransactionsHistoryPage() {
     });
 
     return tabs;
-  }, [filters, searchQuery, transactions, resolvedTypeList]);
+  }, [searchQuery, transactions, resolvedTypeList]);
 
   useEffect(() => {
     if (selectedIds.length === 0) {
@@ -691,29 +687,10 @@ export default function TransactionsHistoryPage() {
 
   const handleTabChange = useCallback((tabId) => {
     setActiveTab(tabId);
-    setFilters((current) => {
-      const next = { ...current };
-      if (tabId === 'all' || tabId === TRANSACTION_TYPE_VALUES.TRANSFER) {
-        next.type = null;
-      } else {
-        next.type = tabId;
-      }
-      return next;
-    });
     setTransferOnly(tabId === TRANSACTION_TYPE_VALUES.TRANSFER);
   }, []);
 
   useEffect(() => {
-    if (filters?.type) {
-      if (activeTab !== filters.type) {
-        setActiveTab(filters.type);
-      }
-      if (transferOnly) {
-        setTransferOnly(false);
-      }
-      return;
-    }
-
     if (transferOnly) {
       if (activeTab !== TRANSACTION_TYPE_VALUES.TRANSFER) {
         setActiveTab(TRANSACTION_TYPE_VALUES.TRANSFER);
@@ -724,7 +701,7 @@ export default function TransactionsHistoryPage() {
     if (activeTab !== 'all') {
       setActiveTab('all');
     }
-  }, [activeTab, filters?.type, transferOnly]);
+  }, [activeTab, transferOnly]);
 
   const customizeColumns = useMemo(() => {
     const sorted = columnState.slice().sort((a, b) => a.order - b.order);
@@ -816,7 +793,7 @@ export default function TransactionsHistoryPage() {
                 className={styles.searchInput}
                 placeholder="Search transactions…"
                 value={searchQuery}
-                onChange={handleSearchChange}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 aria-label="Search transactions"
               />
               {searchQuery && (
