@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Reorder } from 'framer-motion';
 import {
   FiCheckCircle,
-  FiGripVertical,
+  FiMove,
   FiPlus,
   FiTrash2,
   FiZap,
@@ -183,7 +183,7 @@ export default function QuickAddSettingsPage() {
               return (
                 <Reorder.Item key={shortcut.id} value={shortcut} className={styles.shortcutItem}>
                   <span className={styles.dragHandle} aria-hidden>
-                    <FiGripVertical />
+                    <FiMove />
                   </span>
                   <div className={styles.shortcutBody}>
                     <div className={styles.shortcutHeader}>

@@ -129,23 +129,6 @@ export function QuickAddModal({
     setHasMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return undefined;
-    }
-    const handleResize = () => {
-      const mobile = isMobileViewport();
-      setIsMobile(mobile);
-      if (!mobile) {
-        updatePosition();
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [updatePosition]);
-
-  const actions = useMemo(() => ACTIONS[context] ?? [], [context]);
-
   const updatePosition = useCallback(() => {
     const trigger = triggerRef.current;
     if (!trigger) {
@@ -164,6 +147,23 @@ export function QuickAddModal({
       '--qa-min-width': `${minWidth}px`,
     } as CSSProperties);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+    const handleResize = () => {
+      const mobile = isMobileViewport();
+      setIsMobile(mobile);
+      if (!mobile) {
+        updatePosition();
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [updatePosition]);
+
+  const actions = useMemo(() => ACTIONS[context] ?? [], [context]);
 
   const openModal = () => {
     if (disabled) {
