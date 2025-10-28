@@ -4,6 +4,8 @@ import { FiArrowDownCircle, FiArrowUpCircle, FiLayers, FiRefreshCw, FiZap } from
 
 import styles from '../../styles/QuickAddMenu.module.css';
 
+const HOVER_CLOSE_DELAY = 160;
+
 export type QuickAddActionId = 'income' | 'expense' | 'transfer' | 'loan';
 
 export type QuickAddMenuProps = {
@@ -102,6 +104,9 @@ export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
             ref={containerRef}
             className={containerClassName}
             data-expanded={open ? 'true' : undefined}
+            onFocusCapture={() => {
+              clearCloseTimer();
+            }}
             onMouseEnter={() => {
               if (!isHoverable) {
                 return;
@@ -119,7 +124,7 @@ export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
               closeTimerRef.current = window.setTimeout(() => {
                 close();
                 closeTimerRef.current = null;
-              }, 180);
+              }, HOVER_CLOSE_DELAY);
             }}
           >
             <Popover.Button
@@ -130,6 +135,11 @@ export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
               aria-expanded={open ? 'true' : 'false'}
               onClick={() => {
                 clearCloseTimer();
+                if (!open) {
+                  updateMenuPosition();
+                }
+              }}
+              onFocus={() => {
                 if (!open) {
                   updateMenuPosition();
                 }
@@ -253,7 +263,7 @@ function QuickAddPanel({
               closeTimerRef.current = window.setTimeout(() => {
                 close();
                 closeTimerRef.current = null;
-              }, 180);
+              }, HOVER_CLOSE_DELAY);
             }}
           >
             <Popover.Panel

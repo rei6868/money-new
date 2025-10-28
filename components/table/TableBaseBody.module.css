@@ -17,13 +17,24 @@
   background-color: #ece9ff;
 }
 
+@keyframes rowSelectFlash {
+  from {
+    background: rgba(107, 77, 253, 0.16);
+  }
+  to {
+    background: #ece9ff;
+  }
+}
+
 .rowSelected {
   background: #ece9ff;
+  animation: rowSelectFlash 220ms ease;
 }
 
 .rowSelected :global(.stickyLeft),
 .rowSelected :global(.stickyRight) {
   background-color: #ece9ff;
+  animation: rowSelectFlash 220ms ease;
 }
 
 .amountValue {

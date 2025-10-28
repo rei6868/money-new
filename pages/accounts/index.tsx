@@ -4,6 +4,7 @@ import AppLayout from '../../components/AppLayout';
 import AccountsCardsView from '../../components/accounts/AccountsCardsView';
 import AccountsPageHeader from '../../components/accounts/AccountsPageHeader';
 import TableAccounts from '../../components/accounts/TableAccounts';
+import AccountEditModal, { AccountEditPayload } from '../../components/accounts/AccountEditModal';
 import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGlobal';
 import QuickAddMenu, { QuickAddActionId } from '../../components/common/QuickAddMenu';
 import {
@@ -124,6 +125,7 @@ export default function AccountsPage() {
   const [activeTab, setActiveTab] = useState<'table' | 'cards'>('table');
   const [addModalType, setAddModalType] = useState<AddModalType | null>(null);
   const [quickAction, setQuickAction] = useState<QuickAddActionId | null>(null);
+  const [editingAccount, setEditingAccount] = useState<NormalizedAccount | null>(null);
 
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -398,11 +400,52 @@ export default function AccountsPage() {
     [fetchAccounts, quickAction],
   );
 
+  const handleEditAccount = useCallback(
+    (account: AccountRow) => {
+      if (!account) {
+        return;
+      }
+      const match = accounts.find((row) => row.accountId === account.accountId);
+      const fallback = {
+        ...(account as NormalizedAccount),
+        raw: (account as NormalizedAccount).raw ?? { ...account },
+      };
+      setEditingAccount(match ?? fallback);
+    },
+    [accounts],
+  );
+
+  const handleCloseEditAccount = useCallback(() => {
+    setEditingAccount(null);
+  }, []);
+
+  const handleSubmitEditAccount = useCallback(
+    async (payload: AccountEditPayload) => {
+      setAccounts((prev) =>
+        prev.map((row) =>
+          row.accountId === payload.accountId
+            ? {
+                ...row,
+                accountName: payload.accountName,
+                accountType: payload.accountType,
+                status: payload.status,
+                notes: payload.notes,
+                openingBalance: payload.openingBalance,
+              }
+            : row,
+        ),
+      );
+      console.info('Account edit placeholder', payload);
+    },
+    [],
+  );
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
 
   const isAddModalOpen = addModalType !== null;
+  const isEditModalOpen = editingAccount !== null;
 
   return (
     <AppLayout title="Accounts" subtitle="">
@@ -466,7 +509,7 @@ export default function AccountsPage() {
                 onSortChange={handleSortChange}
                 isFetching={isFetching}
                 isShowingSelectedOnly={showSelectedOnly}
-                onQuickAction={(actionId) => handleQuickActionSelect(actionId as QuickAddActionId)}
+                onEditAccount={handleEditAccount}
               />
             </div>
           )}
@@ -482,6 +525,12 @@ export default function AccountsPage() {
         isOpen={isAddModalOpen}
         onClose={handleCloseAddModal}
         onSubmit={handleAddSubmit}
+      />
+      <AccountEditModal
+        account={editingAccount}
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditAccount}
+        onSubmit={handleSubmitEditAccount}
       />
     </AppLayout>
   );

@@ -123,6 +123,7 @@ const TableBaseInner = (
     rowIdKey = 'id',
     rowIdAccessor,
     renderRowActionsCell,
+    onEditRow,
   },
   forwardedRef,
 ) => {
@@ -315,9 +316,13 @@ const TableBaseInner = (
       if (!transaction) {
         return;
       }
+      if (typeof onEditRow === 'function') {
+        onEditRow(transaction);
+        return;
+      }
       onOpenAdvanced?.({ mode: 'edit', transaction });
     },
-    [onOpenAdvanced],
+    [onEditRow, onOpenAdvanced],
   );
 
   const paginationMode = usePaginationMode({
@@ -334,13 +339,6 @@ const TableBaseInner = (
       aria-label={tableTitle}
       style={{ '--transactions-font-scale': fontScale }}
     >
-      {hasActiveSelection ? (
-        <SelectionMiniToolbar
-          count={selectionCount}
-          onDelete={handleBulkDelete}
-          onCancel={handleClearSelection}
-        />
-      ) : null}
       {toolbarSlot}
       <div className={styles.tableShell}>
         <div
@@ -463,6 +461,15 @@ const TableBaseInner = (
           </div>
         ) : null}
       </div>
+      {hasActiveSelection ? (
+        <div className={styles.selectionToolbarDock}>
+          <SelectionMiniToolbar
+            count={selectionCount}
+            onDelete={handleBulkDelete}
+            onCancel={handleClearSelection}
+          />
+        </div>
+      ) : null}
     </section>
   );
 };

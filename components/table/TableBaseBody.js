@@ -33,26 +33,32 @@ function formatTransactionDate(value, format = 'DD/MM') {
     return '—';
   }
 
+  const shouldCompactDates =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(max-width: 500px)').matches;
+  const effectiveFormat = shouldCompactDates ? 'DD/MM' : format;
+
   const dateValue = new Date(`${value}T00:00:00`);
   if (Number.isNaN(dateValue.getTime())) {
     return value;
   }
 
-  if (format === 'DD/MM/YY') {
+  if (effectiveFormat === 'DD/MM/YY') {
     return dateFormatters['DD/MM'].format(dateValue);
   }
 
-  if (format === 'MM/DD/YY') {
+  if (effectiveFormat === 'MM/DD/YY') {
     return dateFormatters['MM/DD'].format(dateValue);
   }
 
-  if (format === 'YYYY-MM-DD') {
+  if (effectiveFormat === 'YYYY-MM-DD') {
     const month = String(dateValue.getMonth() + 1).padStart(2, '0');
     const day = String(dateValue.getDate()).padStart(2, '0');
     return `${dateValue.getFullYear()}-${month}-${day}`;
   }
 
-  const formatter = dateFormatters[format] ?? dateFormatters['DD/MM'];
+  const formatter = dateFormatters[effectiveFormat] ?? dateFormatters['DD/MM'];
   return formatter.format(dateValue);
 }
 
@@ -235,6 +241,7 @@ export function TableBaseBody({
 
   const renderDefaultRowActions = (transaction, isSelected, rowId) => {
     const resolvedId = rowId ?? transaction?.id;
+    const ariaLabel = resolvedId ? `Edit row ${resolvedId}` : 'Edit row';
     return (
       <td
         className={`${styles.bodyCell} ${styles.actionsCell}`}
@@ -250,7 +257,7 @@ export function TableBaseBody({
             onClick={() => onEditRow?.(transaction)}
             disabled={isColumnReorderMode}
             title="Edit"
-            aria-label={resolvedId ? `Edit transaction ${resolvedId}` : 'Edit transaction'}
+            aria-label={ariaLabel}
             data-testid={resolvedId ? `transaction-edit-${resolvedId}` : undefined}
           >
             <FiEdit2 aria-hidden />
