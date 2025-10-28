@@ -1,0 +1,79 @@
+/**
+ * Unified Modal Wrapper Styles
+ * 
+ * Standardized z-index and overlay system for all modals.
+ * 
+ * Z-Index Hierarchy:
+ * - standardLevel: backdrop=70, panel=80
+ * - topLevel: backdrop=85, modal=90 (for critical confirmations)
+ */
+
+/* Root container - establishes stacking context */
+.root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.root.standardLevel {
+  z-index: 70;
+}
+
+.root.topLevel {
+  z-index: 85;
+}
+
+/* Backdrop - semi-transparent overlay */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  pointer-events: auto;
+  z-index: -1; /* Relative to root */
+}
+
+.backdrop.withBlur {
+  backdrop-filter: blur(3px);
+}
+
+/* Panel container - centers modal content */
+.panelContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1; /* Above backdrop */
+}
+
+/* Modal panel - the actual modal content */
+.panel {
+  position: relative;
+  background: var(--mf-surface, #ffffff);
+  border-radius: 20px;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.28);
+  pointer-events: auto;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .root {
+    padding: 1rem;
+  }
+
+  .panel {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 24px;
+  }
+}
+

@@ -658,11 +658,14 @@ export default function TransactionsHistoryPage() {
     return base.filter(predicate);
   }, [transactions, filters, searchQuery, transferOnly]);
 
+  // Sync selected IDs with available transactions (remove IDs that no longer exist)
   useEffect(() => {
-    if (selectedIds.length > 0) {
-      setSelectedIds([]);
-    }
-  }, [filters, searchQuery, selectedIds.length, transferOnly]);
+    const availableIds = new Set(transactions.map((txn) => txn.id));
+    setSelectedIds((prev) => {
+      const next = prev.filter((id) => availableIds.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [transactions]);
 
   const displayedTransactions = useMemo(() => {
     if (!showSelectedOnly) {
