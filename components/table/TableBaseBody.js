@@ -178,6 +178,8 @@ export function TableBaseBody({
   getRowId = (row) => (row ? row.id ?? null : null),
   renderRowActionsCell,
   onEditRow,
+  pinnedLeftOffsets = new Map(),
+  pinnedRightOffsets = new Map(),
 }) {
   const [tooltipState, setTooltipState] = useState({ anchor: null, content: '', isVisible: false });
 
@@ -313,8 +315,10 @@ export function TableBaseBody({
                   </div>
                 </td>
                 {columns.map((descriptor) => {
-                  const { id, minWidth, width, align } = descriptor;
+                  const { id, minWidth, width, align, pinned } = descriptor;
                   const isHidden = hiddenColumnIds.has(id);
+                  const isPinnedLeft = pinned === 'left';
+                  const isPinnedRight = pinned === 'right';
                   const cellClassName = [
                     styles.bodyCell,
                     align === 'right'
@@ -322,16 +326,23 @@ export function TableBaseBody({
                       : align === 'center'
                       ? styles.cellAlignCenter
                       : '',
+                    isPinnedLeft ? styles.stickyLeft : '',
+                    isPinnedRight ? styles.stickyRight : '',
                     isHidden && isColumnReorderMode ? styles.bodyCellHidden : '',
                   ]
                     .filter(Boolean)
                     .join(' ');
+                  const stickyStyle = isPinnedLeft
+                    ? { left: `${pinnedLeftOffsets.get(id) ?? 0}px` }
+                    : isPinnedRight
+                    ? { right: `${pinnedRightOffsets.get(id) ?? 0}px` }
+                    : undefined;
 
                   return (
                     <td
                       key={id}
                       className={cellClassName}
-                      style={{ minWidth: `${minWidth}px`, width: `${width}px` }}
+                      style={{ minWidth: `${minWidth}px`, width: `${width}px`, ...stickyStyle }}
                       data-testid={`transactions-cell-${id}-${resolvedId ?? transaction.id ?? `row-${index}`}`}
                       aria-hidden={isHidden && isColumnReorderMode ? 'true' : undefined}
                       onMouseEnter={handleCellEnter}

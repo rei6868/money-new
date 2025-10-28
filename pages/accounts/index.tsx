@@ -6,7 +6,11 @@ import AccountsPageHeader from '../../components/accounts/AccountsPageHeader';
 import TableAccounts from '../../components/accounts/TableAccounts';
 import AccountEditModal, { AccountEditPayload } from '../../components/accounts/AccountEditModal';
 import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGlobal';
-import QuickAddMenu, { QuickAddActionId } from '../../components/common/QuickAddMenu';
+import HeaderActionsBar from '../../components/common/HeaderActionsBar';
+import CustomizeColumnsModal, {
+  ColumnConfig as CustomizeColumnConfig,
+} from '../../components/common/CustomizeColumnsModal';
+import FilterComingSoonModal from '../../components/common/FilterComingSoonModal';
 import {
   ACCOUNT_COLUMN_DEFINITIONS,
   ACCOUNT_SORTERS,
@@ -16,10 +20,10 @@ import {
 } from '../../components/accounts/accountColumns';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/accounts.module.css';
-import headerStyles from '../../styles/HeaderActionBar.module.css';
-import { FiPlus } from 'react-icons/fi';
 
-type ColumnState = ReturnType<typeof createDefaultColumnState>[number];
+type ColumnState = ReturnType<typeof createDefaultColumnState>[number] & {
+  pinned?: 'left' | 'right' | null;
+};
 
 type NormalizedAccount = AccountRow & {
   raw: Record<string, unknown>;
@@ -107,11 +111,17 @@ export default function AccountsPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
-  const [columnState, setColumnState] = useState(() =>
-    createDefaultColumnState(ACCOUNT_COLUMN_DEFINITIONS),
+  const [columnState, setColumnState] = useState<ColumnState[]>(() =>
+    createDefaultColumnState(ACCOUNT_COLUMN_DEFINITIONS).map((column) => ({
+      ...column,
+      pinned: null,
+    })),
   );
-  const [defaultColumnState] = useState(() =>
-    createDefaultColumnState(ACCOUNT_COLUMN_DEFINITIONS),
+  const [defaultColumnState] = useState<ColumnState[]>(() =>
+    createDefaultColumnState(ACCOUNT_COLUMN_DEFINITIONS).map((column) => ({
+      ...column,
+      pinned: null,
+    })),
   );
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1] ?? PAGE_SIZE_OPTIONS[0]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -124,7 +134,11 @@ export default function AccountsPage() {
   });
   const [activeTab, setActiveTab] = useState<'table' | 'cards'>('table');
   const [addModalType, setAddModalType] = useState<AddModalType | null>(null);
-  const [quickAction, setQuickAction] = useState<QuickAddActionId | null>(null);
+  const [quickAction, setQuickAction] = useState<string | null>(null);
+  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [previousSearchQuery, setPreviousSearchQuery] = useState('');
   const [editingAccount, setEditingAccount] = useState<NormalizedAccount | null>(null);
 
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
@@ -134,29 +148,55 @@ export default function AccountsPage() {
     [],
   );
 
+  const validColumnIds = useMemo(
+    () =>
+      new Set<ColumnState['id']>(
+        ACCOUNT_COLUMN_DEFINITIONS.map((definition) => definition.id as ColumnState['id']),
+      ),
+    [],
+  );
+
+  const resolveFallbackWidth = useCallback(
+    (id: ColumnState['id']) => {
+      const definition = definitionLookup.get(id);
+      if (!definition) {
+        return 200;
+      }
+      const minWidth = definition.minWidth ?? 160;
+      const defaultWidth = definition.defaultWidth ?? minWidth;
+      return Math.max(defaultWidth, minWidth);
+    },
+    [definitionLookup],
+  );
+
   const orderedColumns = useMemo<ColumnState[]>(() => {
     if (columnState.length === 0) {
       return [];
     }
-    return columnState
-      .slice()
-      .sort((a, b) => a.order - b.order)
-      .map((state) => {
-        const definition = definitionLookup.get(state.id) as AccountColumnDefinition | undefined;
-        const minWidth = definition?.minWidth ?? 160;
-        const defaultVisible = definition?.defaultVisible !== false;
-        const normalizedWidth = Math.max(
-          state.width ?? definition?.defaultWidth ?? minWidth,
-          minWidth,
-        );
+    const sorted = columnState.slice().sort((a, b) => a.order - b.order);
+    const pinnedLeft = sorted.filter((column) => column.pinned === 'left');
+    const pinnedRight = sorted.filter((column) => column.pinned === 'right');
+    const unpinned = sorted.filter((column) => column.pinned !== 'left' && column.pinned !== 'right');
+    const arranged = [...pinnedLeft, ...unpinned, ...pinnedRight];
 
-        return {
-          ...state,
-          width: normalizedWidth,
-          visible: state.visible ?? defaultVisible,
-          optional: Boolean(state.optional ?? definition?.optional),
-        };
-      });
+    return arranged.map((state, index) => {
+      const definition = definitionLookup.get(state.id) as AccountColumnDefinition | undefined;
+      const minWidth = definition?.minWidth ?? 160;
+      const defaultVisible = definition?.defaultVisible !== false;
+      const normalizedWidth = Math.max(
+        state.width ?? definition?.defaultWidth ?? minWidth,
+        minWidth,
+      );
+
+      return {
+        ...state,
+        order: index,
+        width: normalizedWidth,
+        visible: state.visible ?? defaultVisible,
+        optional: Boolean(state.optional ?? definition?.optional),
+        pinned: state.pinned ?? null,
+      };
+    });
   }, [columnState, definitionLookup]);
 
   const visibleColumns = useMemo<ColumnState[]>(
@@ -176,6 +216,37 @@ export default function AccountsPage() {
     }
     return optionalColumns.every((column) => column.visible !== false);
   }, [orderedColumns]);
+
+  const customizeColumns = useMemo(() => {
+    const sorted = columnState.slice().sort((a, b) => a.order - b.order);
+    return sorted.map((column) => {
+      const definition = definitionLookup.get(column.id) as AccountColumnDefinition | undefined;
+      return {
+        id: column.id,
+        label: definition?.label ?? column.id,
+        visible: column.visible !== false,
+        pinned: column.pinned ?? null,
+        locked: column.id === 'notes',
+      };
+    });
+  }, [columnState, definitionLookup]);
+
+  const defaultCustomizeColumns = useMemo(() => {
+    if (!defaultColumnState || defaultColumnState.length === 0) {
+      return customizeColumns;
+    }
+    const sorted = defaultColumnState.slice().sort((a, b) => a.order - b.order);
+    return sorted.map((column) => {
+      const definition = definitionLookup.get(column.id) as AccountColumnDefinition | undefined;
+      return {
+        id: column.id,
+        label: definition?.label ?? column.id,
+        visible: column.visible !== false,
+        pinned: column.pinned ?? null,
+        locked: column.id === 'notes',
+      };
+    });
+  }, [defaultColumnState, definitionLookup, customizeColumns]);
 
   const fetchAccounts = useCallback(async () => {
     setIsFetching(true);
@@ -227,12 +298,33 @@ export default function AccountsPage() {
     [accounts, sortState],
   );
 
+  const filteredAccounts = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return sortedAccounts;
+    }
+
+    return sortedAccounts.filter((account) => {
+      const haystack = [
+        account.accountName,
+        account.accountType,
+        account.ownerName,
+        account.status,
+        account.notes,
+        account.accountId,
+      ];
+      return haystack.some((value) =>
+        typeof value === 'string' && value.toLowerCase().includes(normalizedQuery),
+      );
+    });
+  }, [sortedAccounts, searchQuery]);
+
   const totalPages = useMemo(() => {
-    if (sortedAccounts.length === 0) {
+    if (filteredAccounts.length === 0) {
       return 1;
     }
-    return Math.max(1, Math.ceil(sortedAccounts.length / pageSize));
-  }, [sortedAccounts.length, pageSize]);
+    return Math.max(1, Math.ceil(filteredAccounts.length / pageSize));
+  }, [filteredAccounts.length, pageSize]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -242,12 +334,12 @@ export default function AccountsPage() {
 
   const paginatedAccounts = useMemo(() => {
     if (activeTab === 'cards') {
-      return sortedAccounts;
+      return filteredAccounts;
     }
     const start = (currentPage - 1) * pageSize;
     const end = start + pageSize;
-    return sortedAccounts.slice(start, end);
-  }, [sortedAccounts, currentPage, pageSize, activeTab]);
+    return filteredAccounts.slice(start, end);
+  }, [filteredAccounts, currentPage, pageSize, activeTab]);
 
   const selectedLookup = useMemo(() => new Set(selectedIds), [selectedIds]);
 
@@ -364,10 +456,52 @@ export default function AccountsPage() {
     void fetchAccounts();
   }, [fetchAccounts]);
 
-  const handleQuickActionSelect = useCallback((actionId: QuickAddActionId) => {
+  const handleQuickActionSelect = useCallback((_: string, actionId: string) => {
     setQuickAction(actionId);
     setAddModalType('transaction');
   }, []);
+
+  const handleCustomizeChange = useCallback(
+    (columnsConfig: CustomizeColumnConfig[]) => {
+      setColumnState((prev) => {
+        const widthLookup = new Map(prev.map((column) => [column.id, column.width]));
+        const optionalLookup = new Map(prev.map((column) => [column.id, column.optional]));
+
+        const next: ColumnState[] = [];
+        columnsConfig.forEach((column, index) => {
+          if (!validColumnIds.has(column.id as ColumnState['id'])) {
+            return;
+          }
+
+          const columnId = column.id as ColumnState['id'];
+          next.push({
+            id: columnId,
+            width: widthLookup.get(columnId) ?? resolveFallbackWidth(columnId),
+            visible: column.visible,
+            order: index,
+            pinned: column.pinned ?? null,
+            optional: optionalLookup.get(columnId) ?? false,
+          });
+        });
+
+        return next;
+      });
+    },
+    [resolveFallbackWidth, validColumnIds],
+  );
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+  }, []);
+
+  const handleSearchClear = useCallback(() => {
+    setPreviousSearchQuery(searchQuery);
+    setSearchQuery('');
+  }, [searchQuery]);
+
+  const handleSearchRestore = useCallback(() => {
+    setSearchQuery(previousSearchQuery);
+  }, [previousSearchQuery]);
 
   const handleAddAccountClick = useCallback(() => {
     setQuickAction(null);
@@ -453,22 +587,21 @@ export default function AccountsPage() {
         <div className={styles.pageContent}>
           <AccountsPageHeader activeTab={activeTab} onTabChange={setActiveTab} />
 
-          <div className={headerStyles.headerBar}>
-            <div className={headerStyles.headerLeft}>
-              <QuickAddMenu onSelect={handleQuickActionSelect} />
-            </div>
-            <div className={headerStyles.headerRight}>
-              <button
-                type="button"
-                className={headerStyles.addButton}
-                onClick={handleAddAccountClick}
-                disabled={isFetching}
-              >
-                <FiPlus aria-hidden />
-                <span>Add Account</span>
-              </button>
-            </div>
-          </div>
+          <HeaderActionsBar
+            context="accounts"
+            onAdd={handleAddAccountClick}
+            addLabel="Add Account"
+            addDisabled={isFetching}
+            onQuickAddSelect={handleQuickActionSelect}
+            quickAddDisabled={isFetching}
+            searchValue={searchQuery}
+            onSearchChange={handleSearchChange}
+            onSearchClear={handleSearchClear}
+            onSearchRestore={handleSearchRestore}
+            searchPlaceholder="Search accounts"
+            onFilterClick={() => setIsFilterOpen(true)}
+            onCustomizeClick={() => setIsCustomizeOpen(true)}
+          />
 
           {fetchError ? (
             <div className={styles.tableCard} role="alert">
@@ -486,8 +619,8 @@ export default function AccountsPage() {
             </div>
           ) : activeTab === 'cards' ? (
             <AccountsCardsView
-              accounts={sortedAccounts}
-              onQuickAction={(actionId) => handleQuickActionSelect(actionId as QuickAddActionId)}
+              accounts={filteredAccounts}
+              onQuickAction={(actionId) => handleQuickActionSelect('accounts', actionId)}
             />
           ) : (
             <div className={styles.tableWrapper}>
@@ -525,6 +658,19 @@ export default function AccountsPage() {
         isOpen={isAddModalOpen}
         onClose={handleCloseAddModal}
         onSubmit={handleAddSubmit}
+      />
+      <CustomizeColumnsModal
+        context="accounts"
+        open={isCustomizeOpen}
+        onClose={() => setIsCustomizeOpen(false)}
+        columns={customizeColumns}
+        defaultColumns={defaultCustomizeColumns}
+        onChange={handleCustomizeChange}
+      />
+      <FilterComingSoonModal
+        context="accounts"
+        open={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
       />
       <AccountEditModal
         account={editingAccount}

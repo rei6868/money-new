@@ -104,6 +104,8 @@ export function TableBaseHeader({
   onSortChange,
   isFetching = false,
   transactions = [],
+  pinnedLeftOffsets = new Map(),
+  pinnedRightOffsets = new Map(),
 }) {
   const visibleIdSet = useMemo(() => new Set(visibleColumnIds), [visibleColumnIds]);
   const totalVisibleColumns = visibleIdSet.size;
@@ -130,7 +132,7 @@ export function TableBaseHeader({
   }, [columns, transactions]);
 
   const renderColumnHeader = (descriptor) => {
-    const { id, column, definition, minWidth, width, align } = descriptor;
+    const { id, column, definition, minWidth, width, align, pinned } = descriptor;
     const title = definition?.label ?? column.id;
     const isHidden = column.visible === false;
     const isDropTarget = isColumnReorderMode && activeDropTarget === id;
@@ -158,6 +160,8 @@ export function TableBaseHeader({
       isDropTarget ? headerStyles.headerDropTarget : '',
       isHidden && isColumnReorderMode ? headerStyles.headerHidden : '',
       isTaskColumn ? headerStyles.taskHeaderCell : '',
+      pinned === 'left' ? styles.stickyLeft : '',
+      pinned === 'right' ? styles.stickyRight : '',
     ]
       .filter(Boolean)
       .join(' ');
@@ -239,12 +243,18 @@ export function TableBaseHeader({
       .filter(Boolean)
       .join(' ');
 
+    const pinnedStyle = pinned === 'left'
+      ? { left: `${pinnedLeftOffsets.get(id) ?? 0}px` }
+      : pinned === 'right'
+      ? { right: `${pinnedRightOffsets.get(id) ?? 0}px` }
+      : {};
+
     return (
       <th
         key={id}
         scope="col"
         className={headerClassName}
-        style={{ minWidth: `${effectiveMinWidth}px`, width: `${effectiveWidth}px` }}
+        style={{ minWidth: `${effectiveMinWidth}px`, width: `${effectiveWidth}px`, ...pinnedStyle }}
         draggable={isColumnReorderMode && isVisible}
         onDragStart={
           isColumnReorderMode && isVisible && onColumnDragStart

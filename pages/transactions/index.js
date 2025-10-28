@@ -6,11 +6,11 @@ import { TransactionsTable } from '../../components/transactions/TransactionsTab
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
 import TransactionAdvancedModal from '../../components/transactions/TransactionAdvancedModal';
-import QuickAddMenu from '../../components/common/QuickAddMenu';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
 import AddModalGlobal from '../../components/common/AddModalGlobal';
-import headerStyles from '../../styles/HeaderActionBar.module.css';
-import { FiPlus } from 'react-icons/fi';
+import HeaderActionsBar from '../../components/common/HeaderActionsBar';
+import CustomizeColumnsModal from '../../components/common/CustomizeColumnsModal';
+import FilterComingSoonModal from '../../components/common/FilterComingSoonModal';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
 
@@ -22,6 +22,7 @@ export default function TransactionsHistoryPage() {
   const [advancedPanel, setAdvancedPanel] = useState(null);
   const [columnDefinitions, setColumnDefinitions] = useState([]);
   const [columnState, setColumnState] = useState([]);
+  const [defaultColumnState, setDefaultColumnState] = useState([]);
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1] ?? PAGE_SIZE_OPTIONS[0]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,6 +36,10 @@ export default function TransactionsHistoryPage() {
   const [serverPagination, setServerPagination] = useState({ totalPages: 1, totalRows: 0 });
   const [addModalType, setAddModalType] = useState(null);
   const [quickAction, setQuickAction] = useState(null);
+  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [previousSearchQuery, setPreviousSearchQuery] = useState('');
   const tableScrollRef = useRef(null);
   const savedScrollLeftRef = useRef(0);
 
@@ -100,10 +105,13 @@ export default function TransactionsHistoryPage() {
             width: Math.max(width, minWidth),
             visible: column.visible ?? definition.defaultVisible !== false,
             order: column.order ?? index,
+            pinned: column.pinned ?? null,
+            optional: column.optional ?? definition.optional ?? false,
           };
         });
 
         setColumnDefinitions(definitions);
+        setDefaultColumnState(normalizedState.map((column) => ({ ...column })));
         setColumnState(normalizedState);
       })
       .catch((error) => {
@@ -223,25 +231,30 @@ export default function TransactionsHistoryPage() {
       return [];
     }
 
-    return columnState
-      .slice()
-      .sort((a, b) => a.order - b.order)
-      .map((state) => {
-        const definition = definitionLookup.get(state.id) ?? {};
-        const minWidth = definition.minWidth ?? 120;
-        const defaultVisible = definition.defaultVisible !== false;
-        const normalizedWidth = Math.max(
-          state.width ?? definition.defaultWidth ?? minWidth,
-          minWidth,
-        );
+    const sorted = columnState.slice().sort((a, b) => a.order - b.order);
+    const pinnedLeft = sorted.filter((column) => column.pinned === 'left');
+    const pinnedRight = sorted.filter((column) => column.pinned === 'right');
+    const unpinned = sorted.filter((column) => column.pinned !== 'left' && column.pinned !== 'right');
+    const arranged = [...pinnedLeft, ...unpinned, ...pinnedRight];
 
-        return {
-          ...definition,
-          ...state,
-          width: normalizedWidth,
-          visible: state.visible ?? defaultVisible,
-        };
-      });
+    return arranged.map((state, index) => {
+      const definition = definitionLookup.get(state.id) ?? {};
+      const minWidth = definition.minWidth ?? 120;
+      const defaultVisible = definition.defaultVisible !== false;
+      const normalizedWidth = Math.max(
+        state.width ?? definition.defaultWidth ?? minWidth,
+        minWidth,
+      );
+
+      return {
+        ...definition,
+        ...state,
+        order: index,
+        width: normalizedWidth,
+        visible: state.visible ?? defaultVisible,
+        pinned: state.pinned ?? null,
+      };
+    });
   }, [columnState, definitionLookup]);
 
   const visibleColumns = useMemo(
@@ -267,12 +280,26 @@ export default function TransactionsHistoryPage() {
 
   const displayedTransactions = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const filtered = normalizedQuery
+      ? base.filter((txn) => {
+          const searchableKeys = ['notes', 'shop', 'account', 'category', 'owner', 'type', 'id'];
+          return searchableKeys.some((key) => {
+            const rawValue = txn?.[key];
+            if (rawValue === null || rawValue === undefined) {
+              return false;
+            }
+            return String(rawValue).toLowerCase().includes(normalizedQuery);
+          });
+        })
+      : base;
+
     if (!showSelectedOnly) {
-      return base;
+      return filtered;
     }
 
-    return base.filter((txn) => selectedLookup.has(txn.id));
-  }, [transactions, showSelectedOnly, selectedLookup]);
+    return filtered.filter((txn) => selectedLookup.has(txn.id));
+  }, [transactions, searchQuery, showSelectedOnly, selectedLookup]);
 
   useEffect(() => {
     if (selectedIds.length === 0) {
@@ -365,7 +392,7 @@ export default function TransactionsHistoryPage() {
     setAddModalType('transaction');
   }, []);
 
-  const handleQuickActionSelect = useCallback((actionId) => {
+  const handleQuickActionSelect = useCallback((_, actionId) => {
     setQuickAction(actionId);
     setAddModalType('transaction');
   }, []);
@@ -457,6 +484,65 @@ export default function TransactionsHistoryPage() {
     });
   }, []);
 
+  const handleCustomizeChange = useCallback((columnsConfig) => {
+    setColumnState((prev) => {
+      const widthLookup = new Map(prev.map((column) => [column.id, column.width]));
+      const optionalLookup = new Map(prev.map((column) => [column.id, column.optional]));
+      return columnsConfig.map((column, index) => ({
+        id: column.id,
+        width: widthLookup.get(column.id) ?? 200,
+        visible: column.visible,
+        order: index,
+        pinned: column.pinned ?? null,
+        optional: optionalLookup.get(column.id) ?? false,
+      }));
+    });
+  }, []);
+
+  const handleSearchChange = useCallback((value) => {
+    setSearchQuery(value);
+  }, []);
+
+  const handleSearchClear = useCallback(() => {
+    setPreviousSearchQuery(searchQuery);
+    setSearchQuery('');
+  }, [searchQuery]);
+
+  const handleSearchRestore = useCallback(() => {
+    setSearchQuery(previousSearchQuery);
+  }, [previousSearchQuery]);
+
+  const customizeColumns = useMemo(() => {
+    const sorted = columnState.slice().sort((a, b) => a.order - b.order);
+    return sorted.map((column) => {
+      const definition = definitionLookup.get(column.id) ?? {};
+      return {
+        id: column.id,
+        label: definition.label ?? column.id,
+        visible: column.visible !== false,
+        pinned: column.pinned ?? null,
+        locked: column.id === 'notes',
+      };
+    });
+  }, [columnState, definitionLookup]);
+
+  const defaultCustomizeColumns = useMemo(() => {
+    if (!defaultColumnState || defaultColumnState.length === 0) {
+      return customizeColumns;
+    }
+    const sorted = defaultColumnState.slice().sort((a, b) => a.order - b.order);
+    return sorted.map((column) => {
+      const definition = definitionLookup.get(column.id) ?? {};
+      return {
+        id: column.id,
+        label: definition.label ?? column.id,
+        visible: column.visible !== false,
+        pinned: column.pinned ?? null,
+        locked: column.id === 'notes',
+      };
+    });
+  }, [defaultColumnState, definitionLookup, customizeColumns]);
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
@@ -469,22 +555,21 @@ export default function TransactionsHistoryPage() {
       subtitle="Monitor every inflow, cashback, debt movement, and adjustment inside Money Flow."
     >
       <div className={styles.screen}>
-        <div className={headerStyles.headerBar}>
-          <div className={headerStyles.headerLeft}>
-            <QuickAddMenu onSelect={handleQuickActionSelect} />
-          </div>
-          <div className={headerStyles.headerRight}>
-            <button
-              type="button"
-              className={headerStyles.addButton}
-              onClick={handleOpenAddTransaction}
-              disabled={isFetching}
-            >
-              <FiPlus aria-hidden />
-              <span>Add Transaction</span>
-            </button>
-          </div>
-        </div>
+        <HeaderActionsBar
+          context="transactions"
+          onAdd={handleOpenAddTransaction}
+          addLabel="Add Transaction"
+          addDisabled={isFetching}
+          onQuickAddSelect={handleQuickActionSelect}
+          quickAddDisabled={isFetching}
+          searchValue={searchQuery}
+          onSearchChange={handleSearchChange}
+          onSearchClear={handleSearchClear}
+          onSearchRestore={handleSearchRestore}
+          searchPlaceholder="Search transactions"
+          onFilterClick={() => setIsFilterOpen(true)}
+          onCustomizeClick={() => setIsCustomizeOpen(true)}
+        />
 
         {columnDefinitions.length === 0 ? (
           <div className={styles.tableCard} data-testid="transactions-loading">
@@ -547,6 +632,19 @@ export default function TransactionsHistoryPage() {
         isOpen={isAddModalOpen}
         onClose={handleCloseAddModal}
         onSubmit={handleSubmitAdd}
+      />
+      <CustomizeColumnsModal
+        context="transactions"
+        open={isCustomizeOpen}
+        onClose={() => setIsCustomizeOpen(false)}
+        columns={customizeColumns}
+        defaultColumns={defaultCustomizeColumns}
+        onChange={handleCustomizeChange}
+      />
+      <FilterComingSoonModal
+        context="transactions"
+        open={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
       />
     </AppLayout>
   );
