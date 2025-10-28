@@ -1,0 +1,180 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.primaryRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.leadingActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.searchInput {
+  flex: 1 1 260px;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(248, 250, 255, 0.6);
+  padding: 0.35rem 0.75rem;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.searchInput:focus-within {
+  border-color: var(--mf-primary, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  background: var(--table-surface, #ffffff);
+}
+
+.searchField {
+  flex: 1 1 auto;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.95rem;
+  padding: 0.25rem 0.35rem;
+  color: inherit;
+}
+
+.searchInput svg {
+  width: 18px;
+  height: 18px;
+  color: var(--table-muted, #64748b);
+}
+
+.actionsGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  padding: 0.45rem 0.95rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.primaryButton:hover:not([disabled]) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(37, 99, 235, 0.25);
+}
+
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #ffffff;
+  color: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.secondaryButton[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.analyticsCard {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(129, 140, 248, 0.12));
+}
+
+.analyticsValue {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.analyticsLabel {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--table-muted, #64748b);
+}
+
+.filtersRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  font-size: 0.8rem;
+}
+
+.chip button {
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  color: inherit;
+}
+
+.mobileActions {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .primaryRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .leadingActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .actionsGroup {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .mobileActions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+
+  .analyticsCard {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

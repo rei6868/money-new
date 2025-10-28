@@ -154,13 +154,6 @@ export const ACCOUNT_COLUMN_DEFINITIONS: AccountColumnDefinition[] = [
     defaultWidth: 220,
     valueAccessor: (account) => account.parentAccountId ?? '—',
   }),
-  {
-    id: 'notes',
-    label: 'Notes',
-    minWidth: 260,
-    defaultWidth: 280,
-    valueAccessor: (account) => account.notes ?? '—',
-  },
 ];
 
 export function createDefaultColumnState(definitions: AccountColumnDefinition[] = ACCOUNT_COLUMN_DEFINITIONS) {
@@ -188,6 +181,5 @@ export const ACCOUNT_SORTERS: Record<string, (account: AccountRow) => string | n
   totalIn: (account) => account.totalIn,
   totalOut: (account) => account.totalOut,
   status: (account) => (account.status ?? '').toLowerCase(),
-  notes: (account) => (account.notes ?? '').toLowerCase(),
   parentAccountId: (account) => (account.parentAccountId ?? '').toLowerCase(),
 };

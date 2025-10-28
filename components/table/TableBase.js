@@ -22,7 +22,7 @@ import {
 } from './tableUtils';
 import { TableBaseHeader } from './TableBaseHeader';
 import { TableBaseBody } from './TableBaseBody';
-import SelectionMiniToolbar from './SelectionMiniToolbar';
+import MiniToolbar from '../common/MiniToolbar';
 
 function useMergedRefs(...refs) {
   return useCallback(
@@ -500,13 +500,11 @@ const TableBaseInner = (
         ) : null}
       </div>
       {hasActiveSelection ? (
-        <div className={styles.selectionToolbarDock}>
-          <SelectionMiniToolbar
-            count={selectionCount}
-            onDelete={handleBulkDelete}
-            onCancel={handleClearSelection}
-          />
-        </div>
+        <MiniToolbar
+          selectedCount={selectionCount}
+          onDelete={handleBulkDelete}
+          onCancel={handleClearSelection}
+        />
       ) : null}
     </section>
   );

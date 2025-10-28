@@ -8,11 +8,244 @@ import styles from '../../styles/TransactionsHistory.module.css';
 import TransactionAdvancedModal from '../../components/transactions/TransactionAdvancedModal';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
 import AddModalGlobal from '../../components/common/AddModalGlobal';
-import HeaderActionBar from '../../components/common/HeaderActionBar';
-import CustomizeColumnsModal from '../../components/common/CustomizeColumnsModal';
-import FilterComingSoonModal from '../../components/common/FilterComingSoonModal';
+import QuickAddModal from '../../components/common/QuickAddModal';
+import ColumnsCustomizeModal from '../../components/customize/ColumnsCustomizeModal';
+import FilterBar from '../../components/filters/FilterBar';
+import FilterModal from '../../components/filters/FilterModal';
+import { createEmptyFilters } from '../../components/filters/filterTypes';
+import TxnTabs from '../../components/transactions/TxnTabs';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
+
+function extractString(value) {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  return null;
+}
+
+function ensureStringArray(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => extractString(item))
+      .filter((item) => Boolean(item));
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map((item) => extractString(item))
+      .filter((item) => Boolean(item));
+  }
+  return [];
+}
+
+function getTransactionField(txn, keys) {
+  for (const key of keys) {
+    if (key in txn) {
+      const extracted = extractString(txn[key]);
+      if (extracted) {
+        return extracted;
+      }
+    }
+  }
+  return null;
+}
+
+function getTransactionDate(txn) {
+  const candidates = [
+    txn.date,
+    txn.transactionDate,
+    txn.transaction_date,
+    txn.postedAt,
+    txn.posted_at,
+    txn.createdAt,
+    txn.created_at,
+  ];
+  for (const candidate of candidates) {
+    if (candidate instanceof Date && !Number.isNaN(candidate.getTime())) {
+      return candidate;
+    }
+    if (typeof candidate === 'string' || typeof candidate === 'number') {
+      const parsed = new Date(candidate);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+  }
+  return null;
+}
+
+function getTransactionType(txn) {
+  const typeFields = [
+    txn.type,
+    txn.transactionType,
+    txn.transaction_type,
+    txn.categoryType,
+    txn.category_type,
+  ];
+  for (const candidate of typeFields) {
+    const value = extractString(candidate);
+    if (value) {
+      return value.toLowerCase();
+    }
+  }
+  return null;
+}
+
+function getTransactionAmount(txn) {
+  const candidates = [
+    txn.amount,
+    txn.total,
+    txn.totalAmount,
+    txn.total_amount,
+    txn.finalPrice,
+    txn.final_price,
+    txn.netAmount,
+    txn.net_amount,
+  ];
+  for (const candidate of candidates) {
+    const numeric = Number(candidate);
+    if (Number.isFinite(numeric)) {
+      return numeric;
+    }
+  }
+  return 0;
+}
+
+function buildTransactionPredicate(filterState, normalizedQuery) {
+  const accountFilter = new Set(
+    (filterState.accounts || []).map((value) => value.toLowerCase()),
+  );
+  const peopleFilter = new Set((filterState.people || []).map((value) => value.toLowerCase()));
+  const tagFilter = new Set((filterState.debtTags || []).map((value) => value.toLowerCase()));
+  const categoryFilter = new Set(
+    (filterState.categories || []).map((value) => value.toLowerCase()),
+  );
+  const typeFilter = filterState.type ? String(filterState.type).toLowerCase() : null;
+
+  const rangeStart = filterState.dateRange?.start ? new Date(filterState.dateRange.start) : null;
+  const rangeEnd = filterState.dateRange?.end ? new Date(filterState.dateRange.end) : null;
+
+  let adjustedEnd = null;
+  if (rangeEnd) {
+    adjustedEnd = new Date(rangeEnd);
+    adjustedEnd.setHours(23, 59, 59, 999);
+  }
+
+  return (txn) => {
+    if (accountFilter.size > 0) {
+      const accountCandidates = [
+        txn.account,
+        txn.accountName,
+        txn.account_name,
+        txn.fromAccount,
+        txn.from_account,
+        txn.toAccount,
+        txn.to_account,
+      ];
+      const accounts = [
+        ...ensureStringArray(txn.accounts),
+        ...accountCandidates.map((candidate) => extractString(candidate)).filter(Boolean),
+      ].map((value) => value.toLowerCase());
+      if (!accounts.some((value) => accountFilter.has(value))) {
+        return false;
+      }
+    }
+
+    if (peopleFilter.size > 0) {
+      const peopleCandidates = [
+        txn.person,
+        txn.people,
+        txn.contact,
+        txn.contactName,
+        txn.contact_name,
+        txn.customer,
+        txn.vendor,
+        txn.owner,
+      ];
+      const peopleValues = [
+        ...peopleCandidates.map((candidate) => extractString(candidate)).filter(Boolean),
+        ...ensureStringArray(txn.peopleList),
+      ].map((value) => value.toLowerCase());
+      if (!peopleValues.some((value) => peopleFilter.has(value))) {
+        return false;
+      }
+    }
+
+    if (categoryFilter.size > 0) {
+      const categories = [
+        txn.category,
+        txn.categoryName,
+        txn.category_name,
+        txn.segment,
+        getTransactionType(txn),
+      ]
+        .map((candidate) => extractString(candidate))
+        .filter(Boolean)
+        .map((value) => value.toLowerCase());
+      if (!categories.some((value) => categoryFilter.has(value))) {
+        return false;
+      }
+    }
+
+    if (typeFilter) {
+      const txnType = getTransactionType(txn);
+      if (!txnType || txnType !== typeFilter) {
+        return false;
+      }
+    }
+
+    if (tagFilter.size > 0) {
+      const tags = [
+        ...ensureStringArray(txn.tags),
+        ...ensureStringArray(txn.debtTags),
+        ...ensureStringArray(txn.labels),
+      ].map((value) => value.toLowerCase());
+      if (!tags.some((value) => tagFilter.has(value))) {
+        return false;
+      }
+    }
+
+    if (rangeStart || adjustedEnd) {
+      const txnDate = getTransactionDate(txn);
+      if (!txnDate) {
+        return false;
+      }
+      if (rangeStart && txnDate < rangeStart) {
+        return false;
+      }
+      if (adjustedEnd && txnDate > adjustedEnd) {
+        return false;
+      }
+    }
+
+    if (!normalizedQuery) {
+      return true;
+    }
+
+    const searchableKeys = [
+      'notes',
+      'description',
+      'shop',
+      'account',
+      'category',
+      'owner',
+      'type',
+      'id',
+    ];
+    return searchableKeys.some((key) => {
+      const rawValue = txn?.[key];
+      if (rawValue === null || rawValue === undefined) {
+        return false;
+      }
+      return String(rawValue).toLowerCase().includes(normalizedQuery);
+    });
+  };
+}
 
 export default function TransactionsHistoryPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
@@ -39,7 +272,8 @@ export default function TransactionsHistoryPage() {
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [previousSearchQuery, setPreviousSearchQuery] = useState('');
+  const [filters, setFilters] = useState(() => createEmptyFilters());
+  const [activeTab, setActiveTab] = useState('all');
   const tableScrollRef = useRef(null);
   const savedScrollLeftRef = useRef(0);
 
@@ -262,6 +496,86 @@ export default function TransactionsHistoryPage() {
     [orderedColumns],
   );
 
+  const filterOptions = useMemo(() => {
+    const base = Array.isArray(transactions) ? transactions : [];
+    const accountSet = new Set();
+    const peopleSet = new Set();
+    const tagSet = new Set();
+    const categorySet = new Set();
+
+    base.forEach((txn) => {
+      const accountCandidates = [
+        txn.account,
+        txn.accountName,
+        txn.account_name,
+        txn.fromAccount,
+        txn.from_account,
+        txn.toAccount,
+        txn.to_account,
+      ];
+      ensureStringArray(txn.accounts).forEach((value) => accountSet.add(value));
+      accountCandidates.forEach((candidate) => {
+        const value = extractString(candidate);
+        if (value) {
+          accountSet.add(value);
+        }
+      });
+
+      const peopleCandidates = [
+        txn.person,
+        txn.people,
+        txn.contact,
+        txn.contactName,
+        txn.contact_name,
+        txn.customer,
+        txn.vendor,
+        txn.owner,
+      ];
+      peopleCandidates.forEach((candidate) => {
+        const value = extractString(candidate);
+        if (value) {
+          peopleSet.add(value);
+        }
+      });
+      ensureStringArray(txn.peopleList).forEach((value) => peopleSet.add(value));
+
+      ensureStringArray(txn.tags).forEach((value) => tagSet.add(value));
+      ensureStringArray(txn.debtTags).forEach((value) => tagSet.add(value));
+      ensureStringArray(txn.labels).forEach((value) => tagSet.add(value));
+
+      const categoryCandidates = [
+        txn.category,
+        txn.categoryName,
+        txn.category_name,
+        txn.segment,
+      ];
+      categoryCandidates.forEach((candidate) => {
+        const value = extractString(candidate);
+        if (value) {
+          categorySet.add(value);
+        }
+      });
+
+      const typeValue = getTransactionType(txn);
+      if (typeValue) {
+        categorySet.add(typeValue);
+      }
+    });
+
+    const toOptions = (set) =>
+      Array.from(set).map((value) => ({
+        label: value,
+        value,
+      }));
+
+    return {
+      accounts: toOptions(accountSet),
+      people: toOptions(peopleSet),
+      debtTags: toOptions(tagSet),
+      categories: toOptions(categorySet),
+    };
+  }, [transactions]);
+
   useEffect(() => {
     const filteredIds = new Set(transactions.map((txn) => txn.id));
     setSelectedIds((prev) => {
@@ -278,28 +592,70 @@ export default function TransactionsHistoryPage() {
 
   const selectedLookup = useMemo(() => new Set(selectedIds), [selectedIds]);
 
-  const displayedTransactions = useMemo(() => {
+  const filteredTransactions = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
     const normalizedQuery = searchQuery.trim().toLowerCase();
-    const filtered = normalizedQuery
-      ? base.filter((txn) => {
-          const searchableKeys = ['notes', 'shop', 'account', 'category', 'owner', 'type', 'id'];
-          return searchableKeys.some((key) => {
-            const rawValue = txn?.[key];
-            if (rawValue === null || rawValue === undefined) {
-              return false;
-            }
-            return String(rawValue).toLowerCase().includes(normalizedQuery);
-          });
-        })
-      : base;
+    const predicate = buildTransactionPredicate(filters, normalizedQuery);
+    return base.filter(predicate);
+  }, [transactions, filters, searchQuery]);
 
-    if (!showSelectedOnly) {
-      return filtered;
+  useEffect(() => {
+    if (selectedIds.length > 0) {
+      setSelectedIds([]);
     }
+  }, [filters, searchQuery, selectedIds.length]);
 
-    return filtered.filter((txn) => selectedLookup.has(txn.id));
-  }, [transactions, searchQuery, showSelectedOnly, selectedLookup]);
+  const displayedTransactions = useMemo(() => {
+    if (!showSelectedOnly) {
+      return filteredTransactions;
+    }
+    return filteredTransactions.filter((txn) => selectedLookup.has(txn.id));
+  }, [filteredTransactions, selectedLookup, showSelectedOnly]);
+
+  const filterAnalytics = useMemo(() => {
+    const totalAmount = filteredTransactions.reduce(
+      (sum, txn) => sum + getTransactionAmount(txn),
+      0,
+    );
+    return {
+      resultCount: filteredTransactions.length,
+      totals: {
+        amount: totalAmount,
+      },
+    };
+  }, [filteredTransactions]);
+
+  const tabMetrics = useMemo(() => {
+    const base = Array.isArray(transactions) ? transactions : [];
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const baseFilter = {
+      ...filters,
+      type: null,
+    };
+    const predicate = buildTransactionPredicate(baseFilter, normalizedQuery);
+    const baseMatches = base.filter(predicate);
+    const counts = {
+      income: 0,
+      expenses: 0,
+      transfer: 0,
+    };
+    baseMatches.forEach((txn) => {
+      const type = getTransactionType(txn) || '';
+      if (type.includes('transfer')) {
+        counts.transfer += 1;
+      } else if (type.includes('income')) {
+        counts.income += 1;
+      } else if (type.includes('expense') || type.includes('spend')) {
+        counts.expenses += 1;
+      }
+    });
+    return [
+      { id: 'all', label: 'All', count: baseMatches.length },
+      { id: 'income', label: 'Income', count: counts.income },
+      { id: 'expenses', label: 'Expenses', count: counts.expenses },
+      { id: 'transfer', label: 'Transfer', count: counts.transfer },
+    ];
+  }, [filters, searchQuery, transactions]);
 
   useEffect(() => {
     if (selectedIds.length === 0) {
@@ -503,14 +859,27 @@ export default function TransactionsHistoryPage() {
     setSearchQuery(value);
   }, []);
 
-  const handleSearchClear = useCallback(() => {
-    setPreviousSearchQuery(searchQuery);
-    setSearchQuery('');
-  }, [searchQuery]);
+  const handleTabChange = useCallback((tabId) => {
+    setActiveTab(tabId);
+    setFilters(() => {
+      const next = createEmptyFilters();
+      next.type = tabId === 'all' ? null : tabId;
+      return next;
+    });
+  }, []);
 
-  const handleSearchRestore = useCallback(() => {
-    setSearchQuery(previousSearchQuery);
-  }, [previousSearchQuery]);
+  useEffect(() => {
+    const typeValue = filters?.type ? String(filters.type).toLowerCase() : null;
+    if (!typeValue) {
+      if (activeTab !== 'all') {
+        setActiveTab('all');
+      }
+      return;
+    }
+    if (typeValue !== activeTab) {
+      setActiveTab(typeValue);
+    }
+  }, [activeTab, filters?.type]);
 
   const customizeColumns = useMemo(() => {
     const sorted = columnState.slice().sort((a, b) => a.order - b.order);
@@ -521,7 +890,8 @@ export default function TransactionsHistoryPage() {
         label: definition.label ?? column.id,
         visible: column.visible !== false,
         pinned: column.pinned ?? null,
-        locked: column.id === 'notes',
+        locked: Boolean(definition.locked),
+        mandatory: Boolean(definition.locked),
       };
     });
   }, [columnState, definitionLookup]);
@@ -538,7 +908,8 @@ export default function TransactionsHistoryPage() {
         label: definition.label ?? column.id,
         visible: column.visible !== false,
         pinned: column.pinned ?? null,
-        locked: column.id === 'notes',
+        locked: Boolean(definition.locked),
+        mandatory: Boolean(definition.locked),
       };
     });
   }, [defaultColumnState, definitionLookup, customizeColumns]);
@@ -555,21 +926,45 @@ export default function TransactionsHistoryPage() {
       subtitle="Monitor every inflow, cashback, debt movement, and adjustment inside Money Flow."
     >
       <div className={styles.screen}>
-        <HeaderActionBar
-          context="transactions"
-          onAdd={handleOpenAddTransaction}
-          addLabel="Add Transaction"
-          addDisabled={isFetching}
-          onQuickAddSelect={handleQuickActionSelect}
-          quickAddDisabled={isFetching}
-          searchValue={searchQuery}
-          onSearchChange={handleSearchChange}
-          onSearchClear={handleSearchClear}
-          onSearchRestore={handleSearchRestore}
-          searchPlaceholder="Search transactions"
-          onFilterClick={() => setIsFilterOpen(true)}
-          onCustomizeClick={() => setIsCustomizeOpen(true)}
-        />
+        <div className={styles.controlsRegion}>
+          <TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />
+          <FilterBar
+            searchQuery={searchQuery}
+            onSearchChange={handleSearchChange}
+            filters={filters}
+            onFiltersChange={setFilters}
+            onOpenFilters={() => setIsFilterOpen(true)}
+            analytics={filterAnalytics}
+            savedViewStorageKey="mf.transactions.views"
+            leadingActions={
+              <div className={styles.filterActions}>
+                <button
+                  type="button"
+                  className={styles.primaryButton}
+                  onClick={handleOpenAddTransaction}
+                  disabled={isFetching}
+                >
+                  Add transaction
+                </button>
+                <QuickAddModal
+                  context="transactions"
+                  onSelect={handleQuickActionSelect}
+                  disabled={isFetching}
+                  triggerLabel="Quick add"
+                  triggerAriaLabel="Quick add transaction"
+                  className={styles.filterActionsQuickAdd}
+                />
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => setIsCustomizeOpen(true)}
+                >
+                  Customize
+                </button>
+              </div>
+            }
+          />
+        </div>
 
         {columnDefinitions.length === 0 ? (
           <div className={styles.tableCard} data-testid="transactions-loading">
@@ -633,7 +1028,7 @@ export default function TransactionsHistoryPage() {
         onClose={handleCloseAddModal}
         onSubmit={handleSubmitAdd}
       />
-      <CustomizeColumnsModal
+      <ColumnsCustomizeModal
         context="transactions"
         open={isCustomizeOpen}
         onClose={() => setIsCustomizeOpen(false)}
@@ -641,10 +1036,12 @@ export default function TransactionsHistoryPage() {
         defaultColumns={defaultCustomizeColumns}
         onChange={handleCustomizeChange}
       />
-      <FilterComingSoonModal
-        context="transactions"
+      <FilterModal
         open={isFilterOpen}
+        filters={filters}
+        onApply={setFilters}
         onClose={() => setIsFilterOpen(false)}
+        options={filterOptions}
       />
     </AppLayout>
   );
