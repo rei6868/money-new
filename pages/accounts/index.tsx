@@ -7,17 +7,10 @@ import TableAccounts from '../../components/accounts/TableAccounts';
 import AccountEditModal, { AccountEditPayload } from '../../components/accounts/AccountEditModal';
 import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGlobal';
 import QuickAddModal from '../../components/common/QuickAddModal';
-import { FiPlus, FiSettings } from 'react-icons/fi';
+import { FiPlus, FiSettings, FiSearch, FiX } from 'react-icons/fi';
 import ColumnsCustomizeModal, {
   ColumnConfig as CustomizeColumnConfig,
 } from '../../components/customize/ColumnsCustomizeModal';
-import FilterBar from '../../components/filters/FilterBar';
-import FilterModal from '../../components/filters/FilterModal';
-import {
-  createEmptyFilters,
-  type FilterOption,
-  type TableFilters,
-} from '../../components/filters/filterTypes';
 import {
   ACCOUNT_COLUMN_DEFINITIONS,
   ACCOUNT_SORTERS,
@@ -94,9 +87,9 @@ function extractString(value: unknown): string | null {
   return null;
 }
 
-function toUniqueOptions(values: (string | null | undefined)[]): FilterOption[] {
+function toUniqueOptions(values: (string | null | undefined)[]): Array<{ label: string; value: string }> {
   const seen = new Set<string>();
-  const options: FilterOption[] = [];
+  const options: Array<{ label: string; value: string }> = [];
   values.forEach((value) => {
     const normalized = extractString(value ?? null);
     if (!normalized) {
@@ -218,9 +211,7 @@ export default function AccountsPage() {
   const [addModalType, setAddModalType] = useState<AddModalType | null>(null);
   const [quickAction, setQuickAction] = useState<string | null>(null);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState<TableFilters>(() => createEmptyFilters());
   const [editingAccount, setEditingAccount] = useState<NormalizedAccount | null>(null);
   const [accountTypes, setAccountTypes] = useState<string[]>([]);
 
@@ -231,31 +222,7 @@ export default function AccountsPage() {
     [],
   );
 
-  const filterOptions = useMemo(() => {
-    const accountOptions = toUniqueOptions(accounts.map((account) => account.accountName));
-    const peopleOptions = toUniqueOptions(
-      accounts.map((account) => account.ownerName ?? account.ownerId ?? null),
-    );
-    const debtTagSet = new Set<string>();
-    accounts.forEach((account) => {
-      extractDebtTags(account).forEach((tag) => debtTagSet.add(tag));
-    });
-    const debtTagOptions: FilterOption[] = Array.from(debtTagSet).map((tag) => ({
-      label: tag,
-      value: tag,
-    }));
-    const typeSource = accountTypes.length > 0
-      ? accountTypes
-      : accounts.map((account) => account.accountType);
-    const categoryOptions = toUniqueOptions(typeSource);
 
-    return {
-      accounts: accountOptions,
-      people: peopleOptions,
-      debtTags: debtTagOptions,
-      categories: categoryOptions,
-    };
-  }, [accounts, accountTypes]);
 
   const validColumnIds = useMemo(
     () =>
@@ -451,57 +418,8 @@ export default function AccountsPage() {
 
   const filteredAccounts = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
-    const accountFilter = new Set(filters.accounts.map((value) => value.toLowerCase()));
-    const peopleFilter = new Set(filters.people.map((value) => value.toLowerCase()));
-    const debtFilter = new Set(filters.debtTags.map((value) => value.toLowerCase()));
-    const categoryFilter = new Set(filters.categories.map((value) => value.toLowerCase()));
-    const typeFilter = filters.type ? filters.type.toLowerCase() : null;
-
-    const rangeStart = filters.dateRange.start ? new Date(filters.dateRange.start) : null;
-    const rangeEnd = filters.dateRange.end ? new Date(filters.dateRange.end) : null;
 
     return sortedAccounts.filter((account) => {
-      if (accountFilter.size > 0 && !accountFilter.has(account.accountName.toLowerCase())) {
-        return false;
-      }
-
-      const owner = extractString(account.ownerName ?? account.ownerId) ?? '';
-      if (peopleFilter.size > 0 && !peopleFilter.has(owner.toLowerCase())) {
-        return false;
-      }
-
-      if (categoryFilter.size > 0 && !categoryFilter.has(account.accountType.toLowerCase())) {
-        return false;
-      }
-
-      if (typeFilter && account.accountType.toLowerCase() !== typeFilter) {
-        return false;
-      }
-
-      if (debtFilter.size > 0) {
-        const accountTags = extractDebtTags(account).map((tag) => tag.toLowerCase());
-        if (!accountTags.some((tag) => debtFilter.has(tag))) {
-          return false;
-        }
-      }
-
-      if (rangeStart || rangeEnd) {
-        const accountDate = extractAccountDate(account);
-        if (!accountDate) {
-          return false;
-        }
-        if (rangeStart && accountDate < rangeStart) {
-          return false;
-        }
-        if (rangeEnd) {
-          const adjustedEnd = new Date(rangeEnd);
-          adjustedEnd.setHours(23, 59, 59, 999);
-          if (accountDate > adjustedEnd) {
-            return false;
-          }
-        }
-      }
-
       if (!normalizedQuery) {
         return true;
       }
@@ -518,13 +436,9 @@ export default function AccountsPage() {
         typeof value === 'string' && value.toLowerCase().includes(normalizedQuery),
       );
     });
-  }, [filters, searchQuery, sortedAccounts]);
+  }, [searchQuery, sortedAccounts]);
 
-  useEffect(() => {
-    if (selectedIds.length > 0) {
-      setSelectedIds([]);
-    }
-  }, [filters, searchQuery, selectedIds.length]);
+
 
   const totalPages = useMemo(() => {
     if (filteredAccounts.length === 0) {
@@ -815,18 +729,61 @@ export default function AccountsPage() {
     <AppLayout title="Accounts" subtitle="">
       <div className={styles.pageShell}>
         <div className={styles.pageContent}>
-          <AccountsPageHeader activeTab={activeTab} onTabChange={setActiveTab} />
+          <div className={styles.topBar}>
+            {/* Left: Toggle */}
+            <div className={styles.headerTabGroup} role="tablist" aria-label="Accounts view mode">
+              <div className={styles.viewTabs}>
+                <span className={styles.tabIndicator} data-position={activeTab === 'cards' ? 'cards' : 'table'} aria-hidden />
+                <button
+                  type="button"
+                  className={styles.tabButton}
+                  data-active={activeTab === 'table' ? 'true' : 'false'}
+                  onClick={() => setActiveTab('table')}
+                  role="tab"
+                  aria-selected={activeTab === 'table'}
+                >
+                  Table
+                </button>
+                <button
+                  type="button"
+                  className={styles.tabButton}
+                  data-active={activeTab === 'cards' ? 'true' : 'false'}
+                  onClick={() => setActiveTab('cards')}
+                  role="tab"
+                  aria-selected={activeTab === 'cards'}
+                >
+                  Cards
+                </button>
+              </div>
+            </div>
 
-          <div className={styles.filtersSection}>
-            <FilterBar
-              searchQuery={searchQuery}
-              onSearchChange={handleSearchChange}
-              filters={filters}
-              onFiltersChange={setFilters}
-              onOpenFilters={() => setIsFilterOpen(true)}
-              savedViewStorageKey="mf.accounts.views"
-              leadingActions={filterActionButtons}
-            />
+            {/* Right: Search */}
+            <div className={styles.searchContainer}>
+              <FiSearch className={styles.searchIcon} aria-hidden />
+              <input
+                type="search"
+                className={styles.searchInput}
+                placeholder="Search accounts…"
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                aria-label="Search accounts"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className={styles.searchClearButton}
+                  onClick={() => handleSearchChange('')}
+                  aria-label="Clear search"
+                >
+                  <FiX aria-hidden />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Action buttons on second line */}
+          <div className={styles.actionBar}>
+            {filterActionButtons}
           </div>
 
           {fetchError ? (
@@ -892,13 +849,6 @@ export default function AccountsPage() {
         columns={customizeColumns}
         defaultColumns={defaultCustomizeColumns}
         onChange={handleCustomizeChange}
-      />
-      <FilterModal
-        open={isFilterOpen}
-        filters={filters}
-        onApply={setFilters}
-        onClose={() => setIsFilterOpen(false)}
-        options={filterOptions}
       />
       <AccountEditModal
         account={editingAccount}

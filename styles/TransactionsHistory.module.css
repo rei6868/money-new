@@ -37,6 +37,75 @@
   gap: 1rem;
 }
 
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.searchContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 300px;
+  min-width: 200px;
+  position: relative;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(248, 250, 255, 0.8);
+  padding: 0.5rem 0.75rem;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.searchContainer:focus-within {
+  border-color: var(--mf-primary, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  background: #ffffff;
+}
+
+.searchIcon {
+  width: 18px;
+  height: 18px;
+  color: var(--table-muted, #64748b);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1 1 auto;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.95rem;
+  color: inherit;
+  min-width: 0;
+}
+
+.searchInput::placeholder {
+  color: var(--table-muted, #94a3b8);
+}
+
+.searchClearButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--table-muted, #64748b);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.searchClearButton:hover {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--mf-text-primary);
+}
+
 .filterActions {
   display: inline-flex;
   align-items: center;
@@ -70,10 +139,63 @@
   opacity: 0.65;
 }
 
+.selectionToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 12px;
+  width: 100%;
+}
+
 .selectionCount {
   font-size: 0.9rem;
   color: var(--mf-text-secondary);
   font-weight: 600;
+}
+
+.selectionActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.selectionActionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--mf-text-primary);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.selectionActionButton:hover {
+  background: rgba(99, 102, 241, 0.15);
+}
+
+.selectionActionButton[data-action='delete'] {
+  color: #dc2626;
+}
+
+.selectionActionButton[data-action='delete']:hover {
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.selectionActionButton[data-action='cancel'] {
+  color: #64748b;
+}
+
+.selectionActionButton[data-action='cancel']:hover {
+  background: rgba(100, 116, 139, 0.1);
 }
 
 .toolbarCard {
@@ -1607,7 +1729,7 @@
   inset: 0;
   background: rgba(15, 23, 42, 0.32);
   backdrop-filter: blur(2px);
-  z-index: 500;
+  z-index: 70;
   display: grid;
   place-items: center;
   padding: 1.5rem;
@@ -1784,7 +1906,7 @@
   }
 
   .filterActions button span,
-  .filterActionsQuickAdd button span {
+  .filterActionsQuickAdd button span:not(.triggerIcon) {
     position: absolute;
     width: 1px;
     height: 1px;

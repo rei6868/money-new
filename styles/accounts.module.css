@@ -19,10 +19,85 @@
   gap: 1.5rem;
 }
 
-.filtersSection {
+.topBar {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   gap: 1rem;
+  width: 100%;
+  flex-wrap: nowrap;
+  min-height: 44px;
+}
+
+.actionBar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.searchContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  max-width: 400px;
+  min-width: 200px;
+  position: relative;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(248, 250, 255, 0.8);
+  padding: 0.5rem 0.75rem;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+  height: 44px;
+}
+
+.searchContainer:focus-within {
+  border-color: var(--mf-primary, #1d4ed8);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.18);
+  background: #ffffff;
+}
+
+.searchIcon {
+  width: 18px;
+  height: 18px;
+  color: var(--table-muted, #64748b);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1 1 auto;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.95rem;
+  color: inherit;
+  min-width: 0;
+}
+
+.searchInput::placeholder {
+  color: var(--table-muted, #94a3b8);
+}
+
+.searchClearButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--table-muted, #64748b);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.searchClearButton:hover {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--mf-text-primary);
 }
 
 .filterActions {
@@ -117,6 +192,61 @@
   gap: 0.75rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.headerTabGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.viewTabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(15, 23, 42, 0.05);
+  padding: 0.3rem;
+  border-radius: 999px;
+  position: relative;
+}
+
+.tabIndicator {
+  position: absolute;
+  height: 100%;
+  width: calc(50% - 0.15rem);
+  background: #1d4ed8;
+  border-radius: 999px;
+  transition: left 0.3s ease;
+  left: 0.3rem;
+  z-index: 0;
+}
+
+.viewTabs[data-position='cards'] .tabIndicator {
+  left: calc(50% + 0.15rem);
+}
+
+.tabButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.95rem;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 600;
+  z-index: 1;
+  min-width: 60px;
+}
+
+.tabButton[data-active='true'] {
+  color: #ffffff;
 }
 
 .toolbarCard {
@@ -688,7 +818,7 @@
   }
 
   .filterActions button span,
-  .filterActionsQuickAdd button span {
+  .filterActionsQuickAdd button span:not(.triggerIcon) {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -761,6 +891,29 @@
   }
 }
 
+@media (max-width: 640px) {
+  .topBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .searchContainer {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .actionBar {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.5rem;
+  }
+
+  .actionBar button {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
 @media (max-width: 480px) {
   .toolbarSearchRow {
     flex-direction: column;
@@ -806,6 +959,15 @@
   .toolbarIconButton,
   .searchSubmitButton {
     font-size: 0.9rem;
+  }
+
+  .actionBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actionBar button {
+    width: 100%;
   }
 }
 
