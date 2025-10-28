@@ -60,7 +60,7 @@ function toTransactionRecord(txn: EnrichedTransaction): TransactionRecord {
     : new Date(`${rawDate}T00:00:00Z`).getTime();
   const occurredOn = txn.occurredOn ?? rawDate;
   const displayDate = txn.displayDate ?? rawDate;
-  const type = txn.type ?? 'Expense';
+  const type = typeof txn.type === 'string' ? txn.type.trim() : '';
   return {
     id: txn.id ?? '',
     date: rawDate,
@@ -83,7 +83,7 @@ function toTransactionRecord(txn: EnrichedTransaction): TransactionRecord {
     linkedTxn: txn.linkedTxn ?? '',
     owner: txn.owner ?? '',
     type,
-    amountDirection: type === 'Income' ? 'credit' : 'debit',
+    amountDirection: type.trim().toLowerCase() === 'income' ? 'credit' : 'debit',
   };
 }
 

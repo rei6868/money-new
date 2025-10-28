@@ -1,6 +1,6 @@
 import styles from './TxnTabs.module.css';
 
-export type TxnTabKey = 'all' | 'income' | 'expenses' | 'transfer';
+export type TxnTabKey = string;
 
 export type TxnTab = {
   id: TxnTabKey;

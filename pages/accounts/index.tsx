@@ -222,6 +222,7 @@ export default function AccountsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<TableFilters>(() => createEmptyFilters());
   const [editingAccount, setEditingAccount] = useState<NormalizedAccount | null>(null);
+  const [accountTypes, setAccountTypes] = useState<string[]>([]);
 
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -243,7 +244,10 @@ export default function AccountsPage() {
       label: tag,
       value: tag,
     }));
-    const categoryOptions = toUniqueOptions(accounts.map((account) => account.accountType));
+    const typeSource = accountTypes.length > 0
+      ? accountTypes
+      : accounts.map((account) => account.accountType);
+    const categoryOptions = toUniqueOptions(typeSource);
 
     return {
       accounts: accountOptions,
@@ -251,7 +255,7 @@ export default function AccountsPage() {
       debtTags: debtTagOptions,
       categories: categoryOptions,
     };
-  }, [accounts]);
+  }, [accounts, accountTypes]);
 
   const validColumnIds = useMemo(
     () =>
@@ -390,6 +394,46 @@ export default function AccountsPage() {
     }
     void fetchAccounts();
   }, [isAuthenticated, fetchAccounts]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    fetch('/api/accounts/types')
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch account types');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (isCancelled) {
+          return;
+        }
+        const rawTypes: unknown[] = Array.isArray(data?.types) ? data.types : [];
+        const normalized = Array.from(
+          new Set(
+            rawTypes
+              .filter((value): value is string => typeof value === 'string')
+              .map((value) => value.trim())
+              .filter((value) => value.length > 0),
+          ),
+        );
+        setAccountTypes(normalized);
+      })
+      .catch((error) => {
+        if (!isCancelled) {
+          console.error(error);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (selectedIds.length === 0) {

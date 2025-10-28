@@ -337,8 +337,8 @@ function mapRowToRecord(row: DbTransactionRow): TransactionRecord {
   const sortDate = occurredDate ? occurredDate.getTime() : Number.NEGATIVE_INFINITY;
   const month = toMonthLabel(occurredDate);
   const year = occurredDate && !Number.isNaN(occurredDate.getTime()) ? String(occurredDate.getUTCFullYear()) : '';
-  const baseType = row.type ?? '';
-  const normalizedType = toTitleCase(baseType) || 'Expense';
+  const rawType = (row.type ?? '').trim();
+  const normalizedType = rawType || toTitleCase(row.type) || 'Expense';
   const percentBack = toNumber(row.percentBack);
   const fixedBack = toNumber(row.fixedBack);
   const totalBack = toNumber(row.totalBack);
@@ -368,8 +368,10 @@ function mapRowToRecord(row: DbTransactionRow): TransactionRecord {
     category: row.categoryName ?? '',
     linkedTxn: row.linkedTxnId ?? '',
     owner,
-    type: normalizedType,
-    amountDirection: baseType === 'income' ? 'credit' : 'debit',
+    type: rawType || normalizedType,
+    amountDirection: (rawType || row.type || '').toString().trim().toLowerCase() === 'income'
+      ? 'credit'
+      : 'debit',
   };
 }
 
