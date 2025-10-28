@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { FiLogOut, FiMoreHorizontal, FiMoon, FiSun, FiChevronDown } from 'react-icons/fi';
 
@@ -188,6 +188,8 @@ export function TopNavBar({
     setDropdownMode(null);
   }, []);
 
+  const mobileMenuId = useId();
+
   if (flattenedNavItems.length === 0) {
     return null;
   }
@@ -251,13 +253,14 @@ export function TopNavBar({
           onClick={handleMobileToggleDropdown}
           aria-haspopup="menu"
           aria-expanded={isMobileDropdown}
+          aria-controls={mobileMenuId}
           aria-label="Open navigation menu"
         >
           <span className={styles.mobileLabel}>{activePageLabel}</span>
           <FiChevronDown className={styles.mobileChevron} aria-hidden="true" />
         </button>
         {isMobileDropdown ? (
-          <div className={styles.mobileMenu} role="menu">
+          <div className={styles.mobileMenu} role="menu" id={mobileMenuId}>
             <ul className={styles.mobileMenuList}>
               {flattenedNavItems.map((item) => renderNavLink(item, { inOverflow: true }))}
             </ul>

@@ -136,6 +136,7 @@ export function TransactionsTable(props) {
     onSelectAll,
     selectionSummary,
     onOpenAdvanced,
+    onBulkDelete,
     columnDefinitions,
     allColumns,
     visibleColumns,
@@ -185,6 +186,7 @@ export function TransactionsTable(props) {
       onSelectAll={onSelectAll}
       selectionSummary={selectionSummary}
       onOpenAdvanced={onOpenAdvanced}
+      onBulkDelete={onBulkDelete}
       columnDefinitions={columnDefinitions}
       allColumns={allColumns}
       visibleColumns={visibleColumns}

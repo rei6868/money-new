@@ -8,11 +8,8 @@ import {
 } from 'react-icons/fi';
 
 import { AccountColumnDefinition, AccountRow } from './accountColumns';
-import AccountsQuickActions from './AccountsQuickActions';
 import styles from '../../styles/accounts.module.css';
 import { TableBase } from '../table';
-import tableStyles from '../table/TableBase.module.css';
-import { ACTIONS_COLUMN_WIDTH } from '../table/tableUtils';
 
 interface SelectionSummary {
   count: number;
@@ -61,7 +58,7 @@ export type TableAccountsProps = {
   onSortChange: (columnId: string | null, direction: 'asc' | 'desc' | null) => void;
   isFetching?: boolean;
   isShowingSelectedOnly?: boolean;
-  onQuickAction?: (actionId: string, account: AccountRow) => void;
+  onEditAccount?: (account: AccountRow) => void;
 };
 
 type FontScaleState = {
@@ -202,7 +199,7 @@ export function TableAccounts({
   onSortChange,
   isFetching = false,
   isShowingSelectedOnly = false,
-  onQuickAction,
+  onEditAccount,
 }: TableAccountsProps) {
   const [fontScale, setFontScale] = useState(FONT_SCALE_DEFAULT);
 
@@ -219,26 +216,6 @@ export function TableAccounts({
     onIncrease: () => applyFontScale((value) => value + FONT_SCALE_STEP),
     onReset: () => applyFontScale(FONT_SCALE_DEFAULT),
   });
-
-  const renderRowActionsCell = useCallback(
-    ({ transaction }: { transaction: AccountRow }) => (
-      <td
-        className={`${tableStyles.bodyCell} ${tableStyles.actionsCell}`}
-        style={{
-          minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
-          width: `${ACTIONS_COLUMN_WIDTH}px`,
-        }}
-      >
-        <AccountsQuickActions
-          account={transaction}
-          onAction={onQuickAction}
-          className={styles.tableQuickActions}
-          buttonClassName={styles.tableQuickActionButton}
-        />
-      </td>
-    ),
-    [onQuickAction],
-  );
 
   const summaryToUse = selectionSummary ?? defaultSummary;
 
@@ -263,7 +240,10 @@ export function TableAccounts({
       isShowingSelectedOnly={isShowingSelectedOnly}
       isFetching={isFetching}
       rowIdAccessor={(account: AccountRow) => account.accountId}
-      renderRowActionsCell={renderRowActionsCell}
+      onEditRow={onEditAccount}
+      onBulkDelete={(ids: string[]) => {
+        console.info('Accounts bulk delete placeholder', ids);
+      }}
     />
   );
 }

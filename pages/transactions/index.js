@@ -501,6 +501,9 @@ export default function TransactionsHistoryPage() {
             onSelectAll={handleSelectAll}
             selectionSummary={selectionSummary}
             onOpenAdvanced={handleAdvanced}
+            onBulkDelete={(ids) => {
+              console.info('Transactions bulk delete placeholder', ids);
+            }}
             columnDefinitions={columnDefinitions}
             allColumns={orderedColumns}
             visibleColumns={visibleColumns}

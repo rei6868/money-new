@@ -43,9 +43,9 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  min-width: var(--table-min-width, 960px);
-  font-size: calc(0.94rem * var(--transactions-font-scale, 1));
-  line-height: 1.45;
+  min-width: max(650px, var(--table-min-width, 960px));
+  font-size: calc(0.9rem * var(--transactions-font-scale, 1));
+  line-height: 1.35;
   color: inherit;
 }
 
@@ -82,7 +82,7 @@
 }
 
 .bodyCell {
-  padding: 0.75rem 1rem;
+  padding: 0.6rem 0.85rem;
   border-bottom: 1px solid var(--table-divider);
   background: inherit;
   color: inherit;
@@ -221,7 +221,7 @@
 
 @media (max-width: 1024px) {
   .tableCard {
-    padding: clamp(0.65rem, 2vw, 0.85rem);
+    padding: 0.4rem 0;
     border-radius: 18px;
   }
 
@@ -237,7 +237,7 @@
 
 @media (max-width: 768px) {
   .tableCard {
-    padding: clamp(0.5rem, 4vw, 0.75rem);
+    padding: 0.3rem 0;
   }
 
   .paginationBar {
@@ -247,9 +247,165 @@
   }
 }
 
+@media (max-width: 600px) {
+  .tableCard {
+    gap: 0.65rem;
+  }
+
+  .tableShell {
+    border-radius: 12px;
+  }
+
+  .table {
+    font-size: calc(0.85rem * var(--transactions-font-scale, 1));
+  }
+
+  .bodyCell {
+    padding: 0.45rem 0.7rem;
+  }
+
+  .paginationBar {
+    gap: 0.6rem;
+  }
+}
+
 @media (max-width: 520px) {
   .paginationBar {
     gap: 0.4rem;
     padding: 0.55rem 0.7rem;
+  }
+}
+
+@media (max-width: 500px) {
+  .checkboxCell {
+    display: none;
+  }
+}
+
+.selectionToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.65rem 1rem;
+  margin: 0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(107, 77, 253, 0.12), rgba(155, 127, 253, 0.08));
+  border: 1px solid rgba(107, 77, 253, 0.2);
+  box-shadow: 0 18px 32px rgba(79, 70, 229, 0.12);
+  color: var(--table-text);
+  z-index: 45;
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+}
+
+.selectionToolbarDock {
+  margin-top: 0.85rem;
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  animation: selectionToolbarEnter 220ms ease forwards;
+}
+
+@keyframes selectionToolbarEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.selectionToolbarInfo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.selectionToolbarCount {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #4338ca;
+}
+
+.selectionToolbarLabel {
+  font-size: 0.9rem;
+  color: var(--table-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.selectionToolbarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.selectionToolbarButton {
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 0.95rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: #ffffff;
+  color: #4338ca;
+  cursor: pointer;
+  box-shadow: 0 8px 16px rgba(107, 77, 253, 0.18);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.selectionToolbarButton:hover,
+.selectionToolbarButton:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(79, 70, 229, 0.22);
+  outline: none;
+}
+
+.selectionToolbarDanger {
+  background: #fee2e2;
+  color: #b91c1c;
+  box-shadow: 0 8px 16px rgba(220, 38, 38, 0.18);
+}
+
+.selectionToolbarDanger:hover,
+.selectionToolbarDanger:focus-visible {
+  box-shadow: 0 12px 22px rgba(220, 38, 38, 0.22);
+}
+
+@media (max-width: 640px) {
+  .selectionToolbar {
+    position: static;
+    margin: 0;
+    padding: 0.75rem 1.05rem;
+    border-radius: 18px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 22px 40px rgba(15, 23, 42, 0.2);
+  }
+
+  .selectionToolbarActions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 0.45rem;
+  }
+
+  .selectionToolbarButton {
+    flex: 0 0 auto;
+  }
+
+  .selectionToolbarDock {
+    position: sticky;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+    justify-content: center;
+    padding: 0 0.5rem;
+    z-index: 55;
+    pointer-events: none;
+  }
+
+  .selectionToolbarDock > .selectionToolbar {
+    pointer-events: auto;
   }
 }
