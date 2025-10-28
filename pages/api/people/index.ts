@@ -6,12 +6,74 @@ import { randomUUID } from "crypto";
 import { db } from "../../../lib/db/client";
 import { people, type NewPerson } from "../../../src/db/schema/people";
 
+// Mock data for development when database is not configured
+const MOCK_PEOPLE: any[] = [
+  {
+    personId: "mock-person-1",
+    fullName: "John Doe",
+    contactInfo: "john@example.com",
+    status: "active",
+    groupId: null,
+    imgUrl: null,
+    note: "Primary user",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    personId: "mock-person-2",
+    fullName: "Jane Smith",
+    contactInfo: "jane@example.com",
+    status: "active",
+    groupId: null,
+    imgUrl: null,
+    note: "Secondary user",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const database = db;
 
   if (!database) {
-    console.error("Database connection is not configured");
-    res.status(500).json({ error: "Database connection is not configured" });
+    console.warn("Database connection is not configured - using mock data");
+
+    // Handle GET request with mock data
+    if (req.method === "GET") {
+      res.status(200).json(MOCK_PEOPLE);
+      return;
+    }
+
+    // Handle POST request with mock data
+    if (req.method === "POST") {
+      const body = req.body || {};
+
+      if (!body.fullName || !body.status) {
+        res.status(400).json({
+          error: "Validation failed",
+          details: "fullName and status are required"
+        });
+        return;
+      }
+
+      const newPerson = {
+        personId: `mock-person-${Date.now()}`,
+        fullName: body.fullName,
+        contactInfo: body.contactInfo || null,
+        status: body.status,
+        groupId: body.groupId || null,
+        imgUrl: body.imgUrl || null,
+        note: body.note || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      MOCK_PEOPLE.push(newPerson);
+      res.status(201).json(newPerson);
+      return;
+    }
+
+    res.status(405).json({ error: "Method not allowed" });
     return;
   }
 

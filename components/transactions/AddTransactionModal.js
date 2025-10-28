@@ -4,12 +4,15 @@ import { FiRotateCcw, FiX } from 'react-icons/fi';
 import AmountInput from '../common/AmountInput';
 import amountInputStyles from '../common/AmountInput.module.css';
 import { ConfirmationModal } from '../common/ConfirmationModal';
+import AddAccountOverlay from '../accounts/AddAccountOverlay';
 import SegmentedControl from '../ui/SegmentedControl';
 import DebtTabContent from './DebtTabContent';
 import ExpensesTabContent from './ExpensesTabContent';
 import IncomeTabContent from './IncomeTabContent';
 import TransferTabContent from './TransferTabContent';
 import { convertToVietnameseWordsAbbreviated } from '../../lib/numberToWords_vi';
+import { useAccounts } from '../../hooks/useAccounts';
+import { usePeople } from '../../hooks/usePeople';
 import styles from './AddTransactionModal.module.css';
 
 const MONTH_TAGS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -76,8 +79,7 @@ const createInitialFormState = () => {
   };
 };
 
-const ACCOUNT_OPTIONS = ['Account 1', 'Account 2', 'Saving Account', 'Sacombank'];
-const PERSON_OPTIONS = ['Person A', 'Person B', 'Mom'];
+// Mock options for categories, shops, and tags (to be replaced with API calls later)
 const DEBT_CATEGORY_OPTIONS = ['Debt Category 1', 'Loan Repayment'];
 const INCOME_CATEGORY_OPTIONS = ['Salary', 'Bonus'];
 const EXPENSE_CATEGORY_OPTIONS = ['Groceries', 'Dining', 'Transport'];
@@ -94,6 +96,9 @@ const TRANSACTION_TYPE_OPTIONS = [
 const DEFAULT_TRANSACTION_TYPE = TRANSACTION_TYPE_OPTIONS[0].value;
 
 export default function AddTransactionModal({ isOpen, onClose, onSave, onRequestClose }) {
+  const { activeAccounts, createAccount } = useAccounts();
+  const { activePeople } = usePeople();
+
   const initialFormRef = useRef(createInitialFormState());
   const notesTextareaRef = useRef(null);
   const [transactionType, setTransactionType] = useState(DEFAULT_TRANSACTION_TYPE);
@@ -103,9 +108,21 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
   const [selectedDebtTag, setSelectedDebtTag] = useState(initialFormRef.current.debtTag);
   const [isLastMonth, setIsLastMonth] = useState(initialFormRef.current.debtLastMonth);
   const [showNewItemModal, setShowNewItemModal] = useState(false);
+  const [showAddAccountOverlay, setShowAddAccountOverlay] = useState(false);
   const [newItemType, setNewItemType] = useState('');
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [amountHistory, setAmountHistory] = useState('');
+
+  // Convert accounts and people to dropdown options
+  const accountOptions = useMemo(
+    () => activeAccounts.map((account) => account.accountName),
+    [activeAccounts],
+  );
+
+  const personOptions = useMemo(
+    () => activePeople.map((person) => person.fullName),
+    [activePeople],
+  );
   const currentDateTag = useMemo(() => buildMonthTag(selectedDate), [selectedDate]);
   const previousMonthTag = useMemo(() => buildMonthTag(selectedDate, -1), [selectedDate]);
   const formattedSelectedDate = useMemo(() => {
@@ -513,13 +530,49 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
 
   const handleOpenNewItemModal = useCallback((type) => {
     setNewItemType(type);
-    setShowNewItemModal(true);
+    // If type is "Account", open the AddAccountOverlay instead
+    if (type === 'Account') {
+      setShowAddAccountOverlay(true);
+    } else {
+      setShowNewItemModal(true);
+    }
   }, []);
 
   const handleCloseNewItemModal = useCallback(() => {
     setShowNewItemModal(false);
     setNewItemType('');
   }, []);
+
+  const handleCloseAddAccountOverlay = useCallback(() => {
+    setShowAddAccountOverlay(false);
+    setNewItemType('');
+  }, []);
+
+  const handleSubmitAddAccount = useCallback(
+    async (payload) => {
+      try {
+        const created = await createAccount(payload);
+        if (created) {
+          // Auto-select the newly created account
+          updateField('account', created.accountName);
+          // Also update transfer accounts if applicable
+          if (transactionType === 'transfer') {
+            if (!formValues.transferFromAccount) {
+              updateField('transferFromAccount', created.accountName);
+            } else if (!formValues.transferToAccount) {
+              updateField('transferToAccount', created.accountName);
+            }
+          }
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error('Failed to create account', error);
+        return false;
+      }
+    },
+    [createAccount, updateField, transactionType, formValues],
+  );
 
   const handleConfirmUnsavedClose = useCallback(() => {
     setShowUnsavedModal(false);
@@ -586,8 +639,8 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
                 renderDateField={renderDateField}
                 renderAmountField={renderAmountField}
                 renderNotesField={renderNotesField}
-                personOptions={PERSON_OPTIONS}
-                accountOptions={ACCOUNT_OPTIONS}
+                personOptions={personOptions}
+                accountOptions={accountOptions}
                 debtCategoryOptions={DEBT_CATEGORY_OPTIONS}
                 debtTagOptions={debtTagOptions}
                 selectedDebtTag={selectedDebtTag}
@@ -612,7 +665,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
                 renderDateField={renderDateField}
                 renderAmountField={renderAmountField}
                 renderNotesField={renderNotesField}
-                accountOptions={ACCOUNT_OPTIONS}
+                accountOptions={accountOptions}
                 categoryOptions={INCOME_CATEGORY_OPTIONS}
                 shopOptions={SHOP_OPTIONS}
                 onOpenNewItemModal={handleOpenNewItemModal}
@@ -626,7 +679,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
                 renderDateField={renderDateField}
                 renderAmountField={renderAmountField}
                 renderNotesField={renderNotesField}
-                accountOptions={ACCOUNT_OPTIONS}
+                accountOptions={accountOptions}
                 categoryOptions={EXPENSE_CATEGORY_OPTIONS}
                 shopOptions={SHOP_OPTIONS}
                 onOpenNewItemModal={handleOpenNewItemModal}
@@ -644,7 +697,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
                 renderDateField={renderDateField}
                 renderAmountField={renderAmountField}
                 renderNotesField={renderNotesField}
-                accountOptions={ACCOUNT_OPTIONS}
+                accountOptions={accountOptions}
                 categoryOptions={TRANSFER_CATEGORY_OPTIONS}
                 onOpenNewItemModal={handleOpenNewItemModal}
                 isTransferAccountConflict={isTransferAccountConflict}
@@ -673,6 +726,12 @@ export default function AddTransactionModal({ isOpen, onClose, onSave, onRequest
         confirmTone="danger"
         onConfirm={handleConfirmUnsavedClose}
         onCancel={handleCancelUnsavedClose}
+      />
+
+      <AddAccountOverlay
+        isOpen={showAddAccountOverlay}
+        onClose={handleCloseAddAccountOverlay}
+        onSubmit={handleSubmitAddAccount}
       />
 
       {showNewItemModal ? (

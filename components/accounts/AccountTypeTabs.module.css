@@ -1,0 +1,149 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(15, 23, 42, 0.05);
+  padding: 0.3rem;
+  border-radius: 999px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.root::-webkit-scrollbar {
+  height: 4px;
+}
+
+.root::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.root::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+}
+
+.tabButton {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.95rem;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  color: #475569;
+  min-width: 80px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tabButton:hover:not([data-active='true']) {
+  background: rgba(148, 163, 184, 0.1);
+}
+
+/* Default color (All tab) */
+.tabButton[data-active='true'][data-color='default'] {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 12px 25px rgba(37, 99, 235, 0.25);
+}
+
+/* Indigo color (Bank tab) */
+.tabButton[data-active='true'][data-color='indigo'] {
+  background: #4f46e5;
+  color: #ffffff;
+  box-shadow: 0 12px 25px rgba(79, 70, 229, 0.25);
+}
+
+/* Danger color (Credit tab) */
+.tabButton[data-active='true'][data-color='danger'] {
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 12px 25px rgba(220, 38, 38, 0.25);
+}
+
+/* Teal color (Saving tab) */
+.tabButton[data-active='true'][data-color='teal'] {
+  background: #14b8a6;
+  color: #ffffff;
+  box-shadow: 0 12px 25px rgba(20, 184, 166, 0.25);
+}
+
+/* Orange color (Investment tab) */
+.tabButton[data-active='true'][data-color='orange'] {
+  background: #ea580c;
+  color: #ffffff;
+  box-shadow: 0 12px 25px rgba(234, 88, 12, 0.25);
+}
+
+/* Purple color (E-wallet tab) */
+.tabButton[data-active='true'][data-color='purple'] {
+  background: #7c3aed;
+  color: #ffffff;
+  box-shadow: 0 12px 25px rgba(124, 58, 237, 0.25);
+}
+
+/* Blue color (Group tab) */
+.tabButton[data-active='true'][data-color='blue'] {
+  background: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 12px 25px rgba(2, 132, 199, 0.25);
+}
+
+/* Amber color (Loan tab) */
+.tabButton[data-active='true'][data-color='amber'] {
+  background: #f59e0b;
+  color: #ffffff;
+  box-shadow: 0 12px 25px rgba(245, 158, 11, 0.25);
+}
+
+/* Rose color (Mortgage tab) */
+.tabButton[data-active='true'][data-color='rose'] {
+  background: #e11d48;
+  color: #ffffff;
+  box-shadow: 0 12px 25px rgba(225, 29, 72, 0.25);
+}
+
+/* Success color (Cash tab) */
+.tabButton[data-active='true'][data-color='success'] {
+  background: #16a34a;
+  color: #ffffff;
+  box-shadow: 0 12px 25px rgba(22, 163, 74, 0.25);
+}
+
+/* Gray color (Other tab) */
+.tabButton[data-active='true'][data-color='gray'] {
+  background: #64748b;
+  color: #ffffff;
+  box-shadow: 0 12px 25px rgba(100, 116, 139, 0.25);
+}
+
+.tabLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.tabCount {
+  font-size: 0.7rem;
+  opacity: 0.85;
+}
+
+@media (max-width: 640px) {
+  .root {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .tabButton {
+    flex: 0 0 auto;
+    min-width: 70px;
+  }
+}
+
