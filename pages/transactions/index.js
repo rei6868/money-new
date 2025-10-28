@@ -88,6 +88,7 @@ function getTransactionDate(txn) {
 
 function getTransactionTypeValue(txn) {
   const typeFields = [
+    txn?.typeRaw,
     txn?.typeValue,
     txn?.type,
     txn?.transactionType,
@@ -110,17 +111,20 @@ function applyTypeMetadata(txn) {
   if (!txn || typeof txn !== 'object') {
     return txn;
   }
+  const rawType = typeof txn.type === 'string' ? txn.type : '';
   const typeValue = getTransactionTypeValue(txn);
-  const typeLabel = getTransactionTypeLabel(typeValue);
+  const normalizedLabel = getTransactionTypeLabel(typeValue);
+  const displayType = rawType && rawType.length > 0 ? rawType : normalizedLabel;
   return {
     ...txn,
+    typeRaw: rawType,
     typeValue,
-    typeLabel,
-    type: typeLabel,
+    typeLabel: displayType,
+    type: displayType,
   };
 }
 
-function buildTransactionPredicate(filterState, normalizedQuery) {
+function buildTransactionPredicate(filterState, normalizedQuery, transferOnly = false) {
   const accountFilter = new Set(
     (filterState.accounts || []).map((value) => value.toLowerCase()),
   );
@@ -129,8 +133,8 @@ function buildTransactionPredicate(filterState, normalizedQuery) {
   const categoryFilter = new Set(
     (filterState.categories || []).map((value) => value.toLowerCase()),
   );
-  const typeFilter = filterState.type
-    ? normalizeTransactionType(filterState.type)
+  const typeFilter = typeof filterState.type === 'string'
+    ? filterState.type.trim().toLowerCase()
     : null;
 
   const rangeStart = filterState.dateRange?.start ? new Date(filterState.dateRange.start) : null;
@@ -198,8 +202,17 @@ function buildTransactionPredicate(filterState, normalizedQuery) {
     }
 
     if (typeFilter) {
-      const txnType = getTransactionTypeValue(txn);
-      if (txnType !== typeFilter) {
+      const rawType = extractString(txn.typeRaw ?? txn.type);
+      if (!rawType || rawType.toLowerCase() !== typeFilter) {
+        return false;
+      }
+    }
+
+    if (transferOnly) {
+      const transferType = extractString(txn.typeRaw ?? txn.type);
+      const linkedId = extractString(txn.linkedTxn);
+      const normalizedType = transferType ? transferType.toLowerCase() : '';
+      if (normalizedType !== 'expense' || !linkedId) {
         return false;
       }
     }
@@ -279,6 +292,8 @@ export default function TransactionsHistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState(() => createEmptyFilters());
   const [activeTab, setActiveTab] = useState('all');
+  const [availableTypes, setAvailableTypes] = useState([]);
+  const [transferOnly, setTransferOnly] = useState(false);
   const isMobileLayout = useMediaQuery('(max-width: 600px)');
   const tableScrollRef = useRef(null);
   const savedScrollLeftRef = useRef(0);
@@ -316,6 +331,33 @@ export default function TransactionsHistoryPage() {
     }
 
     let isCancelled = false;
+
+    fetch('/api/transactions/types')
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch transaction types');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (isCancelled) {
+          return;
+        }
+        const types = Array.isArray(data?.types) ? data.types : [];
+        const normalized = Array.from(
+          new Set(
+            types
+              .map((value) => (typeof value === 'string' ? value.trim() : ''))
+              .filter((value) => value.length > 0),
+          ),
+        );
+        setAvailableTypes(normalized);
+      })
+      .catch((error) => {
+        if (!isCancelled) {
+          console.error(error);
+        }
+      });
 
     fetch('/api/transactions/columns')
       .then((response) => {
@@ -578,6 +620,21 @@ export default function TransactionsHistoryPage() {
     };
   }, [transactions]);
 
+  const resolvedTypeList = useMemo(() => {
+    if (availableTypes.length > 0) {
+      return availableTypes;
+    }
+    const derived = new Set();
+    const base = Array.isArray(transactions) ? transactions : [];
+    base.forEach((txn) => {
+      const raw = extractString(txn.typeRaw ?? txn.type);
+      if (raw) {
+        derived.add(raw);
+      }
+    });
+    return Array.from(derived);
+  }, [availableTypes, transactions]);
+
   useEffect(() => {
     const filteredIds = new Set(transactions.map((txn) => txn.id));
     setSelectedIds((prev) => {
@@ -597,15 +654,15 @@ export default function TransactionsHistoryPage() {
   const filteredTransactions = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
     const normalizedQuery = searchQuery.trim().toLowerCase();
-    const predicate = buildTransactionPredicate(filters, normalizedQuery);
+    const predicate = buildTransactionPredicate(filters, normalizedQuery, transferOnly);
     return base.filter(predicate);
-  }, [transactions, filters, searchQuery]);
+  }, [transactions, filters, searchQuery, transferOnly]);
 
   useEffect(() => {
     if (selectedIds.length > 0) {
       setSelectedIds([]);
     }
-  }, [filters, searchQuery, selectedIds.length]);
+  }, [filters, searchQuery, selectedIds.length, transferOnly]);
 
   const displayedTransactions = useMemo(() => {
     if (!showSelectedOnly) {
@@ -635,42 +692,40 @@ export default function TransactionsHistoryPage() {
       ...filters,
       type: null,
     };
-    const predicate = buildTransactionPredicate(baseFilter, normalizedQuery);
+    const predicate = buildTransactionPredicate(baseFilter, normalizedQuery, false);
     const baseMatches = base.filter(predicate);
-    const counts = {
-      [TRANSACTION_TYPE_VALUES.INCOME]: 0,
-      [TRANSACTION_TYPE_VALUES.EXPENSES]: 0,
-      [TRANSACTION_TYPE_VALUES.TRANSFER]: 0,
-    };
+    const counts = new Map();
     baseMatches.forEach((txn) => {
-      const type = getTransactionTypeValue(txn);
-      if (type === TRANSACTION_TYPE_VALUES.TRANSFER) {
-        counts[TRANSACTION_TYPE_VALUES.TRANSFER] += 1;
-      } else if (type === TRANSACTION_TYPE_VALUES.INCOME) {
-        counts[TRANSACTION_TYPE_VALUES.INCOME] += 1;
-      } else if (type === TRANSACTION_TYPE_VALUES.EXPENSES) {
-        counts[TRANSACTION_TYPE_VALUES.EXPENSES] += 1;
+      const rawType = extractString(txn.typeRaw ?? txn.type);
+      if (rawType) {
+        const key = rawType;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
       }
     });
-    return [
-      { id: 'all', label: 'All', count: baseMatches.length },
-      {
-        id: TRANSACTION_TYPE_VALUES.INCOME,
-        label: getTransactionTypeLabel(TRANSACTION_TYPE_VALUES.INCOME),
-        count: counts[TRANSACTION_TYPE_VALUES.INCOME],
-      },
-      {
-        id: TRANSACTION_TYPE_VALUES.EXPENSES,
-        label: getTransactionTypeLabel(TRANSACTION_TYPE_VALUES.EXPENSES),
-        count: counts[TRANSACTION_TYPE_VALUES.EXPENSES],
-      },
-      {
-        id: TRANSACTION_TYPE_VALUES.TRANSFER,
-        label: getTransactionTypeLabel(TRANSACTION_TYPE_VALUES.TRANSFER),
-        count: counts[TRANSACTION_TYPE_VALUES.TRANSFER],
-      },
-    ];
-  }, [filters, searchQuery, transactions]);
+    const transferMatches = baseMatches.filter((txn) => {
+      const rawType = extractString(txn.typeRaw ?? txn.type);
+      const linkedId = extractString(txn.linkedTxn);
+      return rawType?.toLowerCase() === 'expense' && Boolean(linkedId);
+    });
+
+    const derivedTabs = resolvedTypeList
+      .filter((type) => type.toLowerCase() !== TRANSACTION_TYPE_VALUES.TRANSFER)
+      .map((type) => ({
+        id: type,
+        label: type,
+        count: counts.get(type) ?? 0,
+      }));
+
+    const tabs = [{ id: 'all', label: 'All', count: baseMatches.length }, ...derivedTabs];
+
+    tabs.push({
+      id: TRANSACTION_TYPE_VALUES.TRANSFER,
+      label: getTransactionTypeLabel(TRANSACTION_TYPE_VALUES.TRANSFER),
+      count: transferMatches.length,
+    });
+
+    return tabs;
+  }, [filters, searchQuery, transactions, resolvedTypeList, transferOnly]);
 
   useEffect(() => {
     if (selectedIds.length === 0) {
@@ -865,39 +920,40 @@ export default function TransactionsHistoryPage() {
 
   const handleTabChange = useCallback((tabId) => {
     setActiveTab(tabId);
-    setFilters(() => {
-      const next = createEmptyFilters();
-      next.type = tabId === 'all' ? null : tabId;
+    setFilters((current) => {
+      const next = { ...current };
+      if (tabId === 'all' || tabId === TRANSACTION_TYPE_VALUES.TRANSFER) {
+        next.type = null;
+      } else {
+        next.type = tabId;
+      }
       return next;
     });
+    setTransferOnly(tabId === TRANSACTION_TYPE_VALUES.TRANSFER);
   }, []);
 
   useEffect(() => {
-    if (!filters?.type) {
-      if (activeTab !== 'all') {
-        setActiveTab('all');
+    if (filters?.type) {
+      if (activeTab !== filters.type) {
+        setActiveTab(filters.type);
+      }
+      if (transferOnly) {
+        setTransferOnly(false);
       }
       return;
     }
 
-    const normalizedType = normalizeTransactionType(filters.type);
-    const tabTypeValues = new Set([
-      TRANSACTION_TYPE_VALUES.INCOME,
-      TRANSACTION_TYPE_VALUES.EXPENSES,
-      TRANSACTION_TYPE_VALUES.TRANSFER,
-    ]);
-
-    if (!tabTypeValues.has(normalizedType)) {
-      if (activeTab !== 'all') {
-        setActiveTab('all');
+    if (transferOnly) {
+      if (activeTab !== TRANSACTION_TYPE_VALUES.TRANSFER) {
+        setActiveTab(TRANSACTION_TYPE_VALUES.TRANSFER);
       }
       return;
     }
 
-    if (normalizedType !== activeTab) {
-      setActiveTab(normalizedType);
+    if (activeTab !== 'all') {
+      setActiveTab('all');
     }
-  }, [activeTab, filters?.type]);
+  }, [activeTab, filters?.type, transferOnly]);
 
   const customizeColumns = useMemo(() => {
     const sorted = columnState.slice().sort((a, b) => a.order - b.order);

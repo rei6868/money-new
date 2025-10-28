@@ -12,7 +12,7 @@
   position: fixed;
   inset: 0;
   z-index: 41;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .panelContainer {
@@ -22,7 +22,7 @@
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .panel {

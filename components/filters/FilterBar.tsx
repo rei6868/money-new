@@ -123,7 +123,7 @@ export function FilterBar({
     appendChip(filters.categories, 'Category', 'categories');
 
     if (filters.type) {
-      const typeLabel = filters.type.replace(/^[a-z]/, (char) => char.toUpperCase());
+      const typeLabel = filters.type;
       chips.push({
         key: `type:${filters.type}`,
         label: `Type: ${typeLabel}`,
