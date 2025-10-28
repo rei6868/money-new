@@ -8,7 +8,7 @@ import styles from '../../styles/TransactionsHistory.module.css';
 import TransactionAdvancedModal from '../../components/transactions/TransactionAdvancedModal';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
 import AddModalGlobal from '../../components/common/AddModalGlobal';
-import HeaderActionsBar from '../../components/common/HeaderActionsBar';
+import HeaderActionBar from '../../components/common/HeaderActionBar';
 import CustomizeColumnsModal from '../../components/common/CustomizeColumnsModal';
 import FilterComingSoonModal from '../../components/common/FilterComingSoonModal';
 
@@ -555,7 +555,7 @@ export default function TransactionsHistoryPage() {
       subtitle="Monitor every inflow, cashback, debt movement, and adjustment inside Money Flow."
     >
       <div className={styles.screen}>
-        <HeaderActionsBar
+        <HeaderActionBar
           context="transactions"
           onAdd={handleOpenAddTransaction}
           addLabel="Add Transaction"
