@@ -25,10 +25,10 @@ export function AddAccountOverlay({ isOpen, onClose, onSubmit }: AddAccountOverl
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [accountName, setAccountName] = useState('');
-  const [accountType, setAccountType] = useState(ACCOUNT_TYPE_OPTIONS[0]?.value ?? 'bank');
+  const [accountType, setAccountType] = useState<string>(ACCOUNT_TYPE_OPTIONS[0]?.value ?? 'bank');
   const [ownerId, setOwnerId] = useState('');
   const [openingBalance, setOpeningBalance] = useState('0');
-  const [accountStatus, setAccountStatus] = useState(ACCOUNT_STATUS_VALUES.ACTIVE);
+  const [accountStatus, setAccountStatus] = useState<string>(ACCOUNT_STATUS_VALUES.ACTIVE);
   const [accountNote, setAccountNote] = useState('');
   const [showConfirmExit, setShowConfirmExit] = useState(false);
 

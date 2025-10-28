@@ -29,15 +29,15 @@ export function AddModalGlobal({ type, isOpen, onClose, onSubmit }: AddModalProp
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [accountName, setAccountName] = useState('');
-  const [accountType, setAccountType] = useState(ACCOUNT_TYPES[0]?.value ?? 'bank');
+  const [accountType, setAccountType] = useState<string>(ACCOUNT_TYPES[0]?.value ?? 'bank');
   const [ownerId, setOwnerId] = useState('');
   const [openingBalance, setOpeningBalance] = useState('0');
-  const [accountStatus, setAccountStatus] = useState(ACCOUNT_STATUSES[0]?.value ?? 'active');
+  const [accountStatus, setAccountStatus] = useState<string>(ACCOUNT_STATUSES[0]?.value ?? 'active');
   const [accountNote, setAccountNote] = useState('');
 
   const [personName, setPersonName] = useState('');
   const [personEmail, setPersonEmail] = useState('');
-  const [personStatus, setPersonStatus] = useState(PERSON_STATUSES[0]?.value ?? 'active');
+  const [personStatus, setPersonStatus] = useState<string>(PERSON_STATUSES[0]?.value ?? 'active');
 
   // Auto-select first active person as default owner
   useEffect(() => {

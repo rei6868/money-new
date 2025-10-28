@@ -7,7 +7,7 @@ import { db } from "../../../lib/db/client";
 import { people, type NewPerson } from "../../../src/db/schema/people";
 
 // Mock data for development when database is not configured
-const MOCK_PEOPLE = [
+const MOCK_PEOPLE: any[] = [
   {
     personId: "mock-person-1",
     fullName: "John Doe",

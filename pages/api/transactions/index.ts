@@ -13,7 +13,7 @@ import { accounts } from "../../../src/db/schema/accounts";
 import { eq, and, isNull } from "drizzle-orm";
 
 // Mock data for development when database is not configured
-const MOCK_TRANSACTIONS = [
+const MOCK_TRANSACTIONS: any[] = [
   {
     transactionId: "mock-txn-1",
     transactionType: "expense",

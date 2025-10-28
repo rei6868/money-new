@@ -7,7 +7,7 @@ import { accounts, accountTypeEnum, accountStatusEnum, type NewAccount } from ".
 import { people } from "../../../src/db/schema/people";
 
 // Mock data for development when database is not configured
-const MOCK_ACCOUNTS = [
+const MOCK_ACCOUNTS: any[] = [
   {
     accountId: "mock-acc-1",
     accountName: "Vietcombank Savings",
