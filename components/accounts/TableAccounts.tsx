@@ -264,6 +264,9 @@ export function TableAccounts({
       isFetching={isFetching}
       rowIdAccessor={(account: AccountRow) => account.accountId}
       renderRowActionsCell={renderRowActionsCell}
+      onBulkDelete={(ids: string[]) => {
+        console.info('Accounts bulk delete placeholder', ids);
+      }}
     />
   );
 }

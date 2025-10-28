@@ -10,15 +10,18 @@ type AccountsPageHeaderProps = {
 };
 
 export function AccountsPageHeader({ activeTab, onTabChange }: AccountsPageHeaderProps) {
+  const indicatorPosition = activeTab === 'cards' ? 'cards' : 'table';
+
   return (
     <header className={styles.pageHeader}>
       <div className={styles.pageTitleGroup}>
-        <h1 className={styles.pageTitle}>Accounts</h1>
+        <h1 className={styles.srOnly}>Accounts</h1>
       </div>
 
       <div className={styles.pageHeaderActions}>
         <div className={styles.headerTabGroup} role="tablist" aria-label="Accounts view mode">
           <div className={styles.viewTabs}>
+            <span className={styles.tabIndicator} data-position={indicatorPosition} aria-hidden />
             <button
               type="button"
               className={styles.tabButton}

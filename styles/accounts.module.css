@@ -53,11 +53,16 @@
   min-width: 0;
 }
 
-.pageTitle {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #1f2240;
-  margin: 0;
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .pageSubtitle {
@@ -301,29 +306,55 @@
 }
 
 .viewTabs {
+  position: relative;
   display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem;
   background: #f4f6fb;
   border-radius: 999px;
-  padding: 0.25rem;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.tabIndicator {
+  position: absolute;
+  inset: 4px auto;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6b4dfd, #9b7ffd);
+  box-shadow: 0 12px 24px rgba(107, 77, 253, 0.35);
+  transition: transform 250ms ease, opacity 150ms ease;
+  z-index: 0;
+}
+
+.tabIndicator[data-position='cards'] {
+  transform: translateX(calc(100% + 0.35rem));
 }
 
 .tabButton {
+  position: relative;
+  z-index: 1;
   border: none;
   background: transparent;
   font-size: 0.95rem;
   font-weight: 600;
-  padding: 0.5rem 1.25rem;
+  padding: 0.55rem 1.35rem;
   border-radius: 999px;
   color: #5b6478;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: color 0.18s ease;
 }
 
 .tabButton[data-active='true'] {
-  background: #ffffff;
+  color: #ffffff;
+}
+
+.tabButton:not([data-active='true']):hover,
+.tabButton:not([data-active='true']):focus-visible {
   color: #2f3367;
-  box-shadow: 0 4px 12px rgba(79, 114, 205, 0.18);
+  outline: none;
 }
 
 .tabButton:disabled {

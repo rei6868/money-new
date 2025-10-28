@@ -221,6 +221,23 @@
   gap: 0.35rem;
 }
 
+.mobileMenuList a {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  color: var(--mf-text-secondary);
+}
+
+.mobileMenuList a:hover,
+.mobileMenuList a:focus-visible {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--mf-text-primary);
+  outline: none;
+}
+
 @media (max-width: 900px) {
   .navBar {
     flex-wrap: wrap;

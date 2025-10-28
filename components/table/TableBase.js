@@ -20,9 +20,9 @@ import {
   resolveColumnSizing,
   useDefinitionMap,
 } from './tableUtils';
-import { useActionMenuRegistry } from './TableActions';
 import { TableBaseHeader } from './TableBaseHeader';
 import { TableBaseBody } from './TableBaseBody';
+import SelectionMiniToolbar from './SelectionMiniToolbar';
 
 function useMergedRefs(...refs) {
   return useCallback(
@@ -105,6 +105,7 @@ const TableBaseInner = (
     onSelectAll,
     selectionSummary = null,
     onOpenAdvanced,
+    onBulkDelete,
     columnDefinitions = [],
     visibleColumns,
     pagination,
@@ -125,12 +126,8 @@ const TableBaseInner = (
   },
   forwardedRef,
 ) => {
-  const [openActionId, setOpenActionId] = useState(null);
-  const [openActionSubmenu, setOpenActionSubmenu] = useState(null);
-  const [isSubmenuFlipped, setIsSubmenuFlipped] = useState(false);
   const [activeDropTarget, setActiveDropTarget] = useState(null);
 
-  const actionMenuCloseTimer = useRef(null);
   const headerCheckboxRef = useRef(null);
   const dragSourceRef = useRef(null);
   const internalScrollRef = useRef(null);
@@ -140,8 +137,6 @@ const TableBaseInner = (
   useImperativeHandle(forwardedRef, () => internalScrollRef.current);
 
   const definitionMap = useDefinitionMap(columnDefinitions);
-  const actionRegistry = useActionMenuRegistry();
-
   const selectionSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const resolveRowId = useCallback(
     (row) => {
@@ -164,6 +159,21 @@ const TableBaseInner = (
   const totals = useMemo(() => normalizeTotals(selectionSummary), [selectionSummary]);
   const selectionCount = Number(selectionSummary?.count ?? selectionSet.size);
   const shouldShowTotals = selectionCount > 0;
+  const hasActiveSelection = selectionCount > 0;
+
+  const handleBulkDelete = useCallback(() => {
+    if (typeof onBulkDelete === 'function') {
+      onBulkDelete(Array.from(selectionSet));
+      return;
+    }
+    if (typeof onOpenAdvanced === 'function') {
+      onOpenAdvanced({ mode: 'delete-many', ids: Array.from(selectionSet) });
+    }
+  }, [onBulkDelete, onOpenAdvanced, selectionSet]);
+
+  const handleClearSelection = useCallback(() => {
+    onSelectAll?.(false);
+  }, [onSelectAll]);
 
   const displayColumns = useMemo(
     () => (isColumnReorderMode ? allColumns : visibleColumns),
@@ -216,38 +226,6 @@ const TableBaseInner = (
       headerCheckboxRef.current.indeterminate = isIndeterminate;
     }
   }, [isIndeterminate]);
-
-  useEffect(() => {
-    if (!openActionId) {
-      setIsSubmenuFlipped(false);
-      return undefined;
-    }
-
-    const menuNode = actionRegistry.getMenu(openActionId);
-    if (!menuNode) {
-      setIsSubmenuFlipped(false);
-      return undefined;
-    }
-
-    const update = () => {
-      const rect = menuNode.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const shouldFlip = rect.left + rect.width + 220 > viewportWidth - 16;
-      setIsSubmenuFlipped(shouldFlip);
-    };
-
-    update();
-    window.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('resize', update);
-    };
-  }, [openActionId, actionRegistry]);
-
-  useEffect(() => () => {
-    if (actionMenuCloseTimer.current) {
-      clearTimeout(actionMenuCloseTimer.current);
-    }
-  }, []);
 
   useEffect(() => {
     if (!isColumnReorderMode) {
@@ -332,53 +310,15 @@ const TableBaseInner = (
     setActiveDropTarget(null);
   }, []);
 
-  const handleActionTriggerEnter = useCallback((transactionId) => {
-    if (actionMenuCloseTimer.current) {
-      clearTimeout(actionMenuCloseTimer.current);
-      actionMenuCloseTimer.current = null;
-    }
-    setOpenActionId(transactionId);
-  }, []);
-
-  const handleActionTriggerLeave = useCallback(() => {
-    if (actionMenuCloseTimer.current) {
-      clearTimeout(actionMenuCloseTimer.current);
-    }
-    actionMenuCloseTimer.current = setTimeout(() => {
-      setOpenActionId(null);
-      setOpenActionSubmenu(null);
-    }, 120);
-  }, []);
-
-  const handleActionFocus = useCallback((transactionId) => {
-    setOpenActionId(transactionId);
-  }, []);
-
-  const handleActionBlur = useCallback((event) => {
-    const nextFocus = event?.relatedTarget;
-    if (nextFocus && event.currentTarget.contains(nextFocus)) {
-      return;
-    }
-    actionMenuCloseTimer.current = setTimeout(() => {
-      setOpenActionId(null);
-      setOpenActionSubmenu(null);
-    }, 120);
-  }, []);
-
-  const handleAction = useCallback(
-    (payload) => () => {
-      if (payload) {
-        onOpenAdvanced?.(payload);
+  const handleEditRow = useCallback(
+    (transaction) => {
+      if (!transaction) {
+        return;
       }
-      setOpenActionId(null);
-      setOpenActionSubmenu(null);
+      onOpenAdvanced?.({ mode: 'edit', transaction });
     },
     [onOpenAdvanced],
   );
-
-  const handleSubmenuEnter = useCallback((submenuId) => () => {
-    setOpenActionSubmenu(submenuId);
-  }, []);
 
   const paginationMode = usePaginationMode({
     scrollRef: internalScrollRef,
@@ -394,6 +334,13 @@ const TableBaseInner = (
       aria-label={tableTitle}
       style={{ '--transactions-font-scale': fontScale }}
     >
+      {hasActiveSelection ? (
+        <SelectionMiniToolbar
+          count={selectionCount}
+          onDelete={handleBulkDelete}
+          onCancel={handleClearSelection}
+        />
+      ) : null}
       {toolbarSlot}
       <div className={styles.tableShell}>
         <div
@@ -428,27 +375,17 @@ const TableBaseInner = (
               transactions={transactions}
             />
             <TableBaseBody
-            transactions={transactions}
-            columns={columnDescriptors}
-            selectionSet={selectionSet}
-            onSelectRow={onSelectRow}
-            actionRegistry={actionRegistry}
-              openActionId={openActionId}
-              openActionSubmenu={openActionSubmenu}
-              onActionTriggerEnter={handleActionTriggerEnter}
-              onActionTriggerLeave={handleActionTriggerLeave}
-              onActionFocus={handleActionFocus}
-              onActionBlur={handleActionBlur}
-            onAction={handleAction}
-            onSubmenuEnter={handleSubmenuEnter}
-            registerActionMenu={actionRegistry.registerMenu}
-            isSubmenuFlipped={isSubmenuFlipped}
-            hiddenColumnIds={hiddenColumnIds}
-            isColumnReorderMode={isColumnReorderMode}
-            isShowingSelectedOnly={isShowingSelectedOnly}
-            getRowId={resolveRowId}
-            renderRowActionsCell={renderRowActionsCell}
-          />
+              transactions={transactions}
+              columns={columnDescriptors}
+              selectionSet={selectionSet}
+              onSelectRow={onSelectRow}
+              hiddenColumnIds={hiddenColumnIds}
+              isColumnReorderMode={isColumnReorderMode}
+              isShowingSelectedOnly={isShowingSelectedOnly}
+              getRowId={resolveRowId}
+              renderRowActionsCell={renderRowActionsCell}
+              onEditRow={handleEditRow}
+            />
             {shouldShowTotals ? (
               <tfoot>
                 <tr className={styles.totalRow}>

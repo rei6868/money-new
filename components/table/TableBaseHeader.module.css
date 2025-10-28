@@ -60,13 +60,35 @@
   text-align: center;
 }
 
-.taskHeaderLabel {
+.taskHeaderShell {
   justify-content: center;
   align-items: center;
+  gap: 0.35rem;
 }
 
-.taskHeaderText {
+.taskHeaderIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(107, 77, 253, 0.18);
+  color: #4338ca;
+  font-size: 1.05rem;
+  box-shadow: inset 0 0 0 1px rgba(107, 77, 253, 0.2);
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
+  border: 0;
 }
 
 .headerReorder {
@@ -127,10 +149,6 @@
 @media (max-width: 640px) {
   .headerLabelText {
     white-space: normal;
-  }
-
-  .taskHeaderText {
-    white-space: nowrap;
   }
 }
 

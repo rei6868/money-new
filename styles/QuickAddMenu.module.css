@@ -69,16 +69,36 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-6px);
+  pointer-events: auto;
+}
+
+
+.menuEnter {
   transition: opacity 150ms ease, transform 150ms ease;
 }
 
-.menu[data-open='true'] {
+.menuEnterFrom {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.menuEnterTo {
   opacity: 1;
-  pointer-events: auto;
   transform: translateY(0);
+}
+
+.menuLeave {
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.menuLeaveFrom {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.menuLeaveTo {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 
 .menuItem {

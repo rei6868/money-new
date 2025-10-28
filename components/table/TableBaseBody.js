@@ -1,18 +1,25 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FiChevronRight, FiEdit2, FiFilter, FiMoreHorizontal, FiTrash2 } from 'react-icons/fi';
+import { FiEdit2 } from 'react-icons/fi';
 
 import styles from './TableBase.module.css';
 import bodyStyles from './TableBaseBody.module.css';
 import { formatAmount, formatPercent } from '../../lib/numberFormat';
 import { ACTIONS_COLUMN_WIDTH, CHECKBOX_COLUMN_WIDTH } from './tableUtils';
-import { TableActionMenuPortal } from './TableActions';
 import { TableTooltip } from './TableTooltip';
 
 const dateFormatters = {
+  'DD/MM': new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+  }),
   'DD/MM/YY': new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
+  }),
+  'MM/DD': new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    month: '2-digit',
   }),
   'MM/DD/YY': new Intl.DateTimeFormat('en-US', {
     day: '2-digit',
@@ -21,7 +28,7 @@ const dateFormatters = {
   }),
 };
 
-function formatTransactionDate(value, format = 'DD/MM/YY') {
+function formatTransactionDate(value, format = 'DD/MM') {
   if (!value) {
     return '—';
   }
@@ -31,13 +38,21 @@ function formatTransactionDate(value, format = 'DD/MM/YY') {
     return value;
   }
 
+  if (format === 'DD/MM/YY') {
+    return dateFormatters['DD/MM'].format(dateValue);
+  }
+
+  if (format === 'MM/DD/YY') {
+    return dateFormatters['MM/DD'].format(dateValue);
+  }
+
   if (format === 'YYYY-MM-DD') {
     const month = String(dateValue.getMonth() + 1).padStart(2, '0');
     const day = String(dateValue.getDate()).padStart(2, '0');
     return `${dateValue.getFullYear()}-${month}-${day}`;
   }
 
-  const formatter = dateFormatters[format] ?? dateFormatters['DD/MM/YY'];
+  const formatter = dateFormatters[format] ?? dateFormatters['DD/MM'];
   return formatter.format(dateValue);
 }
 
@@ -151,22 +166,12 @@ export function TableBaseBody({
   columns,
   selectionSet,
   onSelectRow,
-  actionRegistry,
-  openActionId,
-  openActionSubmenu,
-  onActionTriggerEnter,
-  onActionTriggerLeave,
-  onActionFocus,
-  onActionBlur,
-  onAction,
-  onSubmenuEnter,
-  registerActionMenu,
-  isSubmenuFlipped = false,
   hiddenColumnIds = new Set(),
   isColumnReorderMode = false,
   isShowingSelectedOnly = false,
   getRowId = (row) => (row ? row.id ?? null : null),
   renderRowActionsCell,
+  onEditRow,
 }) {
   const [tooltipState, setTooltipState] = useState({ anchor: null, content: '', isVisible: false });
 
@@ -230,20 +235,6 @@ export function TableBaseBody({
 
   const renderDefaultRowActions = (transaction, isSelected, rowId) => {
     const resolvedId = rowId ?? transaction?.id;
-    if (!resolvedId) {
-      return (
-        <td
-          className={`${styles.bodyCell} ${styles.actionsCell}`}
-          style={{
-            minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
-            width: `${ACTIONS_COLUMN_WIDTH}px`,
-          }}
-        />
-      );
-    }
-
-    const triggerRef = actionRegistry.registerTrigger(resolvedId);
-
     return (
       <td
         className={`${styles.bodyCell} ${styles.actionsCell}`}
@@ -252,145 +243,19 @@ export function TableBaseBody({
           width: `${ACTIONS_COLUMN_WIDTH}px`,
         }}
       >
-        <div
-          className={bodyStyles.actionsTrigger}
-          ref={triggerRef}
-          onMouseEnter={() => {
-            if (isColumnReorderMode) {
-              return;
-            }
-            onActionTriggerEnter(resolvedId);
-          }}
-          onMouseLeave={() => {
-            if (isColumnReorderMode) {
-              return;
-            }
-            onActionTriggerLeave();
-          }}
-          onFocus={() => {
-            if (isColumnReorderMode) {
-              return;
-            }
-            onActionFocus(resolvedId);
-          }}
-          onBlur={(event) => {
-            if (isColumnReorderMode) {
-              return;
-            }
-            onActionBlur(event);
-          }}
-          data-selected={isSelected ? 'true' : undefined}
-        >
+        <div className={bodyStyles.inlineActions} data-selected={isSelected ? 'true' : undefined}>
           <button
             type="button"
-            className={`${bodyStyles.actionsButton} ${
-              openActionId === resolvedId ? bodyStyles.actionsButtonActive : ''
-            }`.trim()}
-            data-testid={`transaction-actions-trigger-${resolvedId}`}
-            aria-haspopup="menu"
-            aria-expanded={openActionId === resolvedId}
-            aria-label="Show row actions"
+            className={bodyStyles.inlineEditButton}
+            onClick={() => onEditRow?.(transaction)}
             disabled={isColumnReorderMode}
-            onClick={() => {
-              if (isColumnReorderMode) {
-                return;
-              }
-              if (openActionId === resolvedId) {
-                onAction(null)();
-              } else {
-                onActionTriggerEnter(resolvedId);
-              }
-            }}
-          >
-            <FiMoreHorizontal aria-hidden />
-          </button>
-        </div>
-        <TableActionMenuPortal
-          rowId={resolvedId}
-          anchor={actionRegistry.getTrigger(resolvedId)}
-          isOpen={!isColumnReorderMode && openActionId === resolvedId}
-          onClose={() => onAction(null)()}
-          registerContent={registerActionMenu}
-          className={`${bodyStyles.actionsMenu} ${
-            isSubmenuFlipped ? bodyStyles.actionsMenuFlipped : ''
-          }`.trim()}
-          containerProps={{
-            onMouseEnter: () => onActionTriggerEnter(resolvedId),
-            onMouseLeave: onActionTriggerLeave,
-            onFocus: () => onActionFocus(resolvedId),
-            onBlur: onActionBlur,
-          }}
-          dataTestId={`transaction-actions-menu-${resolvedId}`}
-        >
-          <button
-            type="button"
-            className={bodyStyles.actionsMenuItem}
-            onMouseEnter={onSubmenuEnter(null)}
-            onClick={onAction({ mode: 'edit', transaction })}
-            data-testid={`transaction-action-edit-${resolvedId}`}
+            title="Edit"
+            aria-label={resolvedId ? `Edit transaction ${resolvedId}` : 'Edit transaction'}
+            data-testid={resolvedId ? `transaction-edit-${resolvedId}` : undefined}
           >
             <FiEdit2 aria-hidden />
-            <span>Quick edit</span>
           </button>
-          <button
-            type="button"
-            className={`${bodyStyles.actionsMenuItem} ${bodyStyles.actionsMenuDanger}`.trim()}
-            onMouseEnter={onSubmenuEnter(null)}
-            onClick={onAction({ mode: 'delete', transaction })}
-            data-testid={`transaction-action-delete-${resolvedId}`}
-          >
-            <FiTrash2 aria-hidden />
-            <span>Delete</span>
-          </button>
-          <div
-            className={`${bodyStyles.actionsMenuItem} ${bodyStyles.actionsMenuNested}`.trim()}
-            onMouseEnter={onSubmenuEnter('more')}
-            data-testid={`transaction-action-more-${resolvedId}`}
-          >
-            <div className={bodyStyles.actionsNestedLabel}>
-              <FiMoreHorizontal aria-hidden />
-              <span>More actions</span>
-            </div>
-            <FiChevronRight className={bodyStyles.actionsNestedCaret} aria-hidden />
-            <div
-              className={`${bodyStyles.actionsSubmenu} ${
-                isSubmenuFlipped ? bodyStyles.actionsSubmenuFlipped : ''
-              } ${
-                openActionId === resolvedId && openActionSubmenu === 'more'
-                  ? bodyStyles.actionsSubmenuOpen
-                  : ''
-              }`.trim()}
-              role="menu"
-            >
-              <button
-                type="button"
-                className={bodyStyles.actionsMenuItem}
-                onClick={onAction({
-                  mode: 'advanced',
-                  transaction,
-                  intent: 'advanced-panel',
-                })}
-                data-testid={`transaction-action-advanced-${resolvedId}`}
-              >
-                <FiFilter aria-hidden />
-                <span>Open advanced panel</span>
-              </button>
-              <button
-                type="button"
-                className={bodyStyles.actionsMenuItem}
-                onClick={onAction({
-                  mode: 'advanced',
-                  transaction,
-                  intent: 'duplicate-draft',
-                })}
-                data-testid={`transaction-action-duplicate-${resolvedId}`}
-              >
-                <FiEdit2 aria-hidden />
-                <span>Duplicate as draft</span>
-              </button>
-            </div>
-          </div>
-        </TableActionMenuPortal>
+        </div>
       </td>
     );
   };
@@ -482,6 +347,7 @@ export function TableBaseBody({
                           onSelectRow?.(identifier, checked);
                         }
                       },
+                      onEdit: () => onEditRow?.(transaction),
                     })
                   : renderDefaultRowActions(transaction, isSelected, resolvedId)}
               </tr>

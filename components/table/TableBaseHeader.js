@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { FiChevronDown, FiChevronUp, FiMinus } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiEdit2, FiMinus } from 'react-icons/fi';
 
 import headerStyles from './TableBaseHeader.module.css';
 import styles from './TableBase.module.css';
@@ -316,17 +316,18 @@ export function TableBaseHeader({
         {columns.map(renderColumnHeader)}
         <th
           scope="col"
-          aria-label="Task"
-          className={`${headerStyles.headerCell} ${styles.actionsCell}`}
+          aria-label="Edit"
+          className={`${headerStyles.headerCell} ${styles.actionsCell} ${headerStyles.taskHeaderCell}`.trim()}
           style={{
             minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
             width: `${ACTIONS_COLUMN_WIDTH}px`,
           }}
         >
-          <div className={headerStyles.headerShell}>
-            <span className={headerStyles.headerLabel}>
-              <span>Task</span>
+          <div className={`${headerStyles.headerShell} ${headerStyles.taskHeaderShell}`.trim()}>
+            <span className={headerStyles.taskHeaderIcon} aria-hidden="true">
+              <FiEdit2 />
             </span>
+            <span className={headerStyles.visuallyHidden}>Edit</span>
           </div>
         </th>
       </tr>

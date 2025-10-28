@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import React, { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Popover, Portal, Transition } from '@headlessui/react';
 import { FiArrowDownCircle, FiArrowUpCircle, FiLayers, FiRefreshCw, FiZap } from 'react-icons/fi';
 
 import styles from '../../styles/QuickAddMenu.module.css';
@@ -41,8 +41,7 @@ const ACTIONS: { id: QuickAddActionId; label: string; description: string; icon:
 export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const [isHoverable, setIsHoverable] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 248 });
   const closeTimerRef = useRef<number | null>(null);
@@ -56,29 +55,6 @@ export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
     updateHoverable();
     media.addEventListener('change', updateHoverable);
     return () => media.removeEventListener('change', updateHoverable);
-  }, []);
-
-  useEffect(() => {
-    if (typeof document === 'undefined') {
-      return undefined;
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      if (!containerRef.current) {
-        return;
-      }
-      if (containerRef.current.contains(target)) {
-        return;
-      }
-      if (menuRef.current && menuRef.current.contains(target)) {
-        return;
-      }
-      setIsOpen(false);
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, []);
 
   const updateMenuPosition = useCallback(() => {
@@ -102,23 +78,6 @@ export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
     setMenuPosition({ top, left: clampedLeft, width });
   }, []);
 
-  useEffect(() => {
-    if (!isOpen) {
-      return undefined;
-    }
-
-    updateMenuPosition();
-
-    const handleReposition = () => updateMenuPosition();
-    window.addEventListener('resize', handleReposition);
-    window.addEventListener('scroll', handleReposition, true);
-
-    return () => {
-      window.removeEventListener('resize', handleReposition);
-      window.removeEventListener('scroll', handleReposition, true);
-    };
-  }, [isOpen, updateMenuPosition]);
-
   const clearCloseTimer = useCallback(() => {
     if (closeTimerRef.current !== null) {
       window.clearTimeout(closeTimerRef.current);
@@ -132,125 +91,202 @@ export function QuickAddMenu({ onSelect, className }: QuickAddMenuProps) {
 
   const handleSelect = (actionId: QuickAddActionId) => {
     onSelect?.(actionId);
-    setIsOpen(false);
-  };
-
-  const scheduleClose = useCallback(() => {
-    if (!isHoverable) {
-      setIsOpen(false);
-      return;
-    }
-    clearCloseTimer();
-    closeTimerRef.current = window.setTimeout(() => {
-      setIsOpen(false);
-      closeTimerRef.current = null;
-    }, 180);
-  }, [clearCloseTimer, isHoverable]);
-
-  const handleToggle = () => {
-    if (isHoverable) {
-      clearCloseTimer();
-      setIsOpen(true);
-      updateMenuPosition();
-    } else {
-      setIsOpen((prev) => {
-        const next = !prev;
-        if (!prev && next) {
-          updateMenuPosition();
-        }
-        return next;
-      });
-    }
   };
 
   const containerClassName = [styles.container, className].filter(Boolean).join(' ');
-  const menu = (
-    <div
-      ref={menuRef}
-      className={styles.portalAnchor}
-      style={{
-        top: `${menuPosition.top}px`,
-        left: `${menuPosition.left}px`,
-        minWidth: `${menuPosition.width}px`,
-      }}
-      onMouseEnter={() => {
-        if (isHoverable) {
-          clearCloseTimer();
-        }
-      }}
-      onMouseLeave={() => {
-        if (isHoverable) {
-          scheduleClose();
-        }
-      }}
-    >
-      <div
-        className={styles.menu}
-        role="menu"
-        data-open={isOpen ? 'true' : 'false'}
-        aria-hidden={isOpen ? 'false' : 'true'}
-      >
-        {actionItems.map((action) => (
-          <button
-            key={action.id}
-            type="button"
-            className={styles.menuItem}
-            role="menuitem"
-            onClick={() => handleSelect(action.id)}
-          >
-            <span className={styles.menuIcon}>{action.icon}</span>
-            <span className={styles.menuContent}>
-              <span className={styles.menuLabel}>{action.label}</span>
-              <span className={styles.menuDescription}>{action.description}</span>
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
   return (
-    <>
-      <div
-        ref={containerRef}
-        className={containerClassName}
-        data-expanded={isOpen ? 'true' : undefined}
-        onMouseEnter={() => {
-          if (isHoverable) {
-            clearCloseTimer();
-            setIsOpen(true);
-          }
-        }}
-        onMouseLeave={() => {
-          if (isHoverable) {
-            scheduleClose();
-          }
-        }}
-      >
-        <button
-          ref={triggerRef}
-          type="button"
-          className={styles.trigger}
-          aria-haspopup="true"
-          aria-expanded={isOpen ? 'true' : 'false'}
-          onClick={handleToggle}
-        >
-          <span className={styles.triggerIcon} aria-hidden>
-            <FiZap />
-          </span>
-          <span className={styles.triggerLabel}>Quick Add</span>
-        </button>
-      </div>
-      {typeof document !== 'undefined'
-        ? createPortal(
-            <div className={styles.portalRoot} data-open={isOpen ? 'true' : 'false'}>
-              {menu}
-            </div>,
-            document.body,
-          )
-        : null}
-    </>
+    <Popover>
+      {({ open, close }) => (
+        <>
+          <div
+            ref={containerRef}
+            className={containerClassName}
+            data-expanded={open ? 'true' : undefined}
+            onMouseEnter={() => {
+              if (!isHoverable) {
+                return;
+              }
+              clearCloseTimer();
+              if (!open) {
+                triggerRef.current?.click();
+              }
+            }}
+            onMouseLeave={() => {
+              if (!isHoverable) {
+                return;
+              }
+              clearCloseTimer();
+              closeTimerRef.current = window.setTimeout(() => {
+                close();
+                closeTimerRef.current = null;
+              }, 180);
+            }}
+          >
+            <Popover.Button
+              ref={triggerRef}
+              type="button"
+              className={styles.trigger}
+              aria-haspopup="true"
+              aria-expanded={open ? 'true' : 'false'}
+              onClick={() => {
+                clearCloseTimer();
+                if (!open) {
+                  updateMenuPosition();
+                }
+              }}
+              onMouseEnter={() => {
+                if (!isHoverable || open) {
+                  return;
+                }
+                clearCloseTimer();
+                triggerRef.current?.click();
+              }}
+            >
+              <span className={styles.triggerIcon} aria-hidden>
+                <FiZap />
+              </span>
+              <span className={styles.triggerLabel}>Quick Add</span>
+            </Popover.Button>
+          </div>
+          <QuickAddPanel
+            actionItems={actionItems}
+            anchorClassName={styles.portalAnchor}
+            clearCloseTimer={clearCloseTimer}
+            close={close}
+            closeTimerRef={closeTimerRef}
+            handleSelect={handleSelect}
+            isHoverable={isHoverable}
+            menuPosition={menuPosition}
+            onReposition={updateMenuPosition}
+            open={open}
+            panelRef={panelRef}
+          />
+        </>
+      )}
+    </Popover>
   );
 }
 
 export default QuickAddMenu;
+
+type QuickAddPanelProps = {
+  actionItems: typeof ACTIONS;
+  anchorClassName: string;
+  clearCloseTimer: () => void;
+  close: (
+    focusableElement?:
+      | HTMLElement
+      | React.MutableRefObject<HTMLElement | null>
+      | React.MouseEvent<HTMLElement>,
+  ) => void;
+  closeTimerRef: React.MutableRefObject<number | null>;
+  handleSelect: (actionId: QuickAddActionId) => void;
+  isHoverable: boolean;
+  menuPosition: { top: number; left: number; width: number };
+  onReposition: () => void;
+  open: boolean;
+  panelRef: React.MutableRefObject<HTMLDivElement | null>;
+};
+
+function QuickAddPanel({
+  actionItems,
+  anchorClassName,
+  clearCloseTimer,
+  close,
+  closeTimerRef,
+  handleSelect,
+  isHoverable,
+  menuPosition,
+  onReposition,
+  open,
+  panelRef,
+}: QuickAddPanelProps) {
+  useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
+    onReposition();
+
+    const handleReposition = () => onReposition();
+    window.addEventListener('resize', handleReposition);
+    window.addEventListener('scroll', handleReposition, true);
+
+    return () => {
+      window.removeEventListener('resize', handleReposition);
+      window.removeEventListener('scroll', handleReposition, true);
+    };
+  }, [onReposition, open]);
+
+  useEffect(() => () => clearCloseTimer(), [clearCloseTimer]);
+
+  return (
+    <Portal>
+      <div className={styles.portalRoot} data-open={open ? 'true' : 'false'}>
+        <Transition
+          as={Fragment}
+          show={open}
+          enter={styles.menuEnter}
+          enterFrom={styles.menuEnterFrom}
+          enterTo={styles.menuEnterTo}
+          leave={styles.menuLeave}
+          leaveFrom={styles.menuLeaveFrom}
+          leaveTo={styles.menuLeaveTo}
+        >
+          <div
+            className={anchorClassName}
+            style={{
+              top: `${menuPosition.top}px`,
+              left: `${menuPosition.left}px`,
+              minWidth: `${menuPosition.width}px`,
+            }}
+            onMouseEnter={() => {
+              if (isHoverable) {
+                clearCloseTimer();
+              }
+            }}
+            onMouseLeave={() => {
+              if (!isHoverable) {
+                return;
+              }
+              clearCloseTimer();
+              closeTimerRef.current = window.setTimeout(() => {
+                close();
+                closeTimerRef.current = null;
+              }, 180);
+            }}
+          >
+            <Popover.Panel
+              static
+              ref={(node) => {
+                panelRef.current = node;
+              }}
+              className={styles.menu}
+              role="menu"
+              aria-hidden={open ? 'false' : 'true'}
+            >
+              {actionItems.map((action) => (
+                <button
+                  key={action.id}
+                  type="button"
+                  className={styles.menuItem}
+                  role="menuitem"
+                  onClick={() => {
+                    handleSelect(action.id);
+                    close();
+                  }}
+                >
+                  <span className={styles.menuIcon}>{action.icon}</span>
+                  <span className={styles.menuContent}>
+                    <span className={styles.menuLabel}>{action.label}</span>
+                    <span className={styles.menuDescription}>{action.description}</span>
+                  </span>
+                </button>
+              ))}
+            </Popover.Panel>
+          </div>
+        </Transition>
+      </div>
+    </Portal>
+  );
+}
