@@ -73,15 +73,24 @@ function applyTypeMetadata(txn) {
   };
 }
 
-function buildTransactionPredicate(normalizedQuery, transferOnly = false) {
+function buildTransactionPredicate(normalizedQuery, filterType = null) {
   return (txn) => {
-    // Filter by transfer type if needed
-    if (transferOnly) {
-      const transferType = extractString(txn.typeRaw ?? txn.type);
-      const linkedId = extractString(txn.linkedTxn);
-      const normalizedType = transferType ? transferType.toLowerCase() : '';
-      if (normalizedType !== 'expense' || !linkedId) {
-        return false;
+    // Filter by type if specified
+    if (filterType && filterType !== 'all') {
+      const txnType = extractString(txn.typeRaw ?? txn.type);
+      const normalizedType = txnType ? txnType.toLowerCase() : '';
+
+      if (filterType === TRANSACTION_TYPE_VALUES.TRANSFER) {
+        // Transfer: must be expense with linked transaction
+        const linkedId = extractString(txn.linkedTxn);
+        if (normalizedType !== 'expense' || !linkedId) {
+          return false;
+        }
+      } else {
+        // Specific type: must match exactly
+        if (normalizedType !== filterType.toLowerCase()) {
+          return false;
+        }
       }
     }
 
@@ -136,7 +145,6 @@ export default function TransactionsHistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [availableTypes, setAvailableTypes] = useState([]);
-  const [transferOnly, setTransferOnly] = useState(false);
   const tableScrollRef = useRef(null);
   const savedScrollLeftRef = useRef(0);
 
@@ -422,9 +430,9 @@ export default function TransactionsHistoryPage() {
   const filteredTransactions = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
     const normalizedQuery = searchQuery.trim().toLowerCase();
-    const predicate = buildTransactionPredicate(normalizedQuery, transferOnly);
+    const predicate = buildTransactionPredicate(normalizedQuery, activeTab);
     return base.filter(predicate);
-  }, [transactions, searchQuery, transferOnly]);
+  }, [transactions, searchQuery, activeTab]);
 
   // Sync selected IDs with available transactions (remove IDs that no longer exist)
   useEffect(() => {
@@ -687,21 +695,7 @@ export default function TransactionsHistoryPage() {
 
   const handleTabChange = useCallback((tabId) => {
     setActiveTab(tabId);
-    setTransferOnly(tabId === TRANSACTION_TYPE_VALUES.TRANSFER);
   }, []);
-
-  useEffect(() => {
-    if (transferOnly) {
-      if (activeTab !== TRANSACTION_TYPE_VALUES.TRANSFER) {
-        setActiveTab(TRANSACTION_TYPE_VALUES.TRANSFER);
-      }
-      return;
-    }
-
-    if (activeTab !== 'all') {
-      setActiveTab('all');
-    }
-  }, [activeTab, transferOnly]);
 
   const customizeColumns = useMemo(() => {
     const sorted = columnState.slice().sort((a, b) => a.order - b.order);

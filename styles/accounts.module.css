@@ -25,7 +25,8 @@
   justify-content: space-between;
   gap: 1rem;
   width: 100%;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-height: 44px;
 }
 
 .actionBar {
@@ -40,7 +41,8 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex: 1 1 300px;
+  flex: 1 1 auto;
+  max-width: 400px;
   min-width: 200px;
   position: relative;
   border-radius: 12px;
@@ -48,6 +50,7 @@
   background: rgba(248, 250, 255, 0.8);
   padding: 0.5rem 0.75rem;
   transition: border 0.2s ease, box-shadow 0.2s ease;
+  height: 44px;
 }
 
 .searchContainer:focus-within {
@@ -195,7 +198,8 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .viewTabs {
@@ -814,7 +818,7 @@
   }
 
   .filterActions button span,
-  .filterActionsQuickAdd button span {
+  .filterActionsQuickAdd button span:not(.triggerIcon) {
     position: absolute;
     width: 1px;
     height: 1px;

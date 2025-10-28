@@ -1906,7 +1906,7 @@
   }
 
   .filterActions button span,
-  .filterActionsQuickAdd button span {
+  .filterActionsQuickAdd button span:not(.triggerIcon) {
     position: absolute;
     width: 1px;
     height: 1px;
