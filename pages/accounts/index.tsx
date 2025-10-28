@@ -148,6 +148,27 @@ export default function AccountsPage() {
     [],
   );
 
+  const validColumnIds = useMemo(
+    () =>
+      new Set<ColumnState['id']>(
+        ACCOUNT_COLUMN_DEFINITIONS.map((definition) => definition.id as ColumnState['id']),
+      ),
+    [],
+  );
+
+  const resolveFallbackWidth = useCallback(
+    (id: ColumnState['id']) => {
+      const definition = definitionLookup.get(id);
+      if (!definition) {
+        return 200;
+      }
+      const minWidth = definition.minWidth ?? 160;
+      const defaultWidth = definition.defaultWidth ?? minWidth;
+      return Math.max(defaultWidth, minWidth);
+    },
+    [definitionLookup],
+  );
+
   const orderedColumns = useMemo<ColumnState[]>(() => {
     if (columnState.length === 0) {
       return [];
@@ -440,20 +461,34 @@ export default function AccountsPage() {
     setAddModalType('transaction');
   }, []);
 
-  const handleCustomizeChange = useCallback((columnsConfig: CustomizeColumnConfig[]) => {
-    setColumnState((prev) => {
-      const widthLookup = new Map(prev.map((column) => [column.id, column.width]));
-      const optionalLookup = new Map(prev.map((column) => [column.id, column.optional]));
-      return columnsConfig.map((column, index) => ({
-        id: column.id,
-        width: widthLookup.get(column.id) ?? 200,
-        visible: column.visible,
-        order: index,
-        pinned: column.pinned ?? null,
-        optional: optionalLookup.get(column.id) ?? false,
-      }));
-    });
-  }, []);
+  const handleCustomizeChange = useCallback(
+    (columnsConfig: CustomizeColumnConfig[]) => {
+      setColumnState((prev) => {
+        const widthLookup = new Map(prev.map((column) => [column.id, column.width]));
+        const optionalLookup = new Map(prev.map((column) => [column.id, column.optional]));
+
+        const next: ColumnState[] = [];
+        columnsConfig.forEach((column, index) => {
+          if (!validColumnIds.has(column.id as ColumnState['id'])) {
+            return;
+          }
+
+          const columnId = column.id as ColumnState['id'];
+          next.push({
+            id: columnId,
+            width: widthLookup.get(columnId) ?? resolveFallbackWidth(columnId),
+            visible: column.visible,
+            order: index,
+            pinned: column.pinned ?? null,
+            optional: optionalLookup.get(columnId) ?? false,
+          });
+        });
+
+        return next;
+      });
+    },
+    [resolveFallbackWidth, validColumnIds],
+  );
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
