@@ -1,0 +1,189 @@
+@value buttonSize: var(--mf-navigation-button-size, 34px);
+
+.navBar {
+  composes: wrapper from '../topbar/TopBar.module.css';
+}
+
+.brandLink {
+  composes: mobileTrigger from '../topbar/TopBar.module.css';
+  justify-content: flex-start;
+  gap: 0.4rem;
+}
+
+.brandMark {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.navListWrapper {
+  composes: linksContainer from '../topbar/TopBar.module.css';
+}
+
+.navList {
+  composes: desktopLinks from '../topbar/TopBar.module.css';
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.navItem {
+  flex: 0 0 auto;
+}
+
+.navItemHidden {
+  composes: navLinkHidden from '../topbar/TopBar.module.css';
+}
+
+.navLink {
+  composes: navLink from '../topbar/TopBar.module.css';
+}
+
+.navLinkActive {
+  composes: navLinkActive from '../topbar/TopBar.module.css';
+}
+
+.navActions {
+  composes: actions from '../topbar/TopBar.module.css';
+}
+
+.iconButton {
+  composes: iconButton from '../topbar/TopBar.module.css';
+}
+
+.iconButtonHidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.moreWrapper {
+  position: relative;
+}
+
+.moreTrigger {
+  font-size: 1.15rem;
+}
+
+.moreWrapper[data-active='false'] .moreTrigger {
+  display: none;
+}
+
+.moreMenu {
+  composes: overflowDropdown from '../topbar/TopBar.module.css';
+}
+
+.moreMenuList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.moreMenuList a {
+  composes: dropdownLink from '../topbar/TopBar.module.css';
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.mobileMenuWrapper {
+  display: none;
+  align-items: center;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.mobileTrigger {
+  composes: mobileTrigger from '../topbar/TopBar.module.css';
+}
+
+.mobileLabel {
+  composes: mobileTriggerLabel from '../topbar/TopBar.module.css';
+}
+
+.mobileMenu {
+  composes: mobileDropdown from '../topbar/TopBar.module.css';
+}
+
+.mobileMenuList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.mobileMenuList a {
+  composes: dropdownLink from '../topbar/TopBar.module.css';
+}
+
+.mobileChevron {
+  composes: mobileChevron from '../topbar/TopBar.module.css';
+}
+
+.mobileChevronOpen {
+  composes: mobileChevronOpen from '../topbar/TopBar.module.css';
+}
+
+.visuallyHidden {
+  composes: visuallyHidden from '../topbar/TopBar.module.css';
+}
+
+@media (max-width: 900px) {
+  .navBar {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    row-gap: 0.45rem;
+  }
+
+  .navListWrapper {
+    flex: 1 1 100%;
+    order: 3;
+  }
+
+  .navActions {
+    order: 2;
+  }
+
+  .navList {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 820px) {
+  .navBar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .brandLink {
+    justify-self: flex-start;
+    grid-column: 1;
+  }
+
+  .mobileMenuWrapper {
+    display: inline-flex;
+    align-items: center;
+    width: 100%;
+    margin-left: 0;
+    min-width: 0;
+    grid-column: 2;
+  }
+
+  .mobileTrigger {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

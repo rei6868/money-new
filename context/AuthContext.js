@@ -1,14 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-/**
- * @typedef {Object} AuthContextValue
- * @property {boolean} isAuthenticated
- * @property {boolean} isLoading
- * @property {(username: string, password: string) => boolean} login
- * @property {() => void} logout
- */
-
-/** @type {import('react').Context<AuthContextValue | null>} */
 const AuthContext = createContext(null);
 
 const AUTH_STORAGE_KEY = 'finance-app-authenticated';
@@ -27,21 +18,20 @@ export function AuthProvider({ children }) {
     setIsLoading(false);
   }, []);
 
-  const login = (username, password) => {
+  const login = useCallback((username, password) => {
     const isValid = username === 'admin' && password === 'admin';
     if (isValid) {
       window.localStorage.setItem(AUTH_STORAGE_KEY, 'true');
       setIsAuthenticated(true);
     }
     return isValid;
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
     setIsAuthenticated(false);
-  };
+  }, []);
 
-  /** @type {AuthContextValue} */
   const value = useMemo(
     () => ({
       isAuthenticated,
@@ -49,7 +39,7 @@ export function AuthProvider({ children }) {
       login,
       logout,
     }),
-    [isAuthenticated, isLoading],
+    [isAuthenticated, isLoading, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
