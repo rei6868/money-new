@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import AppLayout from '../../components/layout/AppShell/AppShell';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
-import { FiPlus, FiSettings, FiSearch, FiX } from 'react-icons/fi';
+import { FiPlus, FiSettings } from 'react-icons/fi';
 
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
@@ -12,6 +12,7 @@ import AddModalGlobal from '../../components/common/AddModalGlobal';
 import QuickAddModal from '../../components/common/QuickAddModal';
 import ColumnsCustomizeModal from '../../components/customize/ColumnsCustomizeModal';
 import TxnTabs from '../../components/transactions/TxnTabs';
+import PageToolbar, { PageToolbarSearch } from '../../components/layout/page/PageToolbar';
 import {
   TRANSACTION_TYPE_VALUES,
   getTransactionTypeLabel,
@@ -735,7 +736,7 @@ export default function TransactionsHistoryPage() {
   }, [defaultColumnState, definitionLookup, customizeColumns]);
 
   const filterActionButtons = (
-    <div className={styles.toolbarActions} role="group" aria-label="Transaction quick actions">
+    <>
       <button
         type="button"
         className={styles.iconPrimaryButton}
@@ -763,7 +764,7 @@ export default function TransactionsHistoryPage() {
       >
         <FiSettings aria-hidden />
       </button>
-    </div>
+    </>
   );
 
   if (isLoading || !isAuthenticated) {
@@ -779,33 +780,23 @@ export default function TransactionsHistoryPage() {
     >
       <div className={styles.screen}>
         <div className={styles.controlsRegion}>
-          <div className={styles.pageToolbar} role="toolbar" aria-label="Transactions controls">
-            <div className={styles.toolbarLead}>
-              <TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />
-              <div className={styles.searchContainer}>
-                <FiSearch className={styles.searchIcon} aria-hidden />
-                <input
-                  type="search"
-                  className={styles.searchInput}
-                  placeholder="Search transactions..."
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  aria-label="Search transactions"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    className={styles.searchClearButton}
-                    onClick={() => handleSearchChange('')}
-                    aria-label="Clear search"
-                  >
-                    <FiX aria-hidden />
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className={styles.toolbarActions}>{filterActionButtons}</div>
-          </div>
+          <PageToolbar
+            className={styles.pageToolbar}
+            role="toolbar"
+            aria-label="Transactions controls"
+            primary={<TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />}
+            search={(
+              <PageToolbarSearch
+                value={searchQuery}
+                onChange={handleSearchChange}
+                onClear={() => handleSearchChange('')}
+                placeholder="Search transactions..."
+                ariaLabel="Search transactions"
+              />
+            )}
+            filters={filterActionButtons}
+            filtersAriaLabel="Transaction quick actions"
+          />
         </div>
 
         {columnDefinitions.length === 0 ? (

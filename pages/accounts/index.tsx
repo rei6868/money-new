@@ -7,7 +7,7 @@ import TableAccounts from '../../components/accounts/TableAccounts';
 import AccountEditModal, { AccountEditPayload } from '../../components/accounts/AccountEditModal';
 import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGlobal';
 import QuickAddModal from '../../components/common/QuickAddModal';
-import { FiPlus, FiSettings, FiSearch, FiX } from 'react-icons/fi';
+import { FiPlus, FiSettings } from 'react-icons/fi';
 import ColumnsCustomizeModal, {
   ColumnConfig as CustomizeColumnConfig,
 } from '../../components/customize/ColumnsCustomizeModal';
@@ -22,6 +22,7 @@ import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { useAccounts } from '../../hooks/useAccounts';
 import { getAccountTypeLabel } from '../../lib/accounts/accountTypes';
 import styles from '../../styles/accounts.module.css';
+import PageToolbar, { PageToolbarSearch } from '../../components/layout/page/PageToolbar';
 
 type ColumnState = ReturnType<typeof createDefaultColumnState>[number] & {
   pinned?: 'left' | 'right' | null;
@@ -738,7 +739,7 @@ export default function AccountsPage() {
   );
 
   const filterActionButtons = (
-    <div className={styles.toolbarActions} role="group" aria-label="Account quick actions">
+    <>
       <button
         type="button"
         className={styles.iconPrimaryButton}
@@ -766,7 +767,7 @@ export default function AccountsPage() {
       >
         <FiSettings aria-hidden />
       </button>
-    </div>
+    </>
   );
 
   if (isLoading || !isAuthenticated) {
@@ -782,30 +783,20 @@ export default function AccountsPage() {
         <div className={styles.pageContent}>
           <div className={styles.toolbarSection} role="toolbar" aria-label="Accounts controls">
             <div className={styles.toolbarPrimary}>
-              <div className={styles.toolbarLead}>
-                <div className={styles.searchContainer}>
-                  <FiSearch className={styles.searchIcon} aria-hidden />
-                  <input
-                    type="search"
-                    className={styles.searchInput}
-                    placeholder="Search accounts..."
+              <PageToolbar
+                className={styles.toolbarLead}
+                search={(
+                  <PageToolbarSearch
                     value={searchQuery}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    aria-label="Search accounts"
+                    onChange={handleSearchChange}
+                    onClear={() => handleSearchChange('')}
+                    placeholder="Search accounts..."
+                    ariaLabel="Search accounts"
                   />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      className={styles.searchClearButton}
-                      onClick={() => handleSearchChange('')}
-                      aria-label="Clear search"
-                    >
-                      <FiX aria-hidden />
-                    </button>
-                  )}
-                </div>
-                {filterActionButtons}
-              </div>
+                )}
+                filters={filterActionButtons}
+                filtersAriaLabel="Account quick actions"
+              />
               <div className={styles.viewToggleGroup} role="tablist" aria-label="Accounts view mode">
                 <div className={styles.viewTabs}>
                   <span
