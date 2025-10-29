@@ -6,20 +6,18 @@
   padding: 0.25rem 0;
 }
 
-.toolbarPrimary {
-  display: flex;
+.toolbarPrimaryRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
   width: 100%;
   min-height: 48px;
 }
 
-.toolbarLead {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  flex: 1 1 auto;
+.toolbarSearch {
+  --page-search-width: 100%;
+  width: 100%;
   min-width: 0;
 }
 
@@ -165,6 +163,14 @@
   width: 100%;
 }
 
+.toolbarActionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
 .accountTypeTabsWrapper {
   display: flex;
   align-items: center;
@@ -198,6 +204,18 @@
   margin-top: 0.2rem;
   font-size: 0.8rem;
   color: #7a829f;
+}
+
+@media (max-width: 900px) {
+  .toolbarPrimaryRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .viewToggleGroup {
+    justify-content: flex-start;
+    justify-self: flex-start;
+  }
 }
 
 .selectionCount {
