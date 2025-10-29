@@ -740,7 +740,7 @@ export default function AccountsPage() {
     [],
   );
 
-  const filterActionButtons = (
+  const actionButtons = (
     <>
       <button
         type="button"
@@ -784,9 +784,9 @@ export default function AccountsPage() {
       <div className={pageShellStyles.pageShell}>
         <div className={pageShellStyles.pageContent}>
           <div className={styles.toolbarSection} role="toolbar" aria-label="Accounts controls">
-            <div className={styles.toolbarPrimary}>
+            <div className={styles.toolbarPrimaryRow}>
               <PageToolbar
-                className={styles.toolbarLead}
+                className={styles.toolbarSearch}
                 search={(
                   <PageToolbarSearch
                     value={searchQuery}
@@ -796,8 +796,6 @@ export default function AccountsPage() {
                     ariaLabel="Search accounts"
                   />
                 )}
-                filters={filterActionButtons}
-                filtersAriaLabel="Account quick actions"
               />
               <div className={styles.viewToggleGroup} role="tablist" aria-label="Accounts view mode">
                 <div className={styles.viewTabs}>
@@ -838,6 +836,9 @@ export default function AccountsPage() {
                   tabs={accountTypeTabMetrics}
                 />
               </div>
+            </div>
+            <div className={styles.toolbarActionsRow} role="group" aria-label="Account quick actions">
+              {actionButtons}
             </div>
           </div>
           {fetchError ? (
