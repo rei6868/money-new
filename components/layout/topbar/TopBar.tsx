@@ -104,56 +104,60 @@ export function TopBar(): JSX.Element | null {
           </div>
         </div>
 
-        <div className={styles.actions}>
+        <div className={styles.controls}>
           <button
             type="button"
-            className={styles.iconButton}
-            onClick={toggleTheme}
-            aria-pressed={theme === 'dark'}
-            aria-label="Toggle dark mode"
-            title="Toggle dark mode"
-            data-testid="navbar-dark-mode-toggle"
+            className={styles.mobileTrigger}
+            onClick={handleToggleMobile}
+            aria-expanded={isMobileDropdown}
+            aria-controls={mobileMenuId}
           >
-            {theme === 'dark' ? <FiSun /> : <FiMoon />}
+            <span className={styles.mobileTriggerLabel}>{activePageLabel}</span>
+            <FiChevronDown
+              className={`${styles.mobileChevron} ${isMobileDropdown ? styles.mobileChevronOpen : ''}`}
+            />
           </button>
 
-          <button
-            type="button"
-            className={styles.iconButton}
-            onClick={logout}
-            aria-label="Logout"
-            title="Logout"
-            data-testid="navbar-logout-button"
-          >
-            <FiLogOut />
-          </button>
+          <div className={styles.actions}>
+            <button
+              type="button"
+              className={styles.iconButton}
+              onClick={toggleTheme}
+              aria-pressed={theme === 'dark'}
+              aria-label="Toggle dark mode"
+              title="Toggle dark mode"
+              data-testid="navbar-dark-mode-toggle"
+            >
+              {theme === 'dark' ? <FiSun /> : <FiMoon />}
+            </button>
 
-          <button
-            type="button"
-            className={`${styles.iconButton} ${overflowItems.length === 0 ? styles.iconButtonHidden : ''}`}
-            onClick={handleToggleOverflow}
-            aria-haspopup="menu"
-            aria-expanded={isOverflowDropdown}
-            aria-controls={`${mobileMenuId}-overflow`}
-            ref={triggerRef}
-          >
-            <FiMoreHorizontal />
-            <span className={styles.visuallyHidden}>More navigation items</span>
-          </button>
+            <button
+              type="button"
+              className={styles.iconButton}
+              onClick={logout}
+              aria-label="Logout"
+              title="Logout"
+              data-testid="navbar-logout-button"
+            >
+              <FiLogOut />
+            </button>
+
+            <button
+              type="button"
+              className={`${styles.iconButton} ${
+                overflowItems.length === 0 ? styles.iconButtonHidden : ''
+              }`}
+              onClick={handleToggleOverflow}
+              aria-haspopup="menu"
+              aria-expanded={isOverflowDropdown}
+              aria-controls={`${mobileMenuId}-overflow`}
+              ref={triggerRef}
+            >
+              <FiMoreHorizontal />
+              <span className={styles.visuallyHidden}>More navigation items</span>
+            </button>
+          </div>
         </div>
-      </div>
-
-      <div className={styles.mobileRow}>
-        <button
-          type="button"
-          className={styles.mobileTrigger}
-          onClick={handleToggleMobile}
-          aria-expanded={isMobileDropdown}
-          aria-controls={mobileMenuId}
-        >
-          <span className={styles.mobileTriggerLabel}>{activePageLabel}</span>
-          <FiChevronDown className={`${styles.mobileChevron} ${isMobileDropdown ? styles.mobileChevronOpen : ''}`} />
-        </button>
       </div>
 
       {isOverflowDropdown && overflowItems.length > 0 && (

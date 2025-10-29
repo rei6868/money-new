@@ -18,6 +18,13 @@
   gap: 0.6rem;
 }
 
+.controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+}
+
 .linksContainer {
   flex: 1 1 auto;
   min-width: 0;
@@ -66,6 +73,7 @@
   align-items: center;
   gap: 0.3rem;
   flex: 0 0 auto;
+  flex-wrap: nowrap;
 }
 
 .iconButton {
@@ -95,12 +103,8 @@
   pointer-events: none;
 }
 
-.mobileRow {
-  display: none;
-}
-
 .mobileTrigger {
-  display: inline-flex;
+  display: none;
   align-items: center;
   gap: 0.45rem;
   padding: 0.45rem 0.75rem;
@@ -204,36 +208,30 @@
 }
 
 @media (max-width: 820px) {
-  .wrapper {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    gap: 0.45rem;
+  .linksContainer {
+    display: none;
   }
 
   .primaryRow {
-    grid-column: 1 / -1;
     width: 100%;
   }
 
-  .linksContainer {
-    display: none;
+  .controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+  }
+
+  .mobileTrigger {
+    display: inline-flex;
+    width: 100%;
+    justify-content: space-between;
   }
 
   .actions {
     justify-self: flex-end;
     gap: 0.25rem;
-  }
-
-  .mobileRow {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    grid-column: 1 / -1;
-  }
-
-  .mobileTrigger {
-    width: 100%;
-    justify-content: space-between;
   }
 }
