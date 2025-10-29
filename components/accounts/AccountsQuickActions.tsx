@@ -7,7 +7,7 @@ import {
 } from 'react-icons/fi';
 
 import { AccountRow } from './accountColumns';
-import styles from '../../styles/accounts.module.css';
+import cardStyles from '../../styles/accounts/cards.module.css';
 
 type AccountsQuickActionsProps = {
   account: AccountRow;
@@ -50,8 +50,8 @@ export function AccountsQuickActions({
   account,
   onAction,
   disabled = true,
-  className = styles.cardQuickActions,
-  buttonClassName = styles.quickActionButton,
+  className = cardStyles.cardQuickActions,
+  buttonClassName = cardStyles.quickActionButton,
 }: AccountsQuickActionsProps) {
   const isInteractive = useMemo(() => typeof onAction === 'function' && !disabled, [onAction, disabled]);
 
@@ -75,7 +75,7 @@ export function AccountsQuickActions({
             title={isInteractive ? action.label : `${action.label} (coming soon)`}
           >
             <Icon aria-hidden />
-            <span className={styles.quickDockLabel}>{action.label}</span>
+            <span className={cardStyles.quickDockLabel}>{action.label}</span>
           </button>
         );
       })}

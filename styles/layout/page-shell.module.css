@@ -1,0 +1,27 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: clamp(320px, calc(100vh - 200px), 100vh);
+  max-height: none;
+  overflow: visible;
+}
+
+.pageShell {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: clamp(320px, calc(100vh - 200px), 100vh);
+  gap: 1.5rem;
+}
+
+.pageContent {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}

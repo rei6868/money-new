@@ -6,6 +6,7 @@ import { FiPlus, FiSettings } from 'react-icons/fi';
 
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
+import pageShellStyles from '../../styles/layout/page-shell.module.css';
 import TransactionAdvancedModal from '../../components/transactions/TransactionAdvancedModal';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
 import AddModalGlobal from '../../components/common/AddModalGlobal';
@@ -13,6 +14,7 @@ import QuickAddModal from '../../components/common/QuickAddModal';
 import ColumnsCustomizeModal from '../../components/customize/ColumnsCustomizeModal';
 import TxnTabs from '../../components/transactions/TxnTabs';
 import PageToolbar, { PageToolbarSearch } from '../../components/layout/page/PageToolbar';
+import { EmptyStateCard, TablePanel } from '../../components/layout/panels';
 import {
   TRANSACTION_TYPE_VALUES,
   getTransactionTypeLabel,
@@ -778,7 +780,7 @@ export default function TransactionsHistoryPage() {
       title="Transactions History"
       subtitle="Monitor every inflow, cashback, debt movement, and adjustment inside Money Flow."
     >
-      <div className={styles.screen}>
+      <div className={pageShellStyles.screen}>
         <div className={styles.controlsRegion}>
           <PageToolbar
             className={styles.pageToolbar}
@@ -800,11 +802,11 @@ export default function TransactionsHistoryPage() {
         </div>
 
         {columnDefinitions.length === 0 ? (
-          <div className={styles.tableCard} data-testid="transactions-loading">
-            <div className={styles.emptyState}>
+          <TablePanel data-testid="transactions-loading">
+            <EmptyStateCard>
               <LoadingOverlay message="Refreshing data…" />
-            </div>
-          </div>
+            </EmptyStateCard>
+          </TablePanel>
         ) : (
           <TransactionsTable
             tableScrollRef={tableScrollRef}
