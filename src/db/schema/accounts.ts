@@ -75,14 +75,7 @@ export const accounts: PgTableWithColumns<any> = pgTable("accounts", {
    */
   accountType: accountTypeEnum("account_type").notNull(),
 
-  /**
-   * Foreign key to the People table identifying the owner or responsible party
-   * for the account. Mandatory so balances can always be mapped to a person.
-   * If ownership is shared, represent it via a group account and children.
-   */
-  ownerId: varchar("owner_id", { length: 36 })
-    .notNull()
-    .references(() => people.personId, { onDelete: "restrict" }),
+
 
   /**
    * Self-referencing foreign key that links a child account to its parent
@@ -157,13 +150,6 @@ export const accounts: PgTableWithColumns<any> = pgTable("accounts", {
     name: "accounts_parent_account_id_fkey",
   })
     .onDelete("set null")
-    .onUpdate("cascade"),
-  ownerFk: foreignKey({
-    columns: [table.ownerId],
-    foreignColumns: [people.personId],
-    name: "accounts_owner_id_fkey",
-  })
-    .onDelete("restrict")
     .onUpdate("cascade"),
   assetFk: foreignKey({
     columns: [table.assetRef],

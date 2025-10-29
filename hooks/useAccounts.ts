@@ -4,8 +4,6 @@ export type Account = {
   accountId: string;
   accountName: string;
   accountType: string;
-  ownerId: string;
-  ownerName: string | null;
   openingBalance: number;
   currentBalance: number;
   totalIn: number;
@@ -28,7 +26,6 @@ export type UseAccountsResult = {
 export type CreateAccountPayload = {
   accountName: string;
   accountType: string;
-  ownerId: string;
   openingBalance: number;
   currentBalance: number;
   status: string;

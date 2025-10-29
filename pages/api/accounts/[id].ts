@@ -76,7 +76,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // String fields
       if (body.accountName !== undefined) updates.accountName = body.accountName;
       if (body.imgUrl !== undefined) updates.imgUrl = body.imgUrl;
-      if (body.ownerId !== undefined) updates.ownerId = body.ownerId;
       if (body.parentAccountId !== undefined) updates.parentAccountId = body.parentAccountId;
       if (body.assetRef !== undefined) updates.assetRef = body.assetRef;
       if (body.notes !== undefined) updates.notes = body.notes;
