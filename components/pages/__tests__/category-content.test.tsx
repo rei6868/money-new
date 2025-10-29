@@ -1,7 +1,7 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import { CategoryPageContent } from '../../components/pages/category/CategoryPageContent';
+import { CategoryPageContent } from '../category/CategoryPageContent';
 
 describe('CategoryPageContent', () => {
   const noop = () => {};

@@ -1,7 +1,7 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import { PeoplePageContent } from '../../components/pages/people/PeoplePageContent';
+import { PeoplePageContent } from '../people/PeoplePageContent';
 
 describe('PeoplePageContent', () => {
   const noop = () => {};
