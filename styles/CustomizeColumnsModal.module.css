@@ -142,7 +142,8 @@
 }
 
 .columnChipBody {
-  flex: 1 1 auto;
+  flex: 1 1 0%;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -155,6 +156,8 @@
 
 .columnMeta {
   display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
   flex-direction: column;
   gap: 0.1rem;
 }
@@ -163,6 +166,7 @@
   font-size: 1rem;
   font-weight: 600;
   color: #0f172a;
+  overflow-wrap: anywhere;
 }
 
 .columnHint {
@@ -176,6 +180,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
+  flex-shrink: 0;
 }
 
 .lockBadge {
@@ -328,12 +333,6 @@
 
   .columnChipBody {
     padding: 0.65rem 0.85rem;
-    flex-wrap: wrap;
     gap: 0.75rem;
-  }
-
-  .columnControls {
-    width: 100%;
-    justify-content: space-between;
   }
 }
