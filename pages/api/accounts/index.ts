@@ -117,8 +117,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           accountId: accounts.accountId,
           accountName: accounts.accountName,
           accountType: accounts.accountType,
-          ownerId: accounts.ownerId,
-          ownerName: people.fullName,
           openingBalance: accounts.openingBalance,
           currentBalance: accounts.currentBalance,
           totalIn: accounts.totalIn,
@@ -129,7 +127,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           imgUrl: accounts.imgUrl,
         })
         .from(accounts)
-        .leftJoin(people, eq(accounts.ownerId, people.personId))
         .orderBy(asc(accounts.accountName));
 
       const payload = result.map((row) => ({
@@ -152,15 +149,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "POST") {
     try {
       const body = req.body || {};
-      
+
       // ✅ VALIDATE required fields
-      const requiredFields = ["accountName", "accountType", "ownerId", "openingBalance", "currentBalance", "status"];
+      const requiredFields = ["accountName", "accountType", "openingBalance", "currentBalance", "status"];
       const missingFields = requiredFields.filter(field => body[field] === undefined || body[field] === null);
-      
+
       if (missingFields.length > 0) {
-        res.status(400).json({ 
-          error: "Validation failed", 
-          details: `Missing required fields: ${missingFields.join(", ")}` 
+        res.status(400).json({
+          error: "Validation failed",
+          details: `Missing required fields: ${missingFields.join(", ")}`
         });
         return;
       }
@@ -203,7 +200,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         accountName: body.accountName,
         imgUrl: body.imgUrl || null,
         accountType: body.accountType,
-        ownerId: body.ownerId,
         parentAccountId: body.parentAccountId || null,
         assetRef: body.assetRef || null,
         openingBalance: openingBalance.toFixed(2),

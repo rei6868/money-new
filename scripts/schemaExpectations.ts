@@ -77,7 +77,6 @@ export const schemaExpectations: TableExpectation[] = [
       account_name: varcharColumn(120, false),
       img_url: textColumn(),
       account_type: { dataType: "USER-DEFINED", udtName: "account_type", isNullable: false },
-      owner_id: varcharColumn(36, false),
       parent_account_id: varcharColumn(36, true),
       asset_ref: varcharColumn(36, true),
       opening_balance: numericColumn(18, 2, false),

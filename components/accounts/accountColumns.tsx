@@ -7,8 +7,6 @@ export type AccountRow = {
   accountId: string;
   accountName: string;
   accountType: string;
-  ownerId: string;
-  ownerName?: string | null;
   openingBalance: number;
   currentBalance: number;
   totalIn: number;
@@ -20,7 +18,7 @@ export type AccountRow = {
 };
 
 export type AccountColumnDefinition = {
-  id: keyof AccountRow | 'owner';
+  id: keyof AccountRow;
   label: string;
   minWidth: number;
   defaultWidth: number;
@@ -65,15 +63,7 @@ function renderAccountCell(account: AccountRow) {
   );
 }
 
-function renderOwnerCell(account: AccountRow) {
-  const owner = account.ownerName ?? account.ownerId ?? '—';
-  return (
-    <div>
-      <div>{owner || '—'}</div>
-      {account.notes ? <div className={styles.columnSubline}>{account.notes}</div> : null}
-    </div>
-  );
-}
+
 
 function renderBalanceCell(value: number) {
   const formatted = formatAmountWithTrailing(value);
@@ -100,13 +90,6 @@ export const ACCOUNT_COLUMN_DEFINITIONS: AccountColumnDefinition[] = [
     minWidth: 150,
     defaultWidth: 180,
     valueAccessor: (account) => account.accountType ?? '—',
-  },
-  {
-    id: 'owner',
-    label: 'Owner',
-    minWidth: 200,
-    defaultWidth: 220,
-    renderCell: renderOwnerCell,
   },
   {
     id: 'currentBalance',
@@ -175,7 +158,6 @@ export function createDefaultColumnState(definitions: AccountColumnDefinition[] 
 export const ACCOUNT_SORTERS: Record<string, (account: AccountRow) => string | number> = {
   accountName: (account) => account.accountName.toLowerCase(),
   accountType: (account) => account.accountType.toLowerCase(),
-  owner: (account) => (account.ownerName ?? account.ownerId ?? '').toLowerCase(),
   currentBalance: (account) => account.currentBalance,
   openingBalance: (account) => account.openingBalance,
   totalIn: (account) => account.totalIn,

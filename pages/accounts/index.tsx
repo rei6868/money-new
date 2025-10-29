@@ -59,11 +59,6 @@ function normalizeAccount(raw: Record<string, unknown>): NormalizedAccount | nul
       (raw.accountType as string | undefined) ??
       (raw.account_type as string | undefined) ??
       'other',
-    ownerId:
-      (raw.ownerId as string | undefined) ??
-      (raw.owner_id as string | undefined) ??
-      'unknown',
-    ownerName: (raw.ownerName as string | undefined) ?? null,
     openingBalance: parseNumber(raw.openingBalance ?? raw.opening_balance),
     currentBalance: parseNumber(raw.currentBalance ?? raw.current_balance),
     totalIn: parseNumber(raw.totalIn ?? raw.total_in),
@@ -424,7 +419,6 @@ export default function AccountsPage() {
       const haystack = [
         account.accountName,
         account.accountType,
-        account.ownerName,
         account.status,
         account.notes,
         account.accountId,
@@ -586,7 +580,6 @@ export default function AccountsPage() {
       const haystack = [
         account.accountName,
         account.accountType,
-        account.ownerName,
         account.status,
         account.notes,
         account.accountId,
