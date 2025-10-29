@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import AppLayout from '../../components/layout/AppShell/AppShell';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
-import { FiPlus, FiSettings } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiSettings, FiX } from 'react-icons/fi';
 
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
@@ -13,7 +13,7 @@ import AddModalGlobal from '../../components/common/AddModalGlobal';
 import QuickAddModal from '../../components/common/QuickAddModal';
 import ColumnsCustomizeModal from '../../components/customize/ColumnsCustomizeModal';
 import TxnTabs from '../../components/transactions/TxnTabs';
-import PageToolbar, { PageToolbarSearch } from '../../components/layout/page/PageToolbar';
+import { PageToolbarSearch } from '../../components/layout/page/PageToolbar';
 import { EmptyStateCard, TablePanel } from '../../components/layout/panels';
 import {
   TRANSACTION_TYPE_VALUES,
@@ -28,6 +28,66 @@ import {
 } from '../../lib/transactions/transferFilters';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
+
+const ACCOUNT_FILTERS = {
+  ALL: 'all',
+  ASSIGNED: 'assigned',
+  UNASSIGNED: 'unassigned',
+};
+
+function expandTransferMatches(matches, base, transferLinkInfo) {
+  const baseArray = Array.isArray(base) ? base : [];
+
+  if (!Array.isArray(matches) || matches.length === 0) {
+    return [];
+  }
+
+  const matchMap = new Map();
+
+  const ensurePartnerById = (candidateId) => {
+    const normalizedId = extractString(candidateId);
+    if (!normalizedId || matchMap.has(normalizedId)) {
+      return;
+    }
+
+    const partner = transferLinkInfo.byId.get(normalizedId);
+    if (partner) {
+      matchMap.set(normalizedId, partner);
+    }
+  };
+
+  matches.forEach((txn) => {
+    const txnId = extractString(txn?.id);
+    if (txnId) {
+      matchMap.set(txnId, txn);
+    }
+  });
+
+  matches.forEach((txn) => {
+    const txnId = extractString(txn?.id);
+    const linkedId = extractString(txn?.linkedTxn);
+    ensurePartnerById(linkedId);
+
+    if (txnId) {
+      const inbound = transferLinkInfo.inbound.get(txnId);
+      if (inbound) {
+        inbound.forEach((sourceId) => {
+          ensurePartnerById(sourceId);
+        });
+      }
+    }
+  });
+
+  const sorted = Array.from(matchMap.values()).sort((a, b) => {
+    const idA = extractString(a?.id);
+    const idB = extractString(b?.id);
+    const indexA = transferLinkInfo.index.get(idA) ?? baseArray.indexOf(a);
+    const indexB = transferLinkInfo.index.get(idB) ?? baseArray.indexOf(b);
+    return indexA - indexB;
+  });
+
+  return sorted;
+}
 
 
 
@@ -97,9 +157,46 @@ export default function TransactionsHistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [availableTypes, setAvailableTypes] = useState([]);
+  const [accountFilter, setAccountFilter] = useState(ACCOUNT_FILTERS.ALL);
+  const [isCompact, setIsCompact] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const tableScrollRef = useRef(null);
   const savedScrollLeftRef = useRef(0);
+  const searchInputRef = useRef(null);
   const transferLinkInfo = useMemo(() => buildTransferLinkInfo(transactions), [transactions]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const media = window.matchMedia('(max-width: 720px)');
+    const updateMatch = () => setIsCompact(media.matches);
+    updateMatch();
+    media.addEventListener('change', updateMatch);
+
+    return () => {
+      media.removeEventListener('change', updateMatch);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isCompact) {
+      setIsSearchOpen(false);
+      return;
+    }
+    setIsSearchOpen(true);
+  }, [isCompact]);
+
+  useEffect(() => {
+    if (isCompact && isSearchOpen && searchInputRef.current) {
+      window.requestAnimationFrame(() => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      });
+    }
+  }, [isCompact, isSearchOpen]);
 
   useEffect(() => {
     if (tableScrollRef.current && savedScrollLeftRef.current > 0) {
@@ -380,7 +477,29 @@ export default function TransactionsHistoryPage() {
 
   const selectedLookup = useMemo(() => new Set(selectedIds), [selectedIds]);
 
-  const filteredTransactions = useMemo(() => {
+  const applyAccountFilter = useCallback(
+    (txn) => {
+      if (accountFilter === ACCOUNT_FILTERS.ALL) {
+        return true;
+      }
+
+      const accountValue = extractString(txn?.account);
+      const hasAccount = Boolean(accountValue);
+
+      if (accountFilter === ACCOUNT_FILTERS.ASSIGNED) {
+        return hasAccount;
+      }
+
+      if (accountFilter === ACCOUNT_FILTERS.UNASSIGNED) {
+        return !hasAccount;
+      }
+
+      return true;
+    },
+    [accountFilter],
+  );
+
+  const { filteredTransactions, accountMetrics } = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const predicate = buildTransactionPredicate(
@@ -390,54 +509,45 @@ export default function TransactionsHistoryPage() {
     );
     const matches = base.filter(predicate);
 
-    if (activeTab !== TRANSACTION_TYPE_VALUES.TRANSFER) {
-      return matches;
+    let expandedMatches = matches;
+
+    if (activeTab === TRANSACTION_TYPE_VALUES.TRANSFER) {
+      expandedMatches = expandTransferMatches(matches, base, transferLinkInfo);
     }
 
-    const matchMap = new Map();
-    const ensurePartnerById = (candidateId) => {
-      const normalizedId = extractString(candidateId);
-      if (!normalizedId || matchMap.has(normalizedId)) {
-        return;
+    let assignedCount = 0;
+    let unassignedCount = 0;
+
+    expandedMatches.forEach((txn) => {
+      const accountValue = extractString(txn?.account);
+      if (accountValue) {
+        assignedCount += 1;
+      } else {
+        unassignedCount += 1;
       }
-      const partner = transferLinkInfo.byId.get(normalizedId);
-      if (partner) {
-        matchMap.set(normalizedId, partner);
-      }
+    });
+
+    const scopedMatches =
+      accountFilter === ACCOUNT_FILTERS.ALL
+        ? expandedMatches
+        : expandedMatches.filter((txn) => applyAccountFilter(txn));
+
+    return {
+      filteredTransactions: scopedMatches,
+      accountMetrics: {
+        total: expandedMatches.length,
+        assigned: assignedCount,
+        unassigned: unassignedCount,
+      },
     };
-
-    matches.forEach((txn) => {
-      const txnId = extractString(txn.id);
-      if (txnId) {
-        matchMap.set(txnId, txn);
-      }
-    });
-
-    matches.forEach((txn) => {
-      const txnId = extractString(txn.id);
-      const linkedId = extractString(txn.linkedTxn);
-      ensurePartnerById(linkedId);
-
-      if (txnId) {
-        const inbound = transferLinkInfo.inbound.get(txnId);
-        if (inbound) {
-          inbound.forEach((sourceId) => {
-            ensurePartnerById(sourceId);
-          });
-        }
-      }
-    });
-
-    const sorted = Array.from(matchMap.values()).sort((a, b) => {
-      const idA = extractString(a?.id);
-      const idB = extractString(b?.id);
-      const indexA = transferLinkInfo.index.get(idA) ?? base.indexOf(a);
-      const indexB = transferLinkInfo.index.get(idB) ?? base.indexOf(b);
-      return indexA - indexB;
-    });
-
-    return sorted;
-  }, [transactions, searchQuery, activeTab, transferLinkInfo]);
+  }, [
+    transactions,
+    searchQuery,
+    activeTab,
+    transferLinkInfo,
+    accountFilter,
+    applyAccountFilter,
+  ]);
 
   // Sync selected IDs with available transactions (remove IDs that no longer exist)
   useEffect(() => {
@@ -482,9 +592,13 @@ export default function TransactionsHistoryPage() {
       transferLinkInfo.linkedIds,
     );
     const baseMatches = base.filter(predicate);
+    const accountScopedMatches =
+      accountFilter === ACCOUNT_FILTERS.ALL
+        ? baseMatches
+        : baseMatches.filter((txn) => applyAccountFilter(txn));
     const counts = new Map();
 
-    baseMatches.forEach((txn) => {
+    accountScopedMatches.forEach((txn) => {
       const rawType = extractString(txn.typeRaw ?? txn.type);
       if (rawType) {
         const key = rawType;
@@ -493,7 +607,13 @@ export default function TransactionsHistoryPage() {
     });
 
     const transferPairs = new Set();
-    baseMatches.forEach((txn) => {
+    const scopedTransfers = expandTransferMatches(accountScopedMatches, base, transferLinkInfo);
+    const filteredTransfers =
+      accountFilter === ACCOUNT_FILTERS.ALL
+        ? scopedTransfers
+        : scopedTransfers.filter((txn) => applyAccountFilter(txn));
+
+    filteredTransfers.forEach((txn) => {
       const txnId = extractString(txn.id);
       const linkedId = extractString(txn.linkedTxn);
       const directKey = createTransferPairKey(txnId, linkedId);
@@ -522,7 +642,7 @@ export default function TransactionsHistoryPage() {
         count: counts.get(type) ?? 0,
       }));
 
-    const tabs = [{ id: 'all', label: 'All', count: baseMatches.length }, ...derivedTabs];
+    const tabs = [{ id: 'all', label: 'All', count: accountScopedMatches.length }, ...derivedTabs];
 
     tabs.push({
       id: TRANSACTION_TYPE_VALUES.TRANSFER,
@@ -531,7 +651,14 @@ export default function TransactionsHistoryPage() {
     });
 
     return tabs;
-  }, [searchQuery, transactions, resolvedTypeList, transferLinkInfo]);
+  }, [
+    searchQuery,
+    transactions,
+    resolvedTypeList,
+    transferLinkInfo,
+    accountFilter,
+    applyAccountFilter,
+  ]);
 
   useEffect(() => {
     if (selectedIds.length === 0) {
@@ -793,11 +920,39 @@ export default function TransactionsHistoryPage() {
     </>
   );
 
+  const isAddModalOpen = addModalType !== null;
+  const searchRowId = 'transactions-search-panel';
+  const searchInputId = 'transactions-search-input';
+
+  const accountToggleOptions = useMemo(
+    () => [
+      { id: ACCOUNT_FILTERS.ALL, label: 'All accounts', count: accountMetrics.total },
+      { id: ACCOUNT_FILTERS.ASSIGNED, label: 'Assigned', count: accountMetrics.assigned },
+      { id: ACCOUNT_FILTERS.UNASSIGNED, label: 'Unassigned', count: accountMetrics.unassigned },
+    ],
+    [accountMetrics],
+  );
+
+  const handleToggleSearch = useCallback(() => {
+    if (!isCompact) {
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+      }
+      return;
+    }
+
+    setIsSearchOpen((prev) => !prev);
+  }, [isCompact]);
+
+  const searchToggleAriaLabel = isCompact
+    ? isSearchOpen
+      ? 'Hide search'
+      : 'Show search'
+    : 'Focus search input';
+
   if (isLoading || !isAuthenticated) {
     return null;
   }
-
-  const isAddModalOpen = addModalType !== null;
 
   return (
     <AppLayout
@@ -806,23 +961,72 @@ export default function TransactionsHistoryPage() {
     >
       <div className={pageShellStyles.screen}>
         <div className={styles.controlsRegion}>
-          <PageToolbar
-            className={styles.pageToolbar}
-            role="toolbar"
-            aria-label="Transactions controls"
-            primary={<TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />}
-            search={(
+          <div
+            className={styles.accountToggleRow}
+            role="group"
+            aria-label="Account filter"
+          >
+            {accountToggleOptions.map((option) => {
+              const isActive = accountFilter === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={styles.accountToggleButton}
+                  data-active={isActive ? 'true' : 'false'}
+                  onClick={() => setAccountFilter(option.id)}
+                  aria-pressed={isActive}
+                >
+                  <span className={styles.accountToggleLabel}>{option.label}</span>
+                  <span className={styles.accountToggleCount}>{option.count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className={styles.tabsRow}>
+            <TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />
+          </div>
+
+          <div
+            className={styles.actionsWrapper}
+            data-floating={isCompact ? 'true' : 'false'}
+            data-search-open={isSearchOpen ? 'true' : 'false'}
+          >
+            <div className={styles.actionsRow}>
+              <div className={styles.actionButtons}>{filterActionButtons}</div>
+              <button
+                type="button"
+                className={styles.searchToggleButton}
+                onClick={handleToggleSearch}
+                aria-label={searchToggleAriaLabel}
+                aria-expanded={isSearchOpen}
+                aria-controls={searchRowId}
+                data-active={isSearchOpen ? 'true' : 'false'}
+              >
+                {isCompact && isSearchOpen ? <FiX aria-hidden /> : <FiSearch aria-hidden />}
+              </button>
+            </div>
+
+            <div
+              id={searchRowId}
+              role="search"
+              className={styles.searchRow}
+              data-open={isSearchOpen ? 'true' : 'false'}
+              data-floating={isCompact ? 'true' : 'false'}
+            >
               <PageToolbarSearch
+                id={searchInputId}
                 value={searchQuery}
                 onChange={handleSearchChange}
                 onClear={() => handleSearchChange('')}
                 placeholder="Search transactions..."
                 ariaLabel="Search transactions"
+                inputRef={searchInputRef}
+                className={styles.searchField}
               />
-            )}
-            filters={filterActionButtons}
-            filtersAriaLabel="Transaction quick actions"
-          />
+            </div>
+          </div>
         </div>
 
         {columnDefinitions.length === 0 ? (
