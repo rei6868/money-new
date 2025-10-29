@@ -2,7 +2,6 @@ import React, { FormEvent, useEffect, useState, useCallback } from 'react';
 import { FiX } from 'react-icons/fi';
 
 import { ConfirmationModal } from '../common/ConfirmationModal';
-import { usePeople } from '../../hooks/usePeople';
 import {
   getAccountTypeOptions,
   getAccountStatusOptions,
@@ -21,12 +20,10 @@ const ACCOUNT_TYPE_OPTIONS = getAccountTypeOptions();
 const ACCOUNT_STATUS_OPTIONS = getAccountStatusOptions();
 
 export function AddAccountOverlay({ isOpen, onClose, onSubmit }: AddAccountOverlayProps) {
-  const { activePeople, isLoading: isPeopleLoading } = usePeople();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [accountName, setAccountName] = useState('');
   const [accountType, setAccountType] = useState<string>(ACCOUNT_TYPE_OPTIONS[0]?.value ?? 'bank');
-  const [ownerId, setOwnerId] = useState('');
   const [openingBalance, setOpeningBalance] = useState('0');
   const [accountStatus, setAccountStatus] = useState<string>(ACCOUNT_STATUS_VALUES.ACTIVE);
   const [accountNote, setAccountNote] = useState('');
@@ -34,13 +31,6 @@ export function AddAccountOverlay({ isOpen, onClose, onSubmit }: AddAccountOverl
 
   // Track if form has been modified (dirty state)
   const [isDirty, setIsDirty] = useState(false);
-
-  // Auto-select first active person as default owner
-  useEffect(() => {
-    if (!ownerId && activePeople.length > 0) {
-      setOwnerId(activePeople[0].personId);
-    }
-  }, [activePeople, ownerId]);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -50,12 +40,11 @@ export function AddAccountOverlay({ isOpen, onClose, onSubmit }: AddAccountOverl
     setIsSubmitting(false);
     setAccountName('');
     setAccountType(ACCOUNT_TYPE_OPTIONS[0]?.value ?? 'bank');
-    setOwnerId(activePeople.length > 0 ? activePeople[0].personId : '');
     setOpeningBalance('0');
     setAccountStatus(ACCOUNT_STATUS_VALUES.ACTIVE);
     setAccountNote('');
     setIsDirty(false);
-  }, [isOpen, activePeople]);
+  }, [isOpen]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -108,8 +97,8 @@ export function AddAccountOverlay({ isOpen, onClose, onSubmit }: AddAccountOverl
       return;
     }
 
-    if (!ownerId) {
-      alert('Please select an account owner');
+    if (!accountName.trim()) {
+      alert('Please enter an account name');
       return;
     }
 
@@ -121,7 +110,6 @@ export function AddAccountOverlay({ isOpen, onClose, onSubmit }: AddAccountOverl
       const payload: CreateAccountPayload = {
         accountName: accountName.trim(),
         accountType,
-        ownerId,
         openingBalance: openingBalanceNum,
         currentBalance: openingBalanceNum, // Initially same as opening balance
         status: accountStatus,
@@ -192,31 +180,6 @@ export function AddAccountOverlay({ isOpen, onClose, onSubmit }: AddAccountOverl
                     {option.label}
                   </option>
                 ))}
-              </select>
-            </label>
-
-            <label className={styles.field} htmlFor="add-account-overlay-owner">
-              <span className={styles.fieldLabel}>Owner *</span>
-              <select
-                id="add-account-overlay-owner"
-                className={styles.input}
-                value={ownerId}
-                onChange={(event) => {
-                  setOwnerId(event.target.value);
-                  markDirty();
-                }}
-                required
-                disabled={isPeopleLoading || activePeople.length === 0}
-              >
-                {activePeople.length === 0 ? (
-                  <option value="">No active people available</option>
-                ) : (
-                  activePeople.map((person) => (
-                    <option key={person.personId} value={person.personId}>
-                      {person.fullName}
-                    </option>
-                  ))
-                )}
               </select>
             </label>
 

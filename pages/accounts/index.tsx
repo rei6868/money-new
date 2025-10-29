@@ -419,7 +419,6 @@ export default function AccountsPage() {
       const haystack = [
         account.accountName,
         account.accountType,
-        account.ownerName,
         account.status,
         account.notes,
         account.accountId,
@@ -581,7 +580,6 @@ export default function AccountsPage() {
       const haystack = [
         account.accountName,
         account.accountType,
-        account.ownerName,
         account.status,
         account.notes,
         account.accountId,

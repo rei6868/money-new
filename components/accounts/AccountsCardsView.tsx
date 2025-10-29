@@ -11,10 +11,6 @@ type AccountsCardsViewProps = {
   onQuickAction?: (actionId: string, account: AccountRow) => void;
 };
 
-function resolveOwner(account: AccountRow) {
-  return account.ownerName ?? account.ownerId ?? 'Unassigned';
-}
-
 function resolveStatus(account: AccountRow) {
   return account.status ?? 'inactive';
 }
@@ -47,7 +43,6 @@ export function AccountsCardsView({ accounts, onQuickAction }: AccountsCardsView
                 <h3 className={styles.cardTitle}>{account.accountName ?? 'Unnamed account'}</h3>
                 <div className={styles.cardMeta}>
                   <span>{account.accountType ?? 'Unknown type'}</span>
-                  <span>Owner: {resolveOwner(account)}</span>
                 </div>
                 <div className={styles.cardBalance}>{resolveBalance(account)}</div>
               </div>

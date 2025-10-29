@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 
 import { db } from "../../../lib/db/client";
 import { accounts, accountTypeEnum, accountStatusEnum, type NewAccount } from "../../../src/db/schema/accounts";
-import { people } from "../../../src/db/schema/people";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const database = db;
@@ -29,8 +28,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           accountId: accounts.accountId,
           accountName: accounts.accountName,
           accountType: accounts.accountType,
-          ownerId: accounts.ownerId,
-          ownerName: people.fullName,
           openingBalance: accounts.openingBalance,
           currentBalance: accounts.currentBalance,
           totalIn: accounts.totalIn,
@@ -42,7 +39,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           assetRef: accounts.assetRef,
         })
         .from(accounts)
-        .leftJoin(people, eq(accounts.ownerId, people.personId))
         .where(eq(accounts.accountId, accountId));
 
       if (result.length === 0) {
