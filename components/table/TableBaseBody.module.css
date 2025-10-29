@@ -9,12 +9,12 @@
 }
 
 .row:hover {
-  background: #ece9ff;
+  background: var(--table-row-hover);
 }
 
 .row:hover :global(.stickyLeft),
 .row:hover :global(.stickyRight) {
-  background-color: #ece9ff;
+  background-color: var(--table-row-hover);
 }
 
 @keyframes rowSelectFlash {
@@ -22,18 +22,18 @@
     background: rgba(107, 77, 253, 0.16);
   }
   to {
-    background: #ece9ff;
+    background: var(--table-row-selected);
   }
 }
 
 .rowSelected {
-  background: #ece9ff;
+  background: var(--table-row-selected);
   animation: rowSelectFlash 220ms ease;
 }
 
 .rowSelected :global(.stickyLeft),
 .rowSelected :global(.stickyRight) {
-  background-color: #ece9ff;
+  background-color: var(--table-row-selected);
   animation: rowSelectFlash 220ms ease;
 }
 

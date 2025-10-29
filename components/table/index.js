@@ -4,4 +4,5 @@ export * from './TableRestoreInput';
 export * from './TableHamburgerMenu';
 export * from './TableTooltip';
 export * from './TableConfirmModal';
+export * from './SelectionToolbar';
 export * from './tableUtils';

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { FiChevronDown, FiChevronUp, FiEdit2, FiMinus } from 'react-icons/fi';
 
 import headerStyles from './TableBaseHeader.module.css';
-import styles from './TableBase.module.css';
+import shellStyles from './table-shell.module.css';
 import { Tooltip } from '../ui/Tooltip';
 import { ACTIONS_COLUMN_WIDTH, CHECKBOX_COLUMN_WIDTH } from './tableUtils';
 
@@ -150,18 +150,18 @@ export function TableBaseHeader({
 
     const headerClassName = [
       headerStyles.headerCell,
-      styles.bodyCell,
+      shellStyles.bodyCell,
       align === 'right'
-        ? styles.cellAlignRight
+        ? shellStyles.cellAlignRight
         : align === 'center'
-        ? styles.cellAlignCenter
+        ? shellStyles.cellAlignCenter
         : '',
       isColumnReorderMode ? headerStyles.headerReorder : '',
       isDropTarget ? headerStyles.headerDropTarget : '',
       isHidden && isColumnReorderMode ? headerStyles.headerHidden : '',
       isTaskColumn ? headerStyles.taskHeaderCell : '',
-      pinned === 'left' ? styles.stickyLeft : '',
-      pinned === 'right' ? styles.stickyRight : '',
+      pinned === 'left' ? shellStyles.stickyLeft : '',
+      pinned === 'right' ? shellStyles.stickyRight : '',
     ]
       .filter(Boolean)
       .join(' ');
@@ -302,13 +302,13 @@ export function TableBaseHeader({
       <tr>
         <th
           scope="col"
-          className={`${headerStyles.headerCell} ${styles.checkboxCell} ${styles.stickyLeft}`}
+          className={`${headerStyles.headerCell} ${shellStyles.checkboxCell} ${shellStyles.stickyLeft}`}
           style={{
             minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
             width: `${CHECKBOX_COLUMN_WIDTH}px`,
           }}
         >
-          <div className={styles.checkboxCellInner}>
+          <div className={shellStyles.checkboxCellInner}>
             <div className={headerStyles.headerCheckboxInner}>
               <input
                 ref={headerCheckboxRef}
@@ -327,7 +327,7 @@ export function TableBaseHeader({
         <th
           scope="col"
           aria-label="Edit"
-          className={`${headerStyles.headerCell} ${styles.actionsCell} ${headerStyles.taskHeaderCell}`.trim()}
+          className={`${headerStyles.headerCell} ${shellStyles.actionsCell} ${headerStyles.taskHeaderCell}`.trim()}
           style={{
             minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
             width: `${ACTIONS_COLUMN_WIDTH}px`,

@@ -1,0 +1,151 @@
+.selectionToolbarDock {
+  margin-top: 0.85rem;
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  animation: selectionToolbarEnter 220ms ease forwards;
+}
+
+.selectionToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.65rem 1rem;
+  margin: 0;
+  border-radius: 16px;
+  background: var(--mf-table-selection-surface);
+  border: 1px solid var(--mf-table-selection-border);
+  box-shadow: var(--mf-table-selection-shadow);
+  color: var(--table-text);
+  z-index: 45;
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+}
+
+@keyframes selectionToolbarEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.selectionToolbarInfo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.selectionToolbarCount {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--mf-table-selection-count);
+}
+
+.selectionToolbarLabel {
+  font-size: 0.9rem;
+  color: var(--mf-table-selection-label);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.selectionToolbarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.selectionToolbarButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 0.95rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: var(--mf-table-selection-button-bg);
+  color: var(--mf-table-selection-button-text);
+  cursor: pointer;
+  box-shadow: var(--mf-table-selection-button-shadow);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease,
+    color 0.18s ease;
+}
+
+.selectionToolbarButton[data-active='true'] {
+  background: var(--mf-table-selection-button-active-bg);
+  color: var(--mf-table-selection-button-active-text);
+  box-shadow: var(--mf-table-selection-button-active-shadow);
+}
+
+.selectionToolbarButtonIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.selectionToolbarButton:hover,
+.selectionToolbarButton:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: var(--mf-table-selection-button-hover-shadow);
+  outline: none;
+}
+
+.selectionToolbarDanger {
+  background: var(--mf-table-selection-danger-bg);
+  color: var(--mf-table-selection-danger-text);
+  box-shadow: var(--mf-table-selection-danger-shadow);
+}
+
+.selectionToolbarDanger:hover,
+.selectionToolbarDanger:focus-visible {
+  box-shadow: var(--mf-table-selection-danger-hover-shadow);
+}
+
+.inlineCount {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--mf-table-selection-inline-text);
+}
+
+@media (max-width: 640px) {
+  .selectionToolbar {
+    position: static;
+    margin: 0;
+    padding: 0.75rem 1.05rem;
+    border-radius: 18px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 22px 40px rgba(15, 23, 42, 0.2);
+  }
+
+  .selectionToolbarActions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 0.45rem;
+  }
+
+  .selectionToolbarButton {
+    flex: 0 0 auto;
+  }
+
+  .selectionToolbarDock {
+    position: sticky;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+    justify-content: center;
+    padding: 0 0.5rem;
+    z-index: 55;
+    pointer-events: none;
+  }
+
+  .selectionToolbarDock > .selectionToolbar {
+    pointer-events: auto;
+  }
+}

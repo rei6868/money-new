@@ -10,6 +10,7 @@ import {
 import { AccountColumnDefinition, AccountRow } from './accountColumns';
 import styles from '../../styles/accounts.module.css';
 import { TableBase } from '../table';
+import { SelectionToolbar } from '../table/SelectionToolbar';
 
 interface SelectionSummary {
   count: number;
@@ -88,9 +89,11 @@ function usePaginationRenderer(
     return {
       render: (props: { selectedCount: number }) => (
         <>
-          {props.selectedCount > 0 ? (
-            <span className={styles.selectionCount}>{props.selectedCount} selected</span>
-          ) : null}
+          <SelectionToolbar
+            variant="inline"
+            selectedCount={props.selectedCount}
+            className={styles.selectionCount}
+          />
           <div
             className={styles.paginationControls}
             role="group"
