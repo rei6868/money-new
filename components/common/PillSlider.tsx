@@ -213,7 +213,8 @@ export default function PillSlider<TTab extends PillSliderTab>({
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      if (event.pointerType === 'mouse' || !(event.target instanceof Element)) {
+      const isDragPointer = event.pointerType !== 'mouse';
+      if (!isDragPointer || !(event.target instanceof Element)) {
         return;
       }
 
@@ -224,7 +225,7 @@ export default function PillSlider<TTab extends PillSliderTab>({
 
       pointerIdRef.current = event.pointerId;
       lastDragTabRef.current = null;
-      pointerDragActiveRef.current = event.pointerType !== 'mouse';
+      pointerDragActiveRef.current = isDragPointer;
       containerRef.current?.setPointerCapture(event.pointerId);
       handlePointerTabChange(event.clientX, event.clientY);
     },
