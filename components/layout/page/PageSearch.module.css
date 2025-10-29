@@ -1,0 +1,83 @@
+.shell {
+  --page-search-width: clamp(220px, 35%, 360px);
+  --page-search-icon-gap: 0.5rem;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--page-search-icon-gap);
+  flex: 1 1 var(--page-search-width);
+  min-width: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(248, 250, 255, 0.8);
+  padding: 0.5rem 0.75rem;
+  transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  height: 44px;
+}
+
+.shell:focus-within {
+  border-color: var(--mf-primary, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  background: #ffffff;
+}
+
+.shell[data-variant='mobile'] {
+  width: 100%;
+}
+
+.shell[data-disabled='true'] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  color: var(--table-muted, #64748b);
+  flex-shrink: 0;
+}
+
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--mf-text-primary, #0f172a);
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.input::-webkit-search-cancel-button,
+.input::-webkit-search-decoration {
+  display: none;
+}
+
+.clearButton {
+  border: none;
+  background: transparent;
+  color: var(--mf-text-muted, #64748b);
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.clearButton:hover,
+.clearButton:focus-visible {
+  background: rgba(148, 163, 184, 0.25);
+  color: var(--mf-text-primary, #0f172a);
+  outline: none;
+}
+
+.clearButton:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.35);
+  outline-offset: 2px;
+}
+
+.clearButton svg {
+  width: 16px;
+  height: 16px;
+}

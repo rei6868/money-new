@@ -54,32 +54,7 @@
   min-width: 0;
 }
 
-.toolbarLead .searchContainer {
-  flex: 0 1 clamp(220px, 35%, 360px);
-  max-width: min(40%, 360px);
-}
 
-.toolbarActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  flex: 0 0 auto;
-}
-
-.toolbarActions .trigger {
-  padding: 0.55rem;
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-}
-
-.toolbarActions .triggerLabel {
-  display: none;
-}
-
-.toolbarActions .triggerIcon {
-  font-size: 1.05rem;
-}
 
 .viewToggleGroup {
   display: flex;
@@ -105,68 +80,7 @@
   width: 100%;
 }
 
-.searchContainer {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex: 1 1 320px;
-  max-width: 360px;
-  min-width: 200px;
-  position: relative;
-  border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(248, 250, 255, 0.8);
-  padding: 0.5rem 0.75rem;
-  transition: border 0.2s ease, box-shadow 0.2s ease;
-  height: 44px;
-}
 
-.searchContainer:focus-within {
-  border-color: var(--mf-primary, #1d4ed8);
-  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.18);
-  background: #ffffff;
-}
-
-.searchIcon {
-  width: 18px;
-  height: 18px;
-  color: var(--table-muted, #64748b);
-  flex-shrink: 0;
-}
-
-.searchInput {
-  flex: 1 1 auto;
-  border: none;
-  background: transparent;
-  outline: none;
-  font-size: 0.95rem;
-  color: inherit;
-  min-width: 0;
-}
-
-.searchInput::placeholder {
-  color: var(--table-muted, #94a3b8);
-}
-
-.searchClearButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: transparent;
-  color: var(--table-muted, #64748b);
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background 0.2s ease, color 0.2s ease;
-  flex-shrink: 0;
-}
-
-.searchClearButton:hover {
-  background: rgba(148, 163, 184, 0.2);
-  color: var(--mf-text-primary);
-}
 
 .filterActionsQuickAdd {
   display: inline-flex;
@@ -248,7 +162,6 @@
   align-items: center;
   flex: 1 1 auto;
   min-width: 220px;
-  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
@@ -318,38 +231,13 @@
   composes: searchGroup from './TransactionsHistory.module.css';
 }
 
-.searchInput {
-  composes: searchInput from './TransactionsHistory.module.css';
-}
 
-.searchIconButton {
-  composes: searchIconButton from './TransactionsHistory.module.css';
-}
 
-.searchSubmitButton {
-  composes: searchSubmitButton from './TransactionsHistory.module.css';
-  min-height: 44px;
-}
 
-.searchSubmitIcon {
-  composes: searchSubmitIcon from './TransactionsHistory.module.css';
-}
 
-.searchSubmitText {
-  composes: searchSubmitText from './TransactionsHistory.module.css';
-}
 
-.searchRestoreButton {
-  composes: searchRestoreButton from './TransactionsHistory.module.css';
-}
 
-.searchClearButton {
-  composes: searchClearButton from './TransactionsHistory.module.css';
-}
 
-.searchInputActions {
-  composes: searchInputActions from './TransactionsHistory.module.css';
-}
 
 .actionsGroup {
   composes: actionsGroup from './TransactionsHistory.module.css';
@@ -842,12 +730,6 @@
 
 /* Media queries ordered from largest to smallest */
 
-@media (min-width: 960px) {
-  .toolbarLead .searchContainer {
-    max-width: min(38%, 360px);
-  }
-}
-
 @media (max-width: 900px) {
   .pageHeaderActions {
     flex-wrap: wrap;
@@ -880,15 +762,6 @@
     gap: 0.45rem;
   }
 
-  .toolbarLead .searchContainer {
-    max-width: 100%;
-  }
-
-  .toolbarActions {
-    width: 100%;
-    justify-content: space-between;
-  }
-
   .viewToggleGroup {
     width: 100%;
     justify-content: flex-end;
@@ -900,22 +773,8 @@
     gap: 0.35rem;
   }
 
-  .toolbarActions {
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
 
-  .toolbarActions .iconPrimaryButton,
-  .toolbarActions .trigger {
-    width: 44px;
-    height: 44px;
-    justify-content: center;
-    padding: 0.5rem;
-  }
 
-  .toolbarActions .trigger {
-    border-radius: 16px;
-  }
 }
 
 @media (max-width: 480px) {
@@ -960,8 +819,7 @@
 
   .primaryButton,
   .secondaryButton,
-  .toolbarIconButton,
-  .searchSubmitButton {
+  .toolbarIconButton {
     font-size: 0.9rem;
   }
 
