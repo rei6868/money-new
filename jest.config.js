@@ -16,7 +16,9 @@ module.exports = {
         },
       },
     ],
+    '^.+\\.(js|jsx)$': 'babel-jest',
   },
   passWithNoTests: true,
+  setupFiles: ['<rootDir>/test-utils/jest-setup.js'],
   setupFilesAfterEnv: [],
 };
