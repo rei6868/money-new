@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../../../context/AuthContext';
 import { LayoutNavigationProvider } from '../navigation/LayoutNavigationContext';
 import { Sidebar } from '../navigation/Sidebar';
-import { TopNavBar } from '../navigation/TopNavBar';
+import { TopBar } from '../topbar/TopBar';
 import { NAV_ITEMS, SETTINGS_NAV_ITEM, type NavItem } from '../navigation/navConfig';
 import styles from './AppShell.module.css';
 
@@ -76,6 +76,7 @@ export default function AppShell({ children }: AppShellProps): JSX.Element {
   const [expandedGroups, setExpandedGroups] = useState<string[]>(() =>
     collectInitialExpandedGroups(router.pathname, NAV_ITEMS),
   );
+  const [showTopBar, setShowTopBar] = useState(false);
   const flyoutCloseTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -115,6 +116,31 @@ export default function AppShell({ children }: AppShellProps): JSX.Element {
   useEffect(() => {
     setActiveFlyout(null);
   }, [router.pathname]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia('(max-width: 1024px)');
+    const handleChange = (event: MediaQueryListEvent) => {
+      setShowTopBar(event.matches);
+    };
+
+    setShowTopBar(mediaQuery.matches);
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleChange);
+      return () => {
+        mediaQuery.removeEventListener('change', handleChange);
+      };
+    }
+
+    mediaQuery.addListener(handleChange);
+    return () => {
+      mediaQuery.removeListener(handleChange);
+    };
+  }, []);
 
   const activeKeys = useMemo(() => {
     const currentPath = router.pathname;
@@ -246,9 +272,11 @@ export default function AppShell({ children }: AppShellProps): JSX.Element {
       <div className={styles.appShell} data-testid="app-root">
         <Sidebar />
         <div className={styles.mainColumn}>
-          <div className={styles.topNavBarContainer}>
-            <TopNavBar />
-          </div>
+          {showTopBar ? (
+            <div className={styles.topBarContainer}>
+              <TopBar />
+            </div>
+          ) : null}
           <main className={styles.mainContent} data-testid="layout-main">
             {children}
           </main>
