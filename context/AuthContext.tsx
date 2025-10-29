@@ -1,10 +1,29 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
-const AuthContext = createContext(null);
+interface AuthContextValue {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (username: string, password: string) => boolean;
+  logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 const AUTH_STORAGE_KEY = 'finance-app-authenticated';
 
-export function AuthProvider({ children }) {
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -18,7 +37,7 @@ export function AuthProvider({ children }) {
     setIsLoading(false);
   }, []);
 
-  const login = useCallback((username, password) => {
+  const login = useCallback((username: string, password: string): boolean => {
     const isValid = username === 'admin' && password === 'admin';
     if (isValid) {
       window.localStorage.setItem(AUTH_STORAGE_KEY, 'true');
@@ -27,12 +46,12 @@ export function AuthProvider({ children }) {
     return isValid;
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback((): void => {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
     setIsAuthenticated(false);
   }, []);
 
-  const value = useMemo(
+  const value = useMemo<AuthContextValue>(
     () => ({
       isAuthenticated,
       isLoading,
@@ -45,10 +64,11 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 }
+
