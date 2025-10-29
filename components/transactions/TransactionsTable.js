@@ -3,6 +3,7 @@ import { FiMinus, FiPlus, FiRefreshCw, FiChevronLeft, FiChevronRight } from 'rea
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { TableBase } from '../table';
+import { SelectionToolbar } from '../table/SelectionToolbar';
 
 const FONT_SCALE_DEFAULT = 1;
 const FONT_SCALE_MIN = 0.8;
@@ -34,11 +35,11 @@ function usePaginationRenderer(pagination, fontScaleState) {
     return {
       render: (props = {}) => (
         <>
-          {props.selectedCount > 0 && (
-            <span className={styles.selectionCount}>
-              {props.selectedCount} selected
-            </span>
-          )}
+          <SelectionToolbar
+            variant="inline"
+            selectedCount={props.selectedCount}
+            className={styles.selectionCount}
+          />
           <div
             className={styles.paginationControls}
             role="group"

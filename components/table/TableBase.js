@@ -9,7 +9,8 @@ import {
   useState,
 } from 'react';
 
-import styles from './TableBase.module.css';
+import shellStyles from './table-shell.module.css';
+import paginationStyles from './table-pagination.module.css';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
 import {
@@ -367,20 +368,20 @@ const TableBaseInner = (
 
   return (
     <section
-      className={styles.tableCard}
+      className={shellStyles.tableCard}
       aria-label={tableTitle}
       style={{ '--transactions-font-scale': fontScale }}
     >
       {toolbarSlot}
-      <div className={styles.tableShell}>
+      <div className={shellStyles.tableShell}>
         <div
           ref={mergedScrollRef}
-          className={styles.tableScroll}
+          className={shellStyles.tableScroll}
           data-testid="transactions-table-container"
         >
           <table
             ref={tableRef}
-            className={styles.table}
+            className={shellStyles.table}
             style={{ '--table-min-width': `${tableMinWidth}px` }}
           >
             <TableBaseHeader
@@ -422,16 +423,16 @@ const TableBaseInner = (
             />
             {shouldShowTotals ? (
               <tfoot>
-                <tr className={styles.totalRow}>
+                <tr className={shellStyles.totalRow}>
                   <td
-                    className={`${styles.bodyCell} ${styles.checkboxCell} ${styles.stickyLeft}`}
+                    className={`${shellStyles.bodyCell} ${shellStyles.checkboxCell} ${shellStyles.stickyLeft}`}
                     style={{
                       minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
                       width: `${CHECKBOX_COLUMN_WIDTH}px`,
                     }}
                   >
-                    <div className={styles.checkboxCellInner}>
-                      <span className={styles.totalLabel}>TOTAL</span>
+                    <div className={shellStyles.checkboxCellInner}>
+                      <span className={shellStyles.totalLabel}>TOTAL</span>
                     </div>
                   </td>
                   {columnDescriptors.map((descriptor) => {
@@ -441,16 +442,16 @@ const TableBaseInner = (
                     const isPinnedLeft = descriptor.pinned === 'left';
                     const isPinnedRight = descriptor.pinned === 'right';
                     const cellClassName = [
-                      styles.bodyCell,
-                      styles.totalCell,
+                      shellStyles.bodyCell,
+                      shellStyles.totalCell,
                       align === 'right'
-                        ? styles.cellAlignRight
+                        ? shellStyles.cellAlignRight
                         : align === 'center'
-                        ? styles.cellAlignCenter
+                        ? shellStyles.cellAlignCenter
                         : '',
-                      isPinnedLeft ? styles.stickyLeft : '',
-                      isPinnedRight ? styles.stickyRight : '',
-                      isHidden && isColumnReorderMode ? styles.bodyCellHidden : '',
+                      isPinnedLeft ? shellStyles.stickyLeft : '',
+                      isPinnedRight ? shellStyles.stickyRight : '',
+                      isHidden && isColumnReorderMode ? shellStyles.bodyCellHidden : '',
                     ]
                       .filter(Boolean)
                       .join(' ');
@@ -470,8 +471,8 @@ const TableBaseInner = (
                           <span
                             className={
                               id === 'amount'
-                                ? `${styles.totalValue} ${styles.totalAmount}`
-                                : styles.totalValue
+                                ? `${shellStyles.totalValue} ${shellStyles.totalAmount}`
+                                : shellStyles.totalValue
                             }
                           >
                             {value}
@@ -481,7 +482,7 @@ const TableBaseInner = (
                     );
                   })}
                   <td
-                    className={`${styles.bodyCell} ${styles.actionsCell}`}
+                    className={`${shellStyles.bodyCell} ${shellStyles.actionsCell}`}
                     style={{
                       minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
                       width: `${ACTIONS_COLUMN_WIDTH}px`,
@@ -494,12 +495,14 @@ const TableBaseInner = (
           </table>
         </div>
         {isFetching ? (
-          <LoadingOverlay className={styles.loadingIndicator} message="Refreshing data…" />
+          <LoadingOverlay className={shellStyles.loadingIndicator} message="Refreshing data…" />
         ) : null}
         {shouldRenderPagination ? (
           <div
-            className={`${styles.paginationBar} ${
-              paginationMode === 'inline' ? styles.paginationInline : styles.paginationSticky
+            className={`${paginationStyles.paginationBar} ${
+              paginationMode === 'inline'
+                ? paginationStyles.paginationInline
+                : paginationStyles.paginationSticky
             }`}
           >
             {pagination.render({ selectedCount: selectionSet.size })}
