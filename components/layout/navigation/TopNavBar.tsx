@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { FiLogOut, FiMoreHorizontal, FiMoon, FiSun, FiChevronDown } from 'react-icons/fi';
+import { FiChevronDown, FiLogOut, FiMoon, FiMoreHorizontal, FiSun } from 'react-icons/fi';
 
+import { useLayoutNavigation } from './LayoutNavigationContext';
 import styles from './TopNavBar.module.css';
 
 const MORE_TRIGGER_RESERVE = 64;
 
-function normalizeActiveKeys(activeKeys) {
+function normalizeActiveKeys(activeKeys: Set<string> | string[] | string | undefined): Set<string> {
   if (!activeKeys) {
     return new Set();
   }
@@ -19,26 +20,22 @@ function normalizeActiveKeys(activeKeys) {
   return new Set([activeKeys]);
 }
 
-export function TopNavBar({
-  navItems = [],
-  activeKeys,
-  onToggleTheme,
-  onLogout,
-  theme = 'light',
-  settingsLink,
-}) {
-  const activeSet = useMemo(() => normalizeActiveKeys(activeKeys), [activeKeys]);
-  const [overflowKeys, setOverflowKeys] = useState([]);
-  const [dropdownMode, setDropdownMode] = useState(null);
-  const listContainerRef = useRef(null);
-  const moreButtonRef = useRef(null);
-  const overflowDropdownRef = useRef(null);
-  const mobileDropdownRef = useRef(null);
-  const itemRefs = useRef(new Map());
-  const itemWidthMapRef = useRef(new Map());
+export function TopNavBar(): JSX.Element | null {
+  const { navItems, topNavActiveKeys, toggleTheme, logout, theme, settingsLink } =
+    useLayoutNavigation();
+
+  const activeSet = useMemo(() => normalizeActiveKeys(topNavActiveKeys), [topNavActiveKeys]);
+  const [overflowKeys, setOverflowKeys] = useState<string[]>([]);
+  const [dropdownMode, setDropdownMode] = useState<'overflow' | 'mobile' | null>(null);
+  const listContainerRef = useRef<HTMLDivElement | null>(null);
+  const moreButtonRef = useRef<HTMLButtonElement | null>(null);
+  const overflowDropdownRef = useRef<HTMLDivElement | null>(null);
+  const mobileDropdownRef = useRef<HTMLDivElement | null>(null);
+  const itemRefs = useRef<Map<string, HTMLAnchorElement | null>>(new Map());
+  const itemWidthMapRef = useRef<Map<string, number>>(new Map());
 
   const flattenedNavItems = useMemo(() => {
-    const flattened = [];
+    const flattened: { key: string; label: string; href: string }[] = [];
     navItems.forEach((item) => {
       if (item && item.href) {
         flattened.push({ key: item.key, label: item.label, href: item.href });
@@ -61,7 +58,7 @@ export function TopNavBar({
     return flattened;
   }, [navItems, settingsLink]);
 
-  const setItemRef = useCallback((key, node) => {
+  const setItemRef = useCallback((key: string, node: HTMLAnchorElement | null) => {
     if (!itemRefs.current) {
       itemRefs.current = new Map();
     }
@@ -155,11 +152,11 @@ export function TopNavBar({
       return undefined;
     }
 
-    const handlePointerDown = (event) => {
+    const handlePointerDown = (event: PointerEvent) => {
       const overflowNode = overflowDropdownRef.current;
       const mobileNode = mobileDropdownRef.current;
       const activeNode = dropdownMode === 'overflow' ? overflowNode : mobileNode;
-      if (activeNode && activeNode.contains(event.target)) {
+      if (activeNode && event.target instanceof Node && activeNode.contains(event.target)) {
         return;
       }
       setDropdownMode(null);
@@ -198,125 +195,130 @@ export function TopNavBar({
     if (overflowItems.length === 0) {
       return;
     }
+
     setDropdownMode((prev) => (prev === 'overflow' ? null : 'overflow'));
   };
 
-  const handleMobileToggleDropdown = () => {
+  const handleToggleMobile = () => {
     setDropdownMode((prev) => (prev === 'mobile' ? null : 'mobile'));
   };
 
-  const renderNavLink = (item, { inOverflow = false } = {}) => {
-    const isActive = activeSet.has(item.key);
-    const className = `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`.trim();
-
-    const link = (
-      <Link
-        href={item.href}
-        className={className}
-        data-overflow={inOverflow ? 'true' : undefined}
-        onClick={closeDropdown}
-      >
-        {item.label}
-      </Link>
-    );
-
-    if (inOverflow) {
-      return <li key={`overflow-${item.key}`}>{link}</li>;
-    }
-
-    return (
-      <li
-        key={item.key}
-        ref={(node) => setItemRef(item.key, node)}
-        className={overflowKeySet.has(item.key) ? styles.navItemHidden : styles.navItem}
-        data-key={item.key}
-      >
-        {link}
-      </li>
-    );
-  };
-
   return (
-    <nav className={styles.navBar} aria-label="Primary navigation">
-      <Link
-        href="/transactions"
-        className={styles.brandLink}
-        onClick={closeDropdown}
-        aria-label="Money Flow home"
-      >
-        <span className={styles.brandMark}>MF</span>
-      </Link>
-      <div className={styles.mobileMenuWrapper} ref={mobileDropdownRef}>
+    <header className={styles.wrapper}>
+      <div className={styles.primaryRow}>
+        <div className={styles.linksContainer} ref={listContainerRef}>
+          <div className={styles.desktopLinks}>
+            {flattenedNavItems.map((item) => {
+              const isActive = activeSet.has(item.key);
+              const isHidden = overflowKeySet.has(item.key);
+              return (
+                <Link
+                  key={item.key}
+                  ref={(node) => setItemRef(item.key, node)}
+                  href={item.href}
+                  className={`${styles.navLink} ${isActive ? styles.navLinkActive : ''} ${
+                    isHidden ? styles.navLinkHidden : ''
+                  }`}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className={styles.actions}>
+          <button
+            type="button"
+            className={styles.iconButton}
+            onClick={toggleTheme}
+            aria-pressed={theme === 'dark'}
+            aria-label="Toggle dark mode"
+            title="Toggle dark mode"
+            data-testid="navbar-dark-mode-toggle"
+          >
+            {theme === 'dark' ? <FiSun /> : <FiMoon />}
+          </button>
+
+          <button
+            type="button"
+            className={styles.iconButton}
+            onClick={logout}
+            aria-label="Logout"
+            title="Logout"
+            data-testid="navbar-logout-button"
+          >
+            <FiLogOut />
+          </button>
+
+          <button
+            type="button"
+            className={`${styles.iconButton} ${overflowItems.length === 0 ? styles.iconButtonHidden : ''}`}
+            onClick={handleToggleOverflow}
+            aria-haspopup="menu"
+            aria-expanded={isOverflowDropdown}
+            aria-controls={`${mobileMenuId}-overflow`}
+            ref={moreButtonRef}
+          >
+            <FiMoreHorizontal />
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.mobileRow}>
         <button
           type="button"
           className={styles.mobileTrigger}
-          onClick={handleMobileToggleDropdown}
-          aria-haspopup="menu"
+          onClick={handleToggleMobile}
           aria-expanded={isMobileDropdown}
           aria-controls={mobileMenuId}
-          aria-label="Open navigation menu"
         >
-          <span className={styles.mobileLabel}>{activePageLabel}</span>
-          <FiChevronDown className={styles.mobileChevron} aria-hidden="true" />
+          <span className={styles.mobileTriggerLabel}>{activePageLabel}</span>
+          <FiChevronDown className={`${styles.mobileChevron} ${isMobileDropdown ? styles.mobileChevronOpen : ''}`} />
         </button>
-        {isMobileDropdown ? (
-          <div className={styles.mobileMenu} role="menu" id={mobileMenuId}>
-            <ul className={styles.mobileMenuList}>
-              {flattenedNavItems.map((item) => renderNavLink(item, { inOverflow: true }))}
-            </ul>
-          </div>
-        ) : null}
       </div>
-      <div className={styles.navListWrapper} ref={listContainerRef}>
-        <ul className={styles.navList}>
-          {flattenedNavItems.map((item) => renderNavLink(item))}
-        </ul>
-      </div>
-      <div className={styles.navActions}>
+
+      {isOverflowDropdown && overflowItems.length > 0 && (
         <div
-          className={styles.moreWrapper}
-          data-active={overflowItems.length > 0 ? 'true' : 'false'}
+          id={`${mobileMenuId}-overflow`}
+          className={styles.overflowDropdown}
           ref={overflowDropdownRef}
+          role="menu"
         >
-          <button
-            type="button"
-            className={`${styles.iconButton} ${styles.moreTrigger}`}
-            aria-haspopup="menu"
-            aria-expanded={isOverflowDropdown}
-            onClick={handleToggleOverflow}
-            ref={moreButtonRef}
-            disabled={overflowItems.length === 0}
-          >
-            <FiMoreHorizontal aria-hidden="true" />
-            <span className={styles.visuallyHidden}>Open overflow navigation links</span>
-          </button>
-          {isOverflowDropdown ? (
-            <div className={styles.moreMenu} role="menu">
-              <ul className={styles.moreMenuList}>
-                {(overflowItems.length > 0 ? overflowItems : flattenedNavItems).map((item) =>
-                  renderNavLink(item, { inOverflow: true }),
-                )}
-              </ul>
-            </div>
-          ) : null}
+          {overflowItems.map((item) => (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={styles.dropdownLink}
+              onClick={closeDropdown}
+            >
+              {item.label}
+            </Link>
+          ))}
         </div>
-        <button
-          type="button"
-          className={styles.iconButton}
-          onClick={onToggleTheme}
-          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+      )}
+
+      {isMobileDropdown && (
+        <div
+          id={mobileMenuId}
+          className={styles.mobileDropdown}
+          ref={mobileDropdownRef}
+          role="menu"
         >
-          {theme === 'dark' ? <FiSun aria-hidden="true" /> : <FiMoon aria-hidden="true" />}
-        </button>
-        <button
-          type="button"
-          className={styles.iconButton}
-          onClick={onLogout}
-          aria-label="Log out"
-        >
-          <FiLogOut aria-hidden="true" />
-        </button>
-      </div>
-    </nav>
+          {flattenedNavItems.map((item) => (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={styles.dropdownLink}
+              aria-current={activeSet.has(item.key) ? 'page' : undefined}
+              onClick={closeDropdown}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </header>
   );
 }

@@ -8,7 +8,7 @@ import {
   FiZap,
 } from 'react-icons/fi';
 
-import AppLayout from '../../components/AppLayout';
+import AppLayout from '../../components/layout/AppShell/AppShell';
 import type { QuickAddActionId } from '../../components/common/QuickAddModal';
 import styles from '../../styles/QuickAddSettings.module.css';
 
