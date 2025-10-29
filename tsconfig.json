@@ -30,7 +30,8 @@
     "scripts/**/*",
     "__tests__/**/*",
     "drizzle.config.ts",
-    "types/**/*"
+    "types/**/*",
+    "context/**/*"
   ],
   "exclude": [
     "node_modules",
