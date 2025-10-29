@@ -160,17 +160,20 @@
 .trigger {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  padding: 0.55rem 1.1rem;
+  padding: 0.65rem 1.1rem;
   min-height: 44px;
-  border-radius: 999px;
+  height: 44px;
+  border-radius: 16px;
   border: none;
-  background: linear-gradient(135deg, #facc15, #f97316);
-  color: #1f2937;
+  background: #f97316;
+  color: #ffffff;
   font-weight: 600;
   font-size: 0.95rem;
-  box-shadow: 0 16px 26px rgba(249, 115, 22, 0.25);
-  transition: transform 160ms ease, box-shadow 160ms ease;
+  box-shadow: 0 16px 26px rgba(249, 115, 22, 0.28);
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  cursor: pointer;
 }
 
 .trigger:disabled {
@@ -183,18 +186,17 @@
 .trigger:not(:disabled):focus-visible {
   outline: none;
   transform: translateY(-1px);
-  box-shadow: 0 22px 36px rgba(249, 115, 22, 0.32);
+  box-shadow: 0 22px 36px rgba(249, 115, 22, 0.35);
+  background: #ea580c;
 }
 
 .triggerIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: rgba(15, 23, 42, 0.12);
-  font-size: 1.05rem;
+  width: 20px;
+  height: 20px;
+  font-size: 1.1rem;
 }
 
 .triggerLabel {
@@ -278,16 +280,17 @@
   }
 
   .trigger {
-    padding: 0.5rem;
-    width: 48px;
-    height: 48px;
+    padding: 0.65rem;
+    width: 44px;
+    height: 44px;
     justify-content: center;
+    border-radius: 16px;
   }
 
   .triggerIcon {
-    width: 28px;
-    height: 28px;
-    font-size: 1.25rem;
+    width: 20px;
+    height: 20px;
+    font-size: 1.15rem;
   }
 
   .triggerLabel {

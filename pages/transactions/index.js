@@ -464,6 +464,10 @@ export default function TransactionsHistoryPage() {
     [displayedTransactions, filteredTransactions, showSelectedOnly],
   );
 
+  const handleToggleShowSelected = useCallback((next) => {
+    setShowSelectedOnly(Boolean(next));
+  }, []);
+
   const tabMetrics = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -731,33 +735,33 @@ export default function TransactionsHistoryPage() {
   }, [defaultColumnState, definitionLookup, customizeColumns]);
 
   const filterActionButtons = (
-    <div className={styles.filterActions}>
+    <div className={styles.toolbarActions} role="group" aria-label="Transaction quick actions">
       <button
         type="button"
-        className={styles.primaryButton}
+        className={styles.iconPrimaryButton}
         onClick={handleOpenAddTransaction}
         disabled={isFetching}
         aria-label="Add transaction"
+        title="Add transaction"
       >
         <FiPlus aria-hidden />
-        <span>Add transaction</span>
       </button>
       <QuickAddModal
         context="transactions"
         onSelect={handleQuickActionSelect}
         disabled={isFetching}
-        triggerLabel="Quick add"
-        triggerAriaLabel="Quick add transaction"
+        triggerLabel=""
+        triggerAriaLabel="Quick add"
         className={styles.filterActionsQuickAdd}
       />
       <button
         type="button"
-        className={styles.secondaryButton}
+        className={styles.iconPrimaryButton}
         onClick={() => setIsCustomizeOpen(true)}
         aria-label="Customize columns"
+        title="Customize columns"
       >
         <FiSettings aria-hidden />
-        <span>Customize</span>
       </button>
     </div>
   );
@@ -775,33 +779,32 @@ export default function TransactionsHistoryPage() {
     >
       <div className={styles.screen}>
         <div className={styles.controlsRegion}>
-          {/* Tabs */}
-          <TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />
-
-          {/* Search and Action Buttons */}
-          <div className={styles.topBar}>
-            <div className={styles.searchContainer}>
-              <FiSearch className={styles.searchIcon} aria-hidden />
-              <input
-                type="search"
-                className={styles.searchInput}
-                placeholder="Search transactions…"
-                value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                aria-label="Search transactions"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  className={styles.searchClearButton}
-                  onClick={() => handleSearchChange('')}
-                  aria-label="Clear search"
-                >
-                  <FiX aria-hidden />
-                </button>
-              )}
+          <div className={styles.pageToolbar} role="toolbar" aria-label="Transactions controls">
+            <div className={styles.toolbarLead}>
+              <TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />
+              <div className={styles.searchContainer}>
+                <FiSearch className={styles.searchIcon} aria-hidden />
+                <input
+                  type="search"
+                  className={styles.searchInput}
+                  placeholder="Search transactions..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  aria-label="Search transactions"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    className={styles.searchClearButton}
+                    onClick={() => handleSearchChange('')}
+                    aria-label="Clear search"
+                  >
+                    <FiX aria-hidden />
+                  </button>
+                )}
+              </div>
             </div>
-            {filterActionButtons}
+            <div className={styles.toolbarActions}>{filterActionButtons}</div>
           </div>
         </div>
 
@@ -850,6 +853,7 @@ export default function TransactionsHistoryPage() {
             sortState={sortState}
             onSortChange={handleSortStateChange}
             isShowingSelectedOnly={showSelectedOnly}
+            onToggleShowSelected={handleToggleShowSelected}
             isFetching={isFetching}
           />
         )}

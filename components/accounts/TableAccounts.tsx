@@ -58,6 +58,7 @@ export type TableAccountsProps = {
   onSortChange: (columnId: string | null, direction: 'asc' | 'desc' | null) => void;
   isFetching?: boolean;
   isShowingSelectedOnly?: boolean;
+  onToggleShowSelected?: (next: boolean) => void;
   onEditAccount?: (account: AccountRow) => void;
 };
 
@@ -199,6 +200,7 @@ export function TableAccounts({
   onSortChange,
   isFetching = false,
   isShowingSelectedOnly = false,
+  onToggleShowSelected,
   onEditAccount,
 }: TableAccountsProps) {
   const [fontScale, setFontScale] = useState(FONT_SCALE_DEFAULT);
@@ -238,6 +240,7 @@ export function TableAccounts({
       sortState={sortState}
       onSortChange={onSortChange}
       isShowingSelectedOnly={isShowingSelectedOnly}
+      onToggleShowSelected={onToggleShowSelected}
       isFetching={isFetching}
       rowIdAccessor={(account: AccountRow) => account.accountId}
       onEditRow={onEditAccount}

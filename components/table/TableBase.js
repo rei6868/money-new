@@ -118,6 +118,7 @@ const TableBaseInner = (
     fontScale = 1,
     sortState,
     onSortChange,
+    onToggleShowSelected,
     isShowingSelectedOnly = false,
     isFetching = false,
     rowIdKey = 'id',
@@ -175,6 +176,12 @@ const TableBaseInner = (
   const handleClearSelection = useCallback(() => {
     onSelectAll?.(false);
   }, [onSelectAll]);
+
+  const handleToggleShowSelected = useCallback(() => {
+    if (typeof onToggleShowSelected === 'function') {
+      onToggleShowSelected(!isShowingSelectedOnly);
+    }
+  }, [onToggleShowSelected, isShowingSelectedOnly]);
 
   const displayColumns = useMemo(
     () => (isColumnReorderMode ? allColumns : visibleColumns),
@@ -503,7 +510,9 @@ const TableBaseInner = (
         <MiniToolbar
           selectedCount={selectionCount}
           onDelete={handleBulkDelete}
-          onCancel={handleClearSelection}
+          onDeselectAll={handleClearSelection}
+          onToggleShowSelected={typeof onToggleShowSelected === 'function' ? handleToggleShowSelected : undefined}
+          isShowingSelectedOnly={isShowingSelectedOnly}
         />
       ) : null}
     </section>
