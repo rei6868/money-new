@@ -15,9 +15,21 @@
   min-height: 48px;
 }
 
+.toolbarSearchArea {
+  min-width: 0;
+  width: 100%;
+}
+
 .toolbarSearch {
   --page-search-width: 100%;
   width: 100%;
+  min-width: 0;
+}
+
+.toolbarViewToggle {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
   min-width: 0;
 }
 
@@ -212,9 +224,14 @@
     gap: 0.75rem;
   }
 
+  .toolbarViewToggle {
+    justify-content: flex-end;
+    width: 100%;
+  }
+
   .viewToggleGroup {
-    justify-content: flex-start;
-    justify-self: flex-start;
+    justify-content: flex-end;
+    width: 100%;
   }
 }
 

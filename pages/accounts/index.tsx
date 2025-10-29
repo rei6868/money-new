@@ -785,45 +785,49 @@ export default function AccountsPage() {
         <div className={pageShellStyles.pageContent}>
           <div className={styles.toolbarSection} role="toolbar" aria-label="Accounts controls">
             <div className={styles.toolbarPrimaryRow}>
-              <PageToolbar
-                className={styles.toolbarSearch}
-                search={(
-                  <PageToolbarSearch
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    onClear={() => handleSearchChange('')}
-                    placeholder="Search accounts..."
-                    ariaLabel="Search accounts"
-                  />
-                )}
-              />
-              <div className={styles.viewToggleGroup} role="tablist" aria-label="Accounts view mode">
-                <div className={styles.viewTabs}>
-                  <span
-                    className={styles.tabIndicator}
-                    data-position={activeTab === 'cards' ? 'cards' : 'table'}
-                    aria-hidden
-                  />
-                  <button
-                    type="button"
-                    className={styles.tabButton}
-                    data-active={activeTab === 'table' ? 'true' : 'false'}
-                    onClick={() => setActiveTab('table')}
-                    role="tab"
-                    aria-selected={activeTab === 'table'}
-                  >
-                    Table
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.tabButton}
-                    data-active={activeTab === 'cards' ? 'true' : 'false'}
-                    onClick={() => setActiveTab('cards')}
-                    role="tab"
-                    aria-selected={activeTab === 'cards'}
-                  >
-                    Cards
-                  </button>
+              <div className={styles.toolbarSearchArea}>
+                <PageToolbar
+                  className={styles.toolbarSearch}
+                  search={(
+                    <PageToolbarSearch
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      onClear={() => handleSearchChange('')}
+                      placeholder="Search accounts..."
+                      ariaLabel="Search accounts"
+                    />
+                  )}
+                />
+              </div>
+              <div className={styles.toolbarViewToggle}>
+                <div className={styles.viewToggleGroup} role="tablist" aria-label="Accounts view mode">
+                  <div className={styles.viewTabs}>
+                    <span
+                      className={styles.tabIndicator}
+                      data-position={activeTab === 'cards' ? 'cards' : 'table'}
+                      aria-hidden
+                    />
+                    <button
+                      type="button"
+                      className={styles.tabButton}
+                      data-active={activeTab === 'table' ? 'true' : 'false'}
+                      onClick={() => setActiveTab('table')}
+                      role="tab"
+                      aria-selected={activeTab === 'table'}
+                    >
+                      Table
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.tabButton}
+                      data-active={activeTab === 'cards' ? 'true' : 'false'}
+                      onClick={() => setActiveTab('cards')}
+                      role="tab"
+                      aria-selected={activeTab === 'cards'}
+                    >
+                      Cards
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
