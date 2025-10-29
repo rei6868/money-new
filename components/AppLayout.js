@@ -14,7 +14,9 @@ import {
 } from 'react-icons/fi';
 
 import { useAuth } from '../context/AuthContext';
-import { TopNavBar } from './TopNavBar';
+import { NavigationProvider } from './layout/navigation/useNavigation';
+import { TopBar } from './layout/topbar/TopBar';
+import { useMediaQuery } from './common/ActionBar';
 
 import styles from './AppLayout.module.css';
 
@@ -39,6 +41,12 @@ const NAV_ITEMS = [
     description: 'Accounts – overview and management',
   },
 ];
+
+const SETTINGS_LINK = {
+  key: 'settings',
+  label: 'Settings',
+  href: '/settings',
+};
 
 const THEME_STORAGE_KEY = 'moneyflow-preferred-theme';
 const SIDEBAR_STORAGE_KEY = 'moneyflow-sidebar-collapsed';
@@ -90,6 +98,8 @@ export default function AppLayout({ title, subtitle, children }) {
   const [flyoutPosition, setFlyoutPosition] = useState({ top: 0 });
   const navGroupRefs = useRef({});
   const flyoutCloseTimer = useRef(null);
+
+  const isSidebarHidden = useMediaQuery('(max-width: 1024px)');
 
   const [expandedGroups, setExpandedGroups] = useState(() => {
     const currentPath = router.pathname;
@@ -352,11 +362,16 @@ export default function AppLayout({ title, subtitle, children }) {
   };
 
   return (
-    <div className={styles.appShell} data-testid="app-root">
-      <aside
-        id="moneyflow-sidebar"
-        className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ''}`}
-      >
+    <NavigationProvider
+      items={NAV_ITEMS}
+      activeKeys={topNavActiveKeys}
+      settingsLink={SETTINGS_LINK}
+    >
+      <div className={styles.appShell} data-testid="app-root">
+        <aside
+          id="moneyflow-sidebar"
+          className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ''}`}
+        >
         <div className={styles.brandSection}>
           <button
             type="button"
@@ -430,23 +445,22 @@ export default function AppLayout({ title, subtitle, children }) {
         </div>
       </aside>
       <div className={styles.mainColumn}>
-        <div className={styles.topNavBarContainer}>
-          <TopNavBar
-            navItems={NAV_ITEMS}
-            activeKeys={topNavActiveKeys}
-            onToggleTheme={handleToggleTheme}
-            onLogout={handleLogout}
-            theme={theme}
-            settingsLink={{ key: 'settings', label: 'Settings', href: '/settings' }}
-          />
-        </div>
-
+        {isSidebarHidden ? (
+          <div className={styles.topNavBarContainer}>
+            <TopBar
+              onToggleTheme={handleToggleTheme}
+              onLogout={handleLogout}
+              theme={theme}
+            />
+          </div>
+        ) : null}
 
         <main className={styles.mainContent} data-testid="layout-main">
           {children}
         </main>
       </div>
     </div>
+      </NavigationProvider>
   );
 }
 

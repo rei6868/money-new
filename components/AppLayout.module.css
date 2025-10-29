@@ -10,6 +10,8 @@
 }
 
 .appShell {
+  --mf-nav-icon-size: 34px;
+  --mf-nav-icon-radius: 10px;
   display: flex;
   min-height: 100vh;
   background: var(--mf-canvas);
@@ -83,9 +85,9 @@
   border: none;
   background: var(--mf-control-ghost);
   color: var(--mf-text-secondary);
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: var(--mf-nav-icon-size, 34px);
+  height: var(--mf-nav-icon-size, 34px);
+  border-radius: var(--mf-nav-icon-radius, 10px);
   display: grid;
   place-items: center;
   cursor: pointer;
