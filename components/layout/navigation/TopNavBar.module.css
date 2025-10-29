@@ -96,9 +96,11 @@
   display: none;
 }
 
-<<<<<<<< HEAD:components/layout/navigation/TopNavBar.module.css
 .mobileRow {
-========
+  display: none;
+  align-items: center;
+}
+
 .moreMenu {
   position: absolute;
   top: calc(100% + 0.4rem);
@@ -130,7 +132,9 @@
 }
 
 .mobileMenuWrapper {
->>>>>>>> origin/codex/refactor-navigation-components-and-utilities:components/layout/topbar/TopBar.module.css
+  display: none;
+  align-items: center;
+}
   display: none;
   align-items: center;
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import AppLayout from '../../components/AppLayout';
+import AppLayout from '../../components/layout/AppShell/AppShell';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
 import { FiPlus, FiSettings, FiSearch, FiX } from 'react-icons/fi';
 
