@@ -941,8 +941,13 @@ export default function TransactionsHistoryPage() {
       return;
     }
 
-    setIsSearchOpen((prev) => !prev);
-  }, [isCompact]);
+    setIsSearchOpen((prev) => {
+      if (prev && searchInputRef.current) {
+        searchInputRef.current.blur();
+      }
+      return !prev;
+    });
+  }, [isCompact, searchInputRef]);
 
   const searchToggleAriaLabel = isCompact
     ? isSearchOpen
