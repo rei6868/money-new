@@ -7,7 +7,7 @@ import TableAccounts from '../../components/accounts/TableAccounts';
 import AccountEditModal, { AccountEditPayload } from '../../components/accounts/AccountEditModal';
 import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGlobal';
 import QuickAddModal from '../../components/common/QuickAddModal';
-import { FiPlus, FiSettings } from 'react-icons/fi';
+import { FiEye, FiPlus, FiRefreshCcw, FiSettings } from 'react-icons/fi';
 import ColumnsCustomizeModal, {
   ColumnConfig as CustomizeColumnConfig,
 } from '../../components/customize/ColumnsCustomizeModal';
@@ -892,7 +892,13 @@ export default function AccountsPage() {
         </div>
 
         <footer className={styles.pageFooter} aria-label="Accounts footer">
-          <span className={styles.footerNote}>Accounts sync nightly • Preview data</span>
+          <div
+            className={styles.footerIcons}
+            aria-label="Nightly sync and preview data indicators"
+          >
+            <FiRefreshCcw aria-hidden="true" focusable="false" />
+            <FiEye aria-hidden="true" focusable="false" />
+          </div>
         </footer>
       </div>
 
