@@ -819,7 +819,7 @@
 
   .primaryButton,
   .secondaryButton,
-  .toolbarIconButton,
+  .toolbarIconButton {
     font-size: 0.9rem;
   }
 

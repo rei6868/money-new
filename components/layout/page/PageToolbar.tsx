@@ -46,6 +46,7 @@ export type PageToolbarSearchProps = Omit<
   onChange: (value: string) => void;
   onClear?: () => void;
   clearAriaLabel?: string;
+  ariaLabel?: string;
   disabled?: boolean;
   className?: string;
   style?: React.CSSProperties;
@@ -99,6 +100,7 @@ export function PageToolbarSearch({
   clearAriaLabel = 'Clear search',
   placeholder,
   ariaLabel,
+  'aria-label': ariaLabelAttr,
   disabled = false,
   className,
   style,
@@ -129,7 +131,7 @@ export function PageToolbarSearch({
         className={searchStyles.input}
         value={value}
         placeholder={placeholder}
-        aria-label={ariaLabel ?? placeholder}
+        aria-label={ariaLabel ?? ariaLabelAttr ?? placeholder}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         {...inputProps}
