@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 
 import AppLayout from '../components/layout/AppShell/AppShell';
+import { PeoplePageContent } from '../components/pages/people/PeoplePageContent';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 
 export default function PeoplePage() {
@@ -61,69 +62,28 @@ export default function PeoplePage() {
     });
   };
 
-  const rows = useMemo(() => people ?? [], [people]);
+  const handleEdit = (person) => {
+    console.log('Edit person', person.personId);
+  };
+
+  const handleDelete = (person) => {
+    console.log('Delete person', person.personId);
+  };
 
   if (authLoading || !isAuthenticated) {
     return null;
   }
 
   return (
-    <AppLayout
-      title="People"
-      subtitle="Manage individuals linked to accounts, transactions, and reimbursements."
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-        <button type="button" onClick={handleAddNew} style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}>
-          Add New Person
-        </button>
-      </div>
-
-      {isLoading && <p>Loading people…</p>}
-      {error && !isLoading && <p style={{ color: 'red' }}>{error}</p>}
-
-      {!isLoading && !error && (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Full Name</th>
-              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Status</th>
-              <th style={{ textAlign: 'left', borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={3} style={{ padding: '0.75rem' }}>
-                  No people found yet.
-                </td>
-              </tr>
-            ) : (
-              rows.map((person) => (
-                <tr key={person.personId} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '0.75rem' }}>{person.fullName}</td>
-                  <td style={{ padding: '0.75rem', textTransform: 'capitalize' }}>{person.status}</td>
-                  <td style={{ padding: '0.75rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => console.log('Edit person', person.personId)}
-                      style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', cursor: 'pointer' }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => console.log('Delete person', person.personId)}
-                      style={{ padding: '0.25rem 0.5rem', cursor: 'pointer' }}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      )}
+    <AppLayout>
+      <PeoplePageContent
+        people={people}
+        isLoading={isLoading}
+        error={error}
+        onAddNew={handleAddNew}
+        onEditPerson={handleEdit}
+        onDeletePerson={handleDelete}
+      />
     </AppLayout>
   );
 }
