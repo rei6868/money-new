@@ -1,0 +1,67 @@
+:root {
+  --mf-table-surface: #ffffff;
+  --mf-table-border: rgba(148, 163, 184, 0.16);
+  --mf-table-divider: rgba(148, 163, 184, 0.22);
+  --mf-table-sticky-shadow: rgba(15, 23, 42, 0.08);
+  --mf-table-text: var(--mf-text-primary, #0f172a);
+  --mf-table-muted: var(--mf-text-muted, #64748b);
+  --mf-table-accent: #6366f1;
+  --mf-table-sticky-surface: var(--mf-sidebar-bg, #f8fafc);
+  --mf-table-total-row-bg: rgba(248, 250, 255, 0.96);
+  --mf-table-total-amount: #dc2626;
+
+  --mf-table-selection-background: linear-gradient(
+    135deg,
+    rgba(107, 77, 253, 0.12),
+    rgba(155, 127, 253, 0.08)
+  );
+  --mf-table-selection-border: rgba(107, 77, 253, 0.2);
+  --mf-table-selection-shadow: 0 18px 32px rgba(79, 70, 229, 0.12);
+  --mf-table-selection-count: #4338ca;
+  --mf-table-selection-label: var(--mf-table-muted);
+  --mf-table-selection-button-bg: #ffffff;
+  --mf-table-selection-button-color: #4338ca;
+  --mf-table-selection-button-shadow: 0 8px 16px rgba(107, 77, 253, 0.18);
+  --mf-table-selection-button-active-bg: #e0e7ff;
+  --mf-table-selection-button-active-color: #312e81;
+  --mf-table-selection-button-active-shadow: 0 12px 22px rgba(79, 70, 229, 0.22);
+  --mf-table-selection-button-hover-shadow: 0 12px 20px rgba(79, 70, 229, 0.22);
+  --mf-table-selection-danger-bg: #fee2e2;
+  --mf-table-selection-danger-color: #b91c1c;
+  --mf-table-selection-danger-shadow: 0 8px 16px rgba(220, 38, 38, 0.18);
+  --mf-table-selection-danger-hover-shadow: 0 12px 22px rgba(220, 38, 38, 0.22);
+}
+
+[data-theme='dark'] {
+  --mf-table-surface: #111827;
+  --mf-table-border: rgba(71, 85, 105, 0.45);
+  --mf-table-divider: rgba(71, 85, 105, 0.5);
+  --mf-table-sticky-shadow: rgba(2, 6, 23, 0.55);
+  --mf-table-text: var(--mf-text-primary, #e2e8f0);
+  --mf-table-muted: var(--mf-text-muted, #94a3b8);
+  --mf-table-accent: #818cf8;
+  --mf-table-sticky-surface: #1f2937;
+  --mf-table-total-row-bg: rgba(30, 41, 59, 0.92);
+  --mf-table-total-amount: #f87171;
+
+  --mf-table-selection-background: linear-gradient(
+    135deg,
+    rgba(129, 140, 248, 0.12),
+    rgba(165, 180, 252, 0.16)
+  );
+  --mf-table-selection-border: rgba(129, 140, 248, 0.28);
+  --mf-table-selection-shadow: 0 18px 32px rgba(15, 23, 42, 0.45);
+  --mf-table-selection-count: #c7d2fe;
+  --mf-table-selection-label: var(--mf-table-muted);
+  --mf-table-selection-button-bg: rgba(30, 41, 59, 0.9);
+  --mf-table-selection-button-color: #c7d2fe;
+  --mf-table-selection-button-shadow: 0 8px 16px rgba(30, 64, 175, 0.32);
+  --mf-table-selection-button-active-bg: rgba(76, 106, 255, 0.28);
+  --mf-table-selection-button-active-color: #eef2ff;
+  --mf-table-selection-button-active-shadow: 0 12px 22px rgba(30, 64, 175, 0.4);
+  --mf-table-selection-button-hover-shadow: 0 12px 22px rgba(30, 64, 175, 0.42);
+  --mf-table-selection-danger-bg: rgba(239, 68, 68, 0.24);
+  --mf-table-selection-danger-color: #fecaca;
+  --mf-table-selection-danger-shadow: 0 8px 16px rgba(127, 29, 29, 0.4);
+  --mf-table-selection-danger-hover-shadow: 0 12px 22px rgba(127, 29, 29, 0.48);
+}

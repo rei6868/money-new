@@ -3,6 +3,7 @@ import { FiMinus, FiPlus, FiRefreshCw, FiChevronLeft, FiChevronRight } from 'rea
 
 import styles from '../../styles/TransactionsHistory.module.css';
 import { TableBase } from '../table';
+import { SelectionToolbar } from '../table/SelectionToolbar';
 
 const FONT_SCALE_DEFAULT = 1;
 const FONT_SCALE_MIN = 0.8;
@@ -179,6 +180,45 @@ export function TransactionsTable(props) {
     onReset: handleResetFont,
   });
 
+  const selectedIdList = useMemo(
+    () => Array.from(new Set(Array.isArray(selectedIds) ? selectedIds : [])),
+    [selectedIds],
+  );
+  const selectedCount = selectedIdList.length;
+
+  const handleBulkDelete = useCallback(() => {
+    if (selectedIdList.length === 0) {
+      return;
+    }
+    if (typeof onBulkDelete === 'function') {
+      onBulkDelete(selectedIdList);
+      return;
+    }
+    if (typeof onOpenAdvanced === 'function') {
+      onOpenAdvanced({ mode: 'delete-many', ids: selectedIdList });
+    }
+  }, [onBulkDelete, onOpenAdvanced, selectedIdList]);
+
+  const handleDeselectAll = useCallback(() => {
+    onSelectAll?.(false);
+  }, [onSelectAll]);
+
+  const handleToggleShowSelected = useCallback(() => {
+    if (typeof onToggleShowSelected === 'function') {
+      onToggleShowSelected(!isShowingSelectedOnly);
+    }
+  }, [onToggleShowSelected, isShowingSelectedOnly]);
+
+  const selectionToolbar = (
+    <SelectionToolbar
+      selectedCount={selectedCount}
+      onDelete={handleBulkDelete}
+      onDeselectAll={handleDeselectAll}
+      onToggleShowSelected={onToggleShowSelected ? handleToggleShowSelected : undefined}
+      isShowingSelectedOnly={isShowingSelectedOnly}
+    />
+  );
+
   return (
     <TableBase
       tableScrollRef={tableScrollRef}
@@ -188,11 +228,11 @@ export function TransactionsTable(props) {
       onSelectAll={onSelectAll}
       selectionSummary={selectionSummary}
       onOpenAdvanced={onOpenAdvanced}
-      onBulkDelete={onBulkDelete}
       columnDefinitions={columnDefinitions}
       allColumns={allColumns}
       visibleColumns={visibleColumns}
       pagination={paginationRenderer}
+      toolbarSlot={selectionToolbar}
       isColumnReorderMode={isColumnReorderMode}
       onColumnVisibilityChange={onColumnVisibilityChange}
       onColumnOrderChange={onColumnOrderChange}
@@ -200,7 +240,6 @@ export function TransactionsTable(props) {
       sortState={sortState}
       onSortChange={onSortChange}
       isShowingSelectedOnly={isShowingSelectedOnly}
-      onToggleShowSelected={onToggleShowSelected}
       isFetching={isFetching}
     />
   );

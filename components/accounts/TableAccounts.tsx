@@ -10,6 +10,7 @@ import {
 import { AccountColumnDefinition, AccountRow } from './accountColumns';
 import styles from '../../styles/accounts.module.css';
 import { TableBase } from '../table';
+import { SelectionToolbar } from '../table/SelectionToolbar';
 
 interface SelectionSummary {
   count: number;
@@ -221,6 +222,39 @@ export function TableAccounts({
 
   const summaryToUse = selectionSummary ?? defaultSummary;
 
+  const uniqueSelectedIds = useMemo(
+    () => Array.from(new Set(Array.isArray(selectedIds) ? selectedIds : [])),
+    [selectedIds],
+  );
+  const selectedCount = uniqueSelectedIds.length;
+
+  const handleBulkDelete = useCallback(() => {
+    if (selectedCount === 0) {
+      return;
+    }
+    console.info('Accounts bulk delete placeholder', uniqueSelectedIds);
+  }, [selectedCount, uniqueSelectedIds]);
+
+  const handleDeselectAll = useCallback(() => {
+    onSelectAll(false);
+  }, [onSelectAll]);
+
+  const handleToggleShowSelected = useCallback(() => {
+    if (onToggleShowSelected) {
+      onToggleShowSelected(!isShowingSelectedOnly);
+    }
+  }, [onToggleShowSelected, isShowingSelectedOnly]);
+
+  const selectionToolbar = (
+    <SelectionToolbar
+      selectedCount={selectedCount}
+      onDelete={handleBulkDelete}
+      onDeselectAll={handleDeselectAll}
+      onToggleShowSelected={onToggleShowSelected ? handleToggleShowSelected : undefined}
+      isShowingSelectedOnly={isShowingSelectedOnly}
+    />
+  );
+
   return (
     <TableBaseComponent
       tableScrollRef={tableScrollRef}
@@ -233,6 +267,7 @@ export function TableAccounts({
       allColumns={allColumns}
       visibleColumns={visibleColumns}
       pagination={paginationRenderer}
+      toolbarSlot={selectionToolbar}
       isColumnReorderMode={isColumnReorderMode}
       onColumnVisibilityChange={onColumnVisibilityChange}
       onColumnOrderChange={onColumnOrderChange}
@@ -244,9 +279,6 @@ export function TableAccounts({
       isFetching={isFetching}
       rowIdAccessor={(account: AccountRow) => account.accountId}
       onEditRow={onEditAccount}
-      onBulkDelete={(ids: string[]) => {
-        console.info('Accounts bulk delete placeholder', ids);
-      }}
     />
   );
 }

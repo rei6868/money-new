@@ -7,7 +7,7 @@ import {
   normalizeTransactionType,
 } from '../../lib/transactions/transactionTypes';
 
-import styles from './TableBase.module.css';
+import tableStyles from './table-shell.module.css';
 import bodyStyles from './TableBaseBody.module.css';
 import { formatAmount, formatPercent } from '../../lib/numberFormat';
 import { ACTIONS_COLUMN_WIDTH, CHECKBOX_COLUMN_WIDTH } from './tableUtils';
@@ -265,7 +265,7 @@ export function TableBaseBody({
     const ariaLabel = resolvedId ? `Edit row ${resolvedId}` : 'Edit row';
     return (
       <td
-        className={`${styles.bodyCell} ${styles.actionsCell}`}
+        className={`${tableStyles.bodyCell} ${tableStyles.actionsCell}`}
         style={{
           minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
           width: `${ACTIONS_COLUMN_WIDTH}px`,
@@ -312,13 +312,13 @@ export function TableBaseBody({
                 className={`${bodyStyles.row} ${isSelected ? bodyStyles.rowSelected : ''}`.trim()}
               >
                 <td
-                  className={`${styles.bodyCell} ${styles.checkboxCell} ${styles.stickyLeft}`}
+                  className={`${tableStyles.bodyCell} ${tableStyles.checkboxCell} ${tableStyles.stickyLeft}`}
                   style={{
                     minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
                     width: `${CHECKBOX_COLUMN_WIDTH}px`,
                   }}
                 >
-                  <div className={styles.checkboxCellInner}>
+                  <div className={tableStyles.checkboxCellInner}>
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -339,15 +339,15 @@ export function TableBaseBody({
                   const isPinnedLeft = pinned === 'left';
                   const isPinnedRight = pinned === 'right';
                   const cellClassName = [
-                    styles.bodyCell,
+                    tableStyles.bodyCell,
                     align === 'right'
-                      ? styles.cellAlignRight
+                      ? tableStyles.cellAlignRight
                       : align === 'center'
-                      ? styles.cellAlignCenter
+                      ? tableStyles.cellAlignCenter
                       : '',
-                    isPinnedLeft ? styles.stickyLeft : '',
-                    isPinnedRight ? styles.stickyRight : '',
-                    isHidden && isColumnReorderMode ? styles.bodyCellHidden : '',
+                    isPinnedLeft ? tableStyles.stickyLeft : '',
+                    isPinnedRight ? tableStyles.stickyRight : '',
+                    isHidden && isColumnReorderMode ? tableStyles.bodyCellHidden : '',
                   ]
                     .filter(Boolean)
                     .join(' ');

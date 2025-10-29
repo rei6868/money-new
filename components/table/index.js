@@ -5,3 +5,4 @@ export * from './TableHamburgerMenu';
 export * from './TableTooltip';
 export * from './TableConfirmModal';
 export * from './tableUtils';
+export * from './SelectionToolbar';

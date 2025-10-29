@@ -9,7 +9,8 @@ import {
   useState,
 } from 'react';
 
-import styles from './TableBase.module.css';
+import tableStyles from './table-shell.module.css';
+import paginationStyles from './table-pagination.module.css';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
 import {
@@ -22,7 +23,6 @@ import {
 } from './tableUtils';
 import { TableBaseHeader } from './TableBaseHeader';
 import { TableBaseBody } from './TableBaseBody';
-import MiniToolbar from '../common/MiniToolbar';
 
 function useMergedRefs(...refs) {
   return useCallback(
@@ -105,7 +105,6 @@ const TableBaseInner = (
     onSelectAll,
     selectionSummary = null,
     onOpenAdvanced,
-    onBulkDelete,
     columnDefinitions = [],
     visibleColumns,
     pagination,
@@ -118,7 +117,6 @@ const TableBaseInner = (
     fontScale = 1,
     sortState,
     onSortChange,
-    onToggleShowSelected,
     isShowingSelectedOnly = false,
     isFetching = false,
     rowIdKey = 'id',
@@ -160,28 +158,7 @@ const TableBaseInner = (
   const isIndeterminate = selectionSet.size > 0 && !allSelected;
   const totals = useMemo(() => normalizeTotals(selectionSummary), [selectionSummary]);
   const selectionCount = selectionSet.size;
-  const shouldShowTotals = selectionCount > 0;
-  const hasActiveSelection = selectionCount > 0;
-
-  const handleBulkDelete = useCallback(() => {
-    if (typeof onBulkDelete === 'function') {
-      onBulkDelete(Array.from(selectionSet));
-      return;
-    }
-    if (typeof onOpenAdvanced === 'function') {
-      onOpenAdvanced({ mode: 'delete-many', ids: Array.from(selectionSet) });
-    }
-  }, [onBulkDelete, onOpenAdvanced, selectionSet]);
-
-  const handleClearSelection = useCallback(() => {
-    onSelectAll?.(false);
-  }, [onSelectAll]);
-
-  const handleToggleShowSelected = useCallback(() => {
-    if (typeof onToggleShowSelected === 'function') {
-      onToggleShowSelected(!isShowingSelectedOnly);
-    }
-  }, [onToggleShowSelected, isShowingSelectedOnly]);
+  const shouldShowTotals = Number(selectionSummary?.count ?? selectionCount ?? 0) > 0;
 
   const displayColumns = useMemo(
     () => (isColumnReorderMode ? allColumns : visibleColumns),
@@ -367,20 +344,20 @@ const TableBaseInner = (
 
   return (
     <section
-      className={styles.tableCard}
+      className={tableStyles.tableCard}
       aria-label={tableTitle}
       style={{ '--transactions-font-scale': fontScale }}
     >
       {toolbarSlot}
-      <div className={styles.tableShell}>
+      <div className={tableStyles.tableShell}>
         <div
           ref={mergedScrollRef}
-          className={styles.tableScroll}
+          className={tableStyles.tableScroll}
           data-testid="transactions-table-container"
         >
           <table
             ref={tableRef}
-            className={styles.table}
+            className={tableStyles.table}
             style={{ '--table-min-width': `${tableMinWidth}px` }}
           >
             <TableBaseHeader
@@ -422,16 +399,16 @@ const TableBaseInner = (
             />
             {shouldShowTotals ? (
               <tfoot>
-                <tr className={styles.totalRow}>
+                <tr className={tableStyles.totalRow}>
                   <td
-                    className={`${styles.bodyCell} ${styles.checkboxCell} ${styles.stickyLeft}`}
+                    className={`${tableStyles.bodyCell} ${tableStyles.checkboxCell} ${tableStyles.stickyLeft}`}
                     style={{
                       minWidth: `${CHECKBOX_COLUMN_WIDTH}px`,
                       width: `${CHECKBOX_COLUMN_WIDTH}px`,
                     }}
                   >
-                    <div className={styles.checkboxCellInner}>
-                      <span className={styles.totalLabel}>TOTAL</span>
+                    <div className={tableStyles.checkboxCellInner}>
+                      <span className={tableStyles.totalLabel}>TOTAL</span>
                     </div>
                   </td>
                   {columnDescriptors.map((descriptor) => {
@@ -441,16 +418,16 @@ const TableBaseInner = (
                     const isPinnedLeft = descriptor.pinned === 'left';
                     const isPinnedRight = descriptor.pinned === 'right';
                     const cellClassName = [
-                      styles.bodyCell,
-                      styles.totalCell,
+                      tableStyles.bodyCell,
+                      tableStyles.totalCell,
                       align === 'right'
-                        ? styles.cellAlignRight
+                        ? tableStyles.cellAlignRight
                         : align === 'center'
-                        ? styles.cellAlignCenter
+                        ? tableStyles.cellAlignCenter
                         : '',
-                      isPinnedLeft ? styles.stickyLeft : '',
-                      isPinnedRight ? styles.stickyRight : '',
-                      isHidden && isColumnReorderMode ? styles.bodyCellHidden : '',
+                      isPinnedLeft ? tableStyles.stickyLeft : '',
+                      isPinnedRight ? tableStyles.stickyRight : '',
+                      isHidden && isColumnReorderMode ? tableStyles.bodyCellHidden : '',
                     ]
                       .filter(Boolean)
                       .join(' ');
@@ -470,8 +447,8 @@ const TableBaseInner = (
                           <span
                             className={
                               id === 'amount'
-                                ? `${styles.totalValue} ${styles.totalAmount}`
-                                : styles.totalValue
+                                ? `${tableStyles.totalValue} ${tableStyles.totalAmount}`
+                                : tableStyles.totalValue
                             }
                           >
                             {value}
@@ -481,7 +458,7 @@ const TableBaseInner = (
                     );
                   })}
                   <td
-                    className={`${styles.bodyCell} ${styles.actionsCell}`}
+                    className={`${tableStyles.bodyCell} ${tableStyles.actionsCell}`}
                     style={{
                       minWidth: `${ACTIONS_COLUMN_WIDTH}px`,
                       width: `${ACTIONS_COLUMN_WIDTH}px`,
@@ -494,27 +471,20 @@ const TableBaseInner = (
           </table>
         </div>
         {isFetching ? (
-          <LoadingOverlay className={styles.loadingIndicator} message="Refreshing data…" />
+          <LoadingOverlay className={tableStyles.loadingIndicator} message="Refreshing data…" />
         ) : null}
         {shouldRenderPagination ? (
           <div
-            className={`${styles.paginationBar} ${
-              paginationMode === 'inline' ? styles.paginationInline : styles.paginationSticky
+            className={`${paginationStyles.paginationBar} ${
+              paginationMode === 'inline'
+                ? paginationStyles.paginationInline
+                : paginationStyles.paginationSticky
             }`}
           >
             {pagination.render({ selectedCount: selectionSet.size })}
           </div>
         ) : null}
       </div>
-      {hasActiveSelection ? (
-        <MiniToolbar
-          selectedCount={selectionCount}
-          onDelete={handleBulkDelete}
-          onDeselectAll={handleClearSelection}
-          onToggleShowSelected={typeof onToggleShowSelected === 'function' ? handleToggleShowSelected : undefined}
-          isShowingSelectedOnly={isShowingSelectedOnly}
-        />
-      ) : null}
     </section>
   );
 };
