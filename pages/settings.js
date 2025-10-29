@@ -1,4 +1,4 @@
-import AppLayout from '../components/AppLayout';
+import AppLayout from '../components/layout/AppShell/AppShell';
 import PagePlaceholder from '../components/PagePlaceholder';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import AppLayout from '../../components/AppLayout';
+import AppLayout from '../../components/layout/AppShell/AppShell';
 import AccountsCardsView from '../../components/accounts/AccountsCardsView';
 import AccountTypeTabs from '../../components/accounts/AccountTypeTabs';
 import TableAccounts from '../../components/accounts/TableAccounts';
