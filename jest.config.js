@@ -16,7 +16,20 @@ module.exports = {
         },
       },
     ],
-    '^.+\\.(js|jsx)$': 'babel-jest',
+    '^.+\\.(js|jsx)$': [
+      'babel-jest',
+      {
+        presets: [
+          [
+            'next/babel',
+            {
+              'preset-env': { targets: { node: 'current' } },
+              'preset-react': { runtime: 'automatic' },
+            },
+          ],
+        ],
+      },
+    ],
   },
   passWithNoTests: true,
   setupFiles: ['<rootDir>/test-utils/jest-setup.js'],
