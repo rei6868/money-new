@@ -147,6 +147,8 @@ export function TransactionsTable(props) {
     sortState,
     onSortChange,
     isFetching = false,
+    isShowingSelectedOnly = false,
+    onToggleShowSelected,
   } = props;
 
   const [fontScale, setFontScale] = useState(FONT_SCALE_DEFAULT);
@@ -197,7 +199,8 @@ export function TransactionsTable(props) {
       fontScale={fontScale}
       sortState={sortState}
       onSortChange={onSortChange}
-      isShowingSelectedOnly={props.isShowingSelectedOnly}
+      isShowingSelectedOnly={isShowingSelectedOnly}
+      onToggleShowSelected={onToggleShowSelected}
       isFetching={isFetching}
     />
   );

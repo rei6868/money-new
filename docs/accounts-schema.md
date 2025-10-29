@@ -18,7 +18,6 @@ See [`src/db/schema/accounts.ts`](../src/db/schema/accounts.ts) for the full def
 | `accountName` | `varchar(120)` | ✅ | Display label presented to end users, exports, and notifications. Must be provided to avoid ambiguity in UI references. |
 | `imgUrl` | `text` | ⛔️ (optional) | CDN-hosted URL to the account avatar/bank logo/card art (e.g., `https://res.cloudinary.com/demo/card.png`) surfaced across dashboards and mobile cards. |
 | `accountType` | `account_type` enum | ✅ | Controlled vocabulary describing the financial instrument (bank, credit, saving, invest, e-wallet, group, loan, mortgage, cash, other). Drives categorised reporting and feature flags. |
-| `ownerId` | `varchar(36)` | ✅ | References the `People` table to map the account to its owner/manager. Required so balances always have a responsible person. |
 | `parentAccountId` | `varchar(36)` FK (self) | ⛔️ (optional) | Links a child account to a parent group account to enable aggregate balances. When null the account is top-level. Cascades updates, sets null on parent deletion. |
 | `assetRef` | `varchar(36)` | ⛔️ (optional) | Optional pointer to an `Asset` record used when the account is collateralised or backed by a physical/financial asset. |
 | `openingBalance` | `numeric(18,2)` | ✅ | Snapshot of balance at onboarding time. Immutable baseline used for reconciliation and historical comparisons. |
@@ -35,7 +34,6 @@ See [`src/db/schema/accounts.ts`](../src/db/schema/accounts.ts) for the full def
 - **Primary identification (`accountId`)** ensures every ledger entry and transaction can trace back to a unique account without relying on mutable attributes like names.
 - **Presentation layer (`accountName`, `notes`)** stores the human-readable context required by customer support, statements, and dashboards.
 - **Categorisation (`accountType`, `status`)** underpins reporting dimensions, conditional business rules (e.g., credit limit enforcement), and filtering in analytics.
-- **Ownership and relationships (`ownerId`, `parentAccountId`, `assetRef`)** provide linkage to people, grouped accounts, and optional collateral assets for compliance and roll-up reporting.
 - **Financial metrics (`openingBalance`, `currentBalance`, `totalIn`, `totalOut`)** capture both the baseline and running cashflow components, enabling fast aggregate calculations without replaying the entire transaction log.
 - **Lifecycle tracking (`createdAt`, `updatedAt`)** supports auditability, sync scheduling, and differential exports when accounts change state.
 

@@ -5,6 +5,25 @@
   background: rgba(15, 23, 42, 0.05);
   padding: 0.3rem;
   border-radius: 999px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.root::-webkit-scrollbar {
+  height: 4px;
+}
+
+.root::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.root::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
 }
 
 .tabButton {
@@ -21,6 +40,12 @@
   transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   color: #475569;
   min-width: 90px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tabButton:hover:not([data-active='true']) {
+  background: rgba(148, 163, 184, 0.1);
 }
 
 /* Default color (All tab) */

@@ -1,8 +1,6 @@
 import { performance } from 'node:perf_hooks';
 
 import { asc, desc, eq, ilike, or, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
-
 import { getDb } from '../../db/client';
 import { accounts } from '../../../src/db/schema/accounts';
 import { cashbackMovements } from '../../../src/db/schema/cashbackMovements';
@@ -58,7 +56,6 @@ interface DbTransactionRow {
   linkedTxnId: string | null;
   accountName: string | null;
   accountId: string | null;
-  accountOwnerName: string | null;
   personName: string | null;
   categoryName: string | null;
   shopName: string | null;
@@ -81,7 +78,6 @@ interface TotalsRow {
 interface SortReferences {
   transactions: typeof transactions;
   accounts: typeof accounts;
-  accountOwner: any;
   people: typeof people;
   shops: typeof shops;
   categories: typeof categories;
@@ -258,7 +254,6 @@ function buildSearchConditions(
   refs: {
     transactions: typeof transactions;
     accounts: typeof accounts;
-    accountOwner: any;
     people: typeof people;
     shops: typeof shops;
     categories: typeof categories;
@@ -279,7 +274,6 @@ function buildSearchConditions(
     ilike(refs.accounts.accountName, pattern),
     ilike(refs.categories.name, pattern),
     ilike(refs.people.fullName, pattern),
-    ilike(refs.accountOwner.fullName, pattern),
     ilike(refs.transactions.linkedTxnId, pattern),
   ];
 
@@ -322,7 +316,7 @@ function resolveSortExpression(columnId: string, refs: SortReferences) {
     case 'linkedTxn':
       return refs.transactions.linkedTxnId;
     case 'owner':
-      return sql`coalesce(${refs.people.fullName}, ${refs.accountOwner.fullName}, '')`;
+      return sql`coalesce(${refs.people.fullName}, '')`;
     case 'id':
       return refs.transactions.transactionId;
     default:
@@ -343,7 +337,7 @@ function mapRowToRecord(row: DbTransactionRow): TransactionRecord {
   const fixedBack = toNumber(row.fixedBack);
   const totalBack = toNumber(row.totalBack);
   const finalPrice = Number((amount - totalBack).toFixed(2));
-  const owner = row.personName ?? row.accountOwnerName ?? '';
+  const owner = row.personName ?? '';
   const debtTag = (row.debtLabel?.trim() || row.debtNotes?.trim() || '').trim();
   const cycleTag = row.debtCycle?.trim() || row.cashbackCycle?.trim() || '';
 
@@ -447,8 +441,6 @@ export async function getTransactionsTable(
   }
 
   try {
-    const accountOwner = alias(people, 'account_owner');
-
     const cashbackPercentBack = sql<number>`coalesce(max(CASE WHEN ${cashbackMovements.cashbackType} = 'percent' THEN ${cashbackMovements.cashbackValue}::numeric END), 0)`.as(
       'percentBack',
     );
@@ -496,7 +488,6 @@ export async function getTransactionsTable(
     const refs = {
       transactions,
       accounts,
-      accountOwner,
       people,
       shops,
       categories,
@@ -517,7 +508,6 @@ export async function getTransactionsTable(
       })
       .from(transactions)
       .leftJoin(accounts, eq(transactions.accountId, accounts.accountId))
-      .leftJoin(accountOwner, eq(accounts.ownerId, accountOwner.personId))
       .leftJoin(people, eq(transactions.personId, people.personId))
       .leftJoin(categories, eq(transactions.categoryId, categories.categoryId))
       .leftJoin(shops, eq(transactions.shopId, shops.shopId))
@@ -545,7 +535,6 @@ export async function getTransactionsTable(
       const sortExpression = resolveSortExpression(sortState.columnId, {
         transactions,
         accounts,
-        accountOwner,
         people,
         shops,
         categories,
@@ -565,7 +554,6 @@ export async function getTransactionsTable(
           linkedTxnId: transactions.linkedTxnId,
           accountName: accounts.accountName,
           accountId: transactions.accountId,
-          accountOwnerName: accountOwner.fullName,
           personName: people.fullName,
           categoryName: categories.name,
           shopName: shops.shopName,
@@ -579,7 +567,6 @@ export async function getTransactionsTable(
         })
         .from(transactions)
         .leftJoin(accounts, eq(transactions.accountId, accounts.accountId))
-        .leftJoin(accountOwner, eq(accounts.ownerId, accountOwner.personId))
         .leftJoin(people, eq(transactions.personId, people.personId))
         .leftJoin(categories, eq(transactions.categoryId, categories.categoryId))
         .leftJoin(shops, eq(transactions.shopId, shops.shopId))

@@ -29,30 +29,88 @@
   min-height: 44px;
 }
 
-.unifiedTopBar {
+.toolbarSection {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.75rem;
   width: 100%;
-  flex-wrap: nowrap;
-  min-height: 44px;
-  padding: 0.5rem 0;
+  padding: 0.25rem 0;
 }
 
-.actionBar {
+.toolbarPrimary {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  justify-content: space-between;
+  gap: 1rem;
   width: 100%;
-  flex-wrap: wrap;
+  min-height: 48px;
+}
+
+.toolbarLead {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.toolbarLead .searchContainer {
+  flex: 0 1 clamp(220px, 35%, 360px);
+  max-width: min(40%, 360px);
+}
+
+.toolbarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+}
+
+.toolbarActions .trigger {
+  padding: 0.55rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+}
+
+.toolbarActions .triggerLabel {
+  display: none;
+}
+
+.toolbarActions .triggerIcon {
+  font-size: 1.05rem;
+}
+
+.viewToggleGroup {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.viewToggleGroup .viewTabs {
+  display: inline-flex;
+}
+
+.toolbarTabsRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.toolbarTabsRow .accountTypeTabsWrapper {
+  width: 100%;
 }
 
 .searchContainer {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex: 1 1 auto;
-  max-width: 400px;
+  flex: 1 1 320px;
+  max-width: 360px;
   min-width: 200px;
   position: relative;
   border-radius: 12px;
@@ -110,37 +168,9 @@
   color: var(--mf-text-primary);
 }
 
-.filterActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.filterActions button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
 .filterActionsQuickAdd {
   display: inline-flex;
-}
-
-.filterActionsQuickAdd button {
-  border-radius: 999px;
-  padding: 0.45rem 0.95rem;
-  background: #1d4ed8;
-  color: #ffffff;
-  border: none;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
-}
-
-.filterActionsQuickAdd button:disabled {
-  opacity: 0.6;
+  flex-shrink: 0;
 }
 
 .pageFooter {
@@ -209,7 +239,20 @@
   align-items: center;
   gap: 0.75rem;
   flex-wrap: nowrap;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.accountTypeTabsWrapper {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 220px;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
 }
 
 .viewTabs {
@@ -220,17 +263,20 @@
   padding: 0.3rem;
   border-radius: 999px;
   position: relative;
+  flex-shrink: 0;
 }
 
 .tabIndicator {
   position: absolute;
-  height: 100%;
+  height: calc(100% - 0.6rem);
   width: calc(50% - 0.15rem);
-  background: #1d4ed8;
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
   border-radius: 999px;
-  transition: left 0.3s ease;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   left: 0.3rem;
+  top: 0.3rem;
   z-index: 0;
+  box-shadow: 0 8px 16px rgba(29, 78, 216, 0.25);
 }
 
 .viewTabs[data-position='cards'] .tabIndicator {
@@ -247,24 +293,25 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, transform 0.2s ease;
   color: #475569;
   font-size: 0.85rem;
   font-weight: 600;
   z-index: 1;
   min-width: 60px;
+  white-space: nowrap;
 }
 
 .tabButton[data-active='true'] {
   color: #ffffff;
 }
 
-.toolbarCard {
-  composes: toolbarCard from './TransactionsHistory.module.css';
+.tabButton:hover:not([data-active='true']) {
+  color: #2f3367;
 }
 
-.toolbarLeft {
-  composes: toolbarLeft from './TransactionsHistory.module.css';
+.toolbarCard {
+  composes: toolbarCard from './TransactionsHistory.module.css';
 }
 
 .searchGroup {
@@ -793,6 +840,14 @@
   justify-content: flex-end;
 }
 
+/* Media queries ordered from largest to smallest */
+
+@media (min-width: 960px) {
+  .toolbarLead .searchContainer {
+    max-width: min(38%, 360px);
+  }
+}
+
 @media (max-width: 900px) {
   .pageHeaderActions {
     flex-wrap: wrap;
@@ -810,152 +865,56 @@
     margin: 0 -0.5rem;
     padding: 0 0.5rem;
   }
+}
 
-  .filterActions {
+@media (max-width: 768px) {
+  .toolbarPrimary {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .toolbarLead {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.45rem;
+  }
+
+  .toolbarLead .searchContainer {
+    max-width: 100%;
+  }
+
+  .toolbarActions {
     width: 100%;
     justify-content: space-between;
-    flex-wrap: nowrap;
+  }
+
+  .viewToggleGroup {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 640px) {
+  .viewToggleGroup .viewTabs {
+    gap: 0.35rem;
+  }
+
+  .toolbarActions {
+    flex-wrap: wrap;
     gap: 0.4rem;
   }
 
-  .filterActions button,
-  .filterActionsQuickAdd button {
+  .toolbarActions .iconPrimaryButton,
+  .toolbarActions .trigger {
     width: 44px;
     height: 44px;
-    padding: 0;
     justify-content: center;
-    border-radius: 12px;
+    padding: 0.5rem;
   }
 
-  .filterActions button span,
-  .filterActionsQuickAdd button span:not(.triggerIcon) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    border: 0;
-  }
-
-  .filterActionsQuickAdd {
-    width: auto;
-  }
-}
-
-@media (max-width: 640px) {
-  .toolbarCard[data-enhanced='true'] {
-    padding: 0.75rem 0.85rem;
-  }
-
-  .toolbarSearchRow {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-  }
-
-  .searchButtonGroup {
-    width: 100%;
-    justify-content: space-between;
-    flex-wrap: wrap;
-  }
-
-  .searchButtonGroup > button {
-    flex: 1 1 calc(33.333% - 0.35rem);
-    min-width: 140px;
-  }
-
-  .toolbarActionRow {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-
-  .selectionActions {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .pageHeader {
-    gap: 1rem;
-  }
-
-  .pageFooter {
-    justify-content: center;
-    padding-top: 0.5rem;
-    font-size: 0.8rem;
-  }
-
-  .filterActions {
-    gap: 0.5rem;
-  }
-
-  .filterActionsQuickAdd {
-    width: 100%;
-  }
-
-  .filterActionsQuickAdd button {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-@media (max-width: 1024px) {
-  .unifiedTopBar {
-    flex-wrap: wrap;
-    gap: 0.75rem;
-  }
-
-  .searchContainer {
-    order: 3;
-    flex: 1 1 100%;
-    min-width: 200px;
-  }
-
-  .filterActions {
-    order: 4;
-    flex: 1 1 100%;
-  }
-}
-
-@media (max-width: 640px) {
-  .topBar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .unifiedTopBar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
-  }
-
-  .headerTabGroup {
-    order: 1;
-    width: 100%;
-  }
-
-  .searchContainer {
-    order: 2;
-    flex: 1 1 100%;
-    min-width: 0;
-  }
-
-  .filterActions {
-    order: 3;
-    width: 100%;
-  }
-
-  .actionBar {
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: 0.5rem;
-  }
-
-  .actionBar button {
-    flex: 1 1 auto;
-    min-width: 0;
+  .toolbarActions .trigger {
+    border-radius: 16px;
   }
 }
 
@@ -1015,6 +974,7 @@
     width: 100%;
   }
 }
+
 
 .tableQuickActions {
   display: inline-flex;

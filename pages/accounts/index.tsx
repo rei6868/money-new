@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import AppLayout from '../../components/AppLayout';
 import AccountsCardsView from '../../components/accounts/AccountsCardsView';
-import AccountsPageHeader from '../../components/accounts/AccountsPageHeader';
 import AccountTypeTabs from '../../components/accounts/AccountTypeTabs';
 import TableAccounts from '../../components/accounts/TableAccounts';
 import AccountEditModal, { AccountEditPayload } from '../../components/accounts/AccountEditModal';
@@ -509,6 +508,10 @@ export default function AccountsPage() {
     [displayedAccounts, paginatedAccounts, showSelectedOnly],
   );
 
+  const handleToggleShowSelected = useCallback((next: boolean) => {
+    setShowSelectedOnly(next);
+  }, []);
+
   const handleColumnVisibilityChange = useCallback((columnId: string, visible: boolean) => {
     setColumnState((prev) =>
       prev.map((column) =>
@@ -666,7 +669,6 @@ export default function AccountsPage() {
           const accountPayload = {
             accountName: String(payload.accountName || ''),
             accountType: String(payload.accountType || 'other'),
-            ownerId: String(payload.ownerId || ''),
             openingBalance: Number(payload.openingBalance || 0),
             currentBalance: Number(payload.currentBalance || 0),
             status: String(payload.status || 'active'),
@@ -736,33 +738,33 @@ export default function AccountsPage() {
   );
 
   const filterActionButtons = (
-    <div className={styles.filterActions}>
+    <div className={styles.toolbarActions} role="group" aria-label="Account quick actions">
       <button
         type="button"
-        className={styles.primaryButton}
+        className={styles.iconPrimaryButton}
         onClick={handleAddAccountClick}
         disabled={isFetching}
         aria-label="Add account"
+        title="Add account"
       >
         <FiPlus aria-hidden />
-        <span>Add account</span>
       </button>
       <QuickAddModal
         context="accounts"
         onSelect={handleQuickActionSelect}
         disabled={isFetching}
-        triggerLabel="Quick add"
-        triggerAriaLabel="Open quick add actions"
+        triggerLabel=""
+        triggerAriaLabel="Quick add"
         className={styles.filterActionsQuickAdd}
       />
       <button
         type="button"
-        className={styles.secondaryButton}
+        className={styles.iconPrimaryButton}
         onClick={() => setIsCustomizeOpen(true)}
         aria-label="Customize columns"
+        title="Customize columns"
       >
         <FiSettings aria-hidden />
-        <span>Customize</span>
       </button>
     </div>
   );
@@ -778,69 +780,73 @@ export default function AccountsPage() {
     <AppLayout title="Accounts" subtitle="">
       <div className={styles.pageShell}>
         <div className={styles.pageContent}>
-          {/* Unified top bar with all controls */}
-          <div className={styles.unifiedTopBar}>
-            {/* Left: Table/Card Toggle */}
-            <div className={styles.headerTabGroup} role="tablist" aria-label="Accounts view mode">
-              <div className={styles.viewTabs}>
-                <span className={styles.tabIndicator} data-position={activeTab === 'cards' ? 'cards' : 'table'} aria-hidden />
-                <button
-                  type="button"
-                  className={styles.tabButton}
-                  data-active={activeTab === 'table' ? 'true' : 'false'}
-                  onClick={() => setActiveTab('table')}
-                  role="tab"
-                  aria-selected={activeTab === 'table'}
-                >
-                  Table
-                </button>
-                <button
-                  type="button"
-                  className={styles.tabButton}
-                  data-active={activeTab === 'cards' ? 'true' : 'false'}
-                  onClick={() => setActiveTab('cards')}
-                  role="tab"
-                  aria-selected={activeTab === 'cards'}
-                >
-                  Cards
-                </button>
+          <div className={styles.toolbarSection} role="toolbar" aria-label="Accounts controls">
+            <div className={styles.toolbarPrimary}>
+              <div className={styles.toolbarLead}>
+                <div className={styles.searchContainer}>
+                  <FiSearch className={styles.searchIcon} aria-hidden />
+                  <input
+                    type="search"
+                    className={styles.searchInput}
+                    placeholder="Search accounts..."
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    aria-label="Search accounts"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      className={styles.searchClearButton}
+                      onClick={() => handleSearchChange('')}
+                      aria-label="Clear search"
+                    >
+                      <FiX aria-hidden />
+                    </button>
+                  )}
+                </div>
+                {filterActionButtons}
+              </div>
+              <div className={styles.viewToggleGroup} role="tablist" aria-label="Accounts view mode">
+                <div className={styles.viewTabs}>
+                  <span
+                    className={styles.tabIndicator}
+                    data-position={activeTab === 'cards' ? 'cards' : 'table'}
+                    aria-hidden
+                  />
+                  <button
+                    type="button"
+                    className={styles.tabButton}
+                    data-active={activeTab === 'table' ? 'true' : 'false'}
+                    onClick={() => setActiveTab('table')}
+                    role="tab"
+                    aria-selected={activeTab === 'table'}
+                  >
+                    Table
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.tabButton}
+                    data-active={activeTab === 'cards' ? 'true' : 'false'}
+                    onClick={() => setActiveTab('cards')}
+                    role="tab"
+                    aria-selected={activeTab === 'cards'}
+                  >
+                    Cards
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Center: Account Type Tabs */}
-            <AccountTypeTabs
-              activeTab={activeTypeTab}
-              onTabChange={setActiveTypeTab}
-              tabs={accountTypeTabMetrics}
-            />
-
-            {/* Right: Search */}
-            <div className={styles.searchContainer}>
-              <FiSearch className={styles.searchIcon} aria-hidden />
-              <input
-                type="search"
-                className={styles.searchInput}
-                placeholder="Search accounts…"
-                value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                aria-label="Search accounts"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  className={styles.searchClearButton}
-                  onClick={() => handleSearchChange('')}
-                  aria-label="Clear search"
-                >
-                  <FiX aria-hidden />
-                </button>
-              )}
+            <div className={styles.toolbarTabsRow}>
+              <div className={styles.accountTypeTabsWrapper}>
+                <AccountTypeTabs
+                  activeTab={activeTypeTab}
+                  onTabChange={setActiveTypeTab}
+                  tabs={accountTypeTabMetrics}
+                />
+              </div>
             </div>
-
-            {/* Right: Action Buttons */}
-            {filterActionButtons}
           </div>
-
           {fetchError ? (
             <div className={styles.tableCard} role="alert">
               <div className={styles.emptyState}>
@@ -880,6 +886,7 @@ export default function AccountsPage() {
                 onSortChange={handleSortChange}
                 isFetching={isFetching}
                 isShowingSelectedOnly={showSelectedOnly}
+                onToggleShowSelected={handleToggleShowSelected}
                 onEditAccount={handleEditAccount}
               />
             </div>

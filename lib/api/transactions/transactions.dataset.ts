@@ -1,6 +1,4 @@
 import { eq } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
-
 import {
   getMockTransactions,
   type EnrichedTransaction,
@@ -117,7 +115,6 @@ interface RawTransactionRow {
   shopId: string | null;
   linkedTxnId: string | null;
   accountName: string | null;
-  accountOwnerName: string | null;
   personName: string | null;
   categoryName: string | null;
   shopName: string | null;
@@ -175,7 +172,7 @@ function mapDbRowToRecord(
   const debtInfo = debtMovementsMap.get(row.transactionId) ?? { debtTag: '', cycleTag: '' };
   const totalBack = cashbackInfo.totalBack;
   const finalPrice = Number((amount - totalBack).toFixed(2));
-  const owner = row.personName ?? row.accountOwnerName ?? '';
+  const owner = row.personName ?? '';
   const cycleTag = debtInfo.cycleTag || cashbackInfo.cycleTag;
 
   return {
@@ -211,8 +208,6 @@ export async function loadTransactionDataset(): Promise<TransactionRecord[]> {
   }
 
   try {
-    const accountOwner = alias(people, 'account_owner');
-
     const [baseRows, cashbackRows, debtRows] = await Promise.all([
       db
         .select({
@@ -230,14 +225,12 @@ export async function loadTransactionDataset(): Promise<TransactionRecord[]> {
           shopId: transactions.shopId,
           linkedTxnId: transactions.linkedTxnId,
           accountName: accounts.accountName,
-          accountOwnerName: accountOwner.fullName,
           personName: people.fullName,
           categoryName: categories.name,
           shopName: shops.shopName,
         })
         .from(transactions)
         .leftJoin(accounts, eq(transactions.accountId, accounts.accountId))
-        .leftJoin(accountOwner, eq(accounts.ownerId, accountOwner.personId))
         .leftJoin(people, eq(transactions.personId, people.personId))
         .leftJoin(categories, eq(transactions.categoryId, categories.categoryId))
         .leftJoin(shops, eq(transactions.shopId, shops.shopId)),

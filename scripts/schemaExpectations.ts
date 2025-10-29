@@ -91,7 +91,6 @@ export const schemaExpectations: TableExpectation[] = [
     primaryKey: ["account_id"],
     foreignKeys: [
       { columns: ["parent_account_id"], referencedTable: "accounts", referencedColumns: ["account_id"] },
-      { columns: ["owner_id"], referencedTable: "people", referencedColumns: ["person_id"] },
       { columns: ["asset_ref"], referencedTable: "assets", referencedColumns: ["asset_id"] },
     ],
   },

@@ -4,7 +4,6 @@ import { randomUUID } from "crypto";
 
 import { db } from "../../../lib/db/client";
 import { accounts, accountTypeEnum, accountStatusEnum, type NewAccount } from "../../../src/db/schema/accounts";
-import { people } from "../../../src/db/schema/people";
 
 // Mock data for development when database is not configured
 const MOCK_ACCOUNTS: any[] = [
@@ -12,8 +11,6 @@ const MOCK_ACCOUNTS: any[] = [
     accountId: "mock-acc-1",
     accountName: "Vietcombank Savings",
     accountType: "bank",
-    ownerId: "mock-person-1",
-    ownerName: "John Doe",
     openingBalance: 10000000,
     currentBalance: 12500000,
     totalIn: 5000000,
@@ -27,8 +24,6 @@ const MOCK_ACCOUNTS: any[] = [
     accountId: "mock-acc-2",
     accountName: "Cash Wallet",
     accountType: "cash",
-    ownerId: "mock-person-1",
-    ownerName: "John Doe",
     openingBalance: 500000,
     currentBalance: 750000,
     totalIn: 300000,
@@ -42,8 +37,6 @@ const MOCK_ACCOUNTS: any[] = [
     accountId: "mock-acc-3",
     accountName: "Credit Card",
     accountType: "credit",
-    ownerId: "mock-person-1",
-    ownerName: "John Doe",
     openingBalance: 0,
     currentBalance: -2000000,
     totalIn: 0,
@@ -57,8 +50,6 @@ const MOCK_ACCOUNTS: any[] = [
     accountId: "mock-acc-4",
     accountName: "MoMo E-Wallet",
     accountType: "e-wallet",
-    ownerId: "mock-person-1",
-    ownerName: "John Doe",
     openingBalance: 100000,
     currentBalance: 350000,
     totalIn: 500000,
@@ -89,8 +80,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         accountId: `mock-acc-${Date.now()}`,
         accountName: body.accountName || "New Account",
         accountType: body.accountType || "other",
-        ownerId: body.ownerId || "mock-person-1",
-        ownerName: "John Doe",
         openingBalance: Number(body.openingBalance ?? 0),
         currentBalance: Number(body.currentBalance ?? 0),
         totalIn: 0,

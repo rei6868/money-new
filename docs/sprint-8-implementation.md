@@ -59,9 +59,8 @@ This sprint implements advanced real-time account/entity selection and managemen
 - `GET /api/people` - Fetch all people/owners
 
 **Validation:**
-- Required fields: accountName, accountType, ownerId, openingBalance, status
+- Required fields: accountName, accountType, openingBalance, status
 - Account type must match backend enum exactly
-- Owner must be selected from active people
 
 ### 4. Account Page Filter Tabs & UI Redesign ✅
 
@@ -155,7 +154,6 @@ This sprint implements advanced real-time account/entity selection and managemen
 {
   accountName: string;
   accountType: string; // Must match backend enum
-  ownerId: string; // Required - person ID from people table
   openingBalance: number;
   currentBalance: number; // Initially same as openingBalance
   status: string; // 'active', 'closed', or 'archived'
@@ -165,7 +163,7 @@ This sprint implements advanced real-time account/entity selection and managemen
 
 **Fixed Issues:**
 - `AddModalGlobal.tsx` now uses correct account type enums
-- Added ownerId field to account creation form
+- Removed deprecated ownerId field from account creation form
 - Proper validation and error handling
 - Numeric fields properly parsed and validated
 
@@ -183,8 +181,8 @@ This sprint implements advanced real-time account/entity selection and managemen
 - [x] Edit/delete account → Changes reflect live in all dropdowns
 
 ### API Contract:
-- **POST /api/accounts** - Create account (requires: accountName, accountType, ownerId, openingBalance, currentBalance, status)
-- **GET /api/accounts** - Fetch all accounts (returns array with ownerName joined from people table)
+- **POST /api/accounts** - Create account (requires: accountName, accountType, openingBalance, currentBalance, status)
+- **GET /api/accounts** - Fetch all accounts
 - **GET /api/people** - Fetch all people (returns array of active people)
 
 ## Known Limitations

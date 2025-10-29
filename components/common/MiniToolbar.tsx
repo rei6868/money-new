@@ -1,15 +1,28 @@
+import { FiFilter, FiList, FiXCircle } from 'react-icons/fi';
+
 import styles from '../table/TableBase.module.css';
 
 export type MiniToolbarProps = {
   selectedCount: number;
   onDelete?: () => void;
-  onCancel?: () => void;
+  onDeselectAll?: () => void;
+  onToggleShowSelected?: () => void;
+  isShowingSelectedOnly?: boolean;
 };
 
-export function MiniToolbar({ selectedCount, onDelete, onCancel }: MiniToolbarProps) {
+export function MiniToolbar({
+  selectedCount,
+  onDelete,
+  onDeselectAll,
+  onToggleShowSelected,
+  isShowingSelectedOnly = false,
+}: MiniToolbarProps) {
   if (!selectedCount || selectedCount <= 0) {
     return null;
   }
+
+  const toggleLabel = isShowingSelectedOnly ? 'Show all rows' : 'Show selected rows';
+  const ToggleIcon = isShowingSelectedOnly ? FiList : FiFilter;
 
   return (
     <div className={styles.selectionToolbarDock} role="status" aria-live="polite">
@@ -19,19 +32,41 @@ export function MiniToolbar({ selectedCount, onDelete, onCancel }: MiniToolbarPr
           <span className={styles.selectionToolbarLabel}>selected</span>
         </div>
         <div className={styles.selectionToolbarActions}>
+          {onToggleShowSelected ? (
+            <button
+              type="button"
+              className={styles.selectionToolbarButton}
+              onClick={onToggleShowSelected}
+              data-active={isShowingSelectedOnly ? 'true' : 'false'}
+              aria-pressed={isShowingSelectedOnly ? 'true' : 'false'}
+              title={toggleLabel}
+            >
+              <span className={styles.selectionToolbarButtonIcon} aria-hidden>
+                <ToggleIcon />
+              </span>
+              <span>{toggleLabel}</span>
+            </button>
+          ) : null}
+          {onDeselectAll ? (
+            <button
+              type="button"
+              className={styles.selectionToolbarButton}
+              onClick={onDeselectAll}
+              title="Deselect all rows"
+            >
+              <span className={styles.selectionToolbarButtonIcon} aria-hidden>
+                <FiXCircle />
+              </span>
+              <span>Deselect all</span>
+            </button>
+          ) : null}
           <button
             type="button"
             className={`${styles.selectionToolbarButton} ${styles.selectionToolbarDanger}`.trim()}
             onClick={onDelete}
+            title="Delete selected rows"
           >
             Delete
-          </button>
-          <button
-            type="button"
-            className={styles.selectionToolbarButton}
-            onClick={onCancel}
-          >
-            Cancel
           </button>
         </div>
       </div>
