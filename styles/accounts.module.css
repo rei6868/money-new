@@ -195,9 +195,27 @@
   z-index: 40;
 }
 
-.footerNote {
-  font-weight: 500;
-  letter-spacing: 0.01em;
+.footerIcons {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.footerIcons svg {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 600px) {
+  .footerIcons {
+    gap: 0.5rem;
+  }
+
+  .footerIcons svg {
+    width: 18px;
+    height: 18px;
+  }
 }
 
 .columnSubline {
