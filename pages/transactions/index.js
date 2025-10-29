@@ -20,19 +20,14 @@ import {
   getTransactionTypeLabel,
   normalizeTransactionType,
 } from '../../lib/transactions/transactionTypes';
+import {
+  buildTransactionPredicate,
+  buildTransferLinkInfo,
+  createTransferPairKey,
+  extractString,
+} from '../../lib/transactions/transferFilters';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
-
-function extractString(value) {
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return String(value);
-  }
-  return null;
-}
 
 
 
@@ -76,52 +71,6 @@ function applyTypeMetadata(txn) {
   };
 }
 
-function buildTransactionPredicate(normalizedQuery, filterType = null) {
-  return (txn) => {
-    // Filter by type if specified
-    if (filterType && filterType !== 'all') {
-      const txnType = extractString(txn.typeRaw ?? txn.type);
-      const normalizedType = txnType ? txnType.toLowerCase() : '';
-
-      if (filterType === TRANSACTION_TYPE_VALUES.TRANSFER) {
-        // Transfer: must be expense with linked transaction
-        const linkedId = extractString(txn.linkedTxn);
-        if (normalizedType !== 'expense' || !linkedId) {
-          return false;
-        }
-      } else {
-        // Specific type: must match exactly
-        if (normalizedType !== filterType.toLowerCase()) {
-          return false;
-        }
-      }
-    }
-
-    // Apply search query
-    if (!normalizedQuery) {
-      return true;
-    }
-
-    const searchableKeys = [
-      'notes',
-      'description',
-      'shop',
-      'account',
-      'category',
-      'owner',
-      'type',
-      'id',
-    ];
-    return searchableKeys.some((key) => {
-      const rawValue = txn?.[key];
-      if (rawValue === null || rawValue === undefined) {
-        return false;
-      }
-      return String(rawValue).toLowerCase().includes(normalizedQuery);
-    });
-  };
-}
-
 export default function TransactionsHistoryPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
   const [transactions, setTransactions] = useState([]);
@@ -150,6 +99,7 @@ export default function TransactionsHistoryPage() {
   const [availableTypes, setAvailableTypes] = useState([]);
   const tableScrollRef = useRef(null);
   const savedScrollLeftRef = useRef(0);
+  const transferLinkInfo = useMemo(() => buildTransferLinkInfo(transactions), [transactions]);
 
   useEffect(() => {
     if (tableScrollRef.current && savedScrollLeftRef.current > 0) {
@@ -433,9 +383,61 @@ export default function TransactionsHistoryPage() {
   const filteredTransactions = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
     const normalizedQuery = searchQuery.trim().toLowerCase();
-    const predicate = buildTransactionPredicate(normalizedQuery, activeTab);
-    return base.filter(predicate);
-  }, [transactions, searchQuery, activeTab]);
+    const predicate = buildTransactionPredicate(
+      normalizedQuery,
+      activeTab,
+      transferLinkInfo.linkedIds,
+    );
+    const matches = base.filter(predicate);
+
+    if (activeTab !== TRANSACTION_TYPE_VALUES.TRANSFER) {
+      return matches;
+    }
+
+    const matchMap = new Map();
+    const ensurePartnerById = (candidateId) => {
+      const normalizedId = extractString(candidateId);
+      if (!normalizedId || matchMap.has(normalizedId)) {
+        return;
+      }
+      const partner = transferLinkInfo.byId.get(normalizedId);
+      if (partner) {
+        matchMap.set(normalizedId, partner);
+      }
+    };
+
+    matches.forEach((txn) => {
+      const txnId = extractString(txn.id);
+      if (txnId) {
+        matchMap.set(txnId, txn);
+      }
+    });
+
+    matches.forEach((txn) => {
+      const txnId = extractString(txn.id);
+      const linkedId = extractString(txn.linkedTxn);
+      ensurePartnerById(linkedId);
+
+      if (txnId) {
+        const inbound = transferLinkInfo.inbound.get(txnId);
+        if (inbound) {
+          inbound.forEach((sourceId) => {
+            ensurePartnerById(sourceId);
+          });
+        }
+      }
+    });
+
+    const sorted = Array.from(matchMap.values()).sort((a, b) => {
+      const idA = extractString(a?.id);
+      const idB = extractString(b?.id);
+      const indexA = transferLinkInfo.index.get(idA) ?? base.indexOf(a);
+      const indexB = transferLinkInfo.index.get(idB) ?? base.indexOf(b);
+      return indexA - indexB;
+    });
+
+    return sorted;
+  }, [transactions, searchQuery, activeTab, transferLinkInfo]);
 
   // Sync selected IDs with available transactions (remove IDs that no longer exist)
   useEffect(() => {
@@ -474,9 +476,14 @@ export default function TransactionsHistoryPage() {
   const tabMetrics = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
     const normalizedQuery = searchQuery.trim().toLowerCase();
-    const predicate = buildTransactionPredicate(normalizedQuery, false);
+    const predicate = buildTransactionPredicate(
+      normalizedQuery,
+      false,
+      transferLinkInfo.linkedIds,
+    );
     const baseMatches = base.filter(predicate);
     const counts = new Map();
+
     baseMatches.forEach((txn) => {
       const rawType = extractString(txn.typeRaw ?? txn.type);
       if (rawType) {
@@ -484,10 +491,27 @@ export default function TransactionsHistoryPage() {
         counts.set(key, (counts.get(key) ?? 0) + 1);
       }
     });
-    const transferMatches = baseMatches.filter((txn) => {
-      const rawType = extractString(txn.typeRaw ?? txn.type);
+
+    const transferPairs = new Set();
+    baseMatches.forEach((txn) => {
+      const txnId = extractString(txn.id);
       const linkedId = extractString(txn.linkedTxn);
-      return rawType?.toLowerCase() === 'expense' && Boolean(linkedId);
+      const directKey = createTransferPairKey(txnId, linkedId);
+      if (directKey) {
+        transferPairs.add(directKey);
+      }
+
+      if (txnId) {
+        const inbound = transferLinkInfo.inbound.get(txnId);
+        if (inbound) {
+          inbound.forEach((sourceId) => {
+            const inboundKey = createTransferPairKey(sourceId, txnId);
+            if (inboundKey) {
+              transferPairs.add(inboundKey);
+            }
+          });
+        }
+      }
     });
 
     const derivedTabs = resolvedTypeList
@@ -503,11 +527,11 @@ export default function TransactionsHistoryPage() {
     tabs.push({
       id: TRANSACTION_TYPE_VALUES.TRANSFER,
       label: getTransactionTypeLabel(TRANSACTION_TYPE_VALUES.TRANSFER),
-      count: transferMatches.length,
+      count: transferPairs.size,
     });
 
     return tabs;
-  }, [searchQuery, transactions, resolvedTypeList]);
+  }, [searchQuery, transactions, resolvedTypeList, transferLinkInfo]);
 
   useEffect(() => {
     if (selectedIds.length === 0) {
