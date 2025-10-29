@@ -10,6 +10,9 @@
 }
 
 .appShell {
+  --mf-navigation-button-size: 34px;
+  --mf-navigation-button-radius: 10px;
+
   display: flex;
   min-height: 100vh;
   background: var(--mf-canvas);
@@ -83,9 +86,9 @@
   border: none;
   background: var(--mf-control-ghost);
   color: var(--mf-text-secondary);
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: var(--mf-navigation-button-size);
+  height: var(--mf-navigation-button-size);
+  border-radius: var(--mf-navigation-button-radius);
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -255,7 +258,7 @@
   background: var(--mf-canvas);
 }
 
-.topNavBarContainer {
+.topBarContainer {
   display: none;
   width: 100%;
 }
@@ -479,7 +482,7 @@
     display: none;
   }
 
-  .topNavBarContainer {
+  .topBarContainer {
     display: flex;
     padding: 0.85rem clamp(0.85rem, 6vw, 1.6rem) 0;
   }

@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -36,19 +37,19 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
     setIsLoading(false);
   }, []);
 
-  const login = (username: string, password: string): boolean => {
+  const login = useCallback((username: string, password: string): boolean => {
     const isValid = username === 'admin' && password === 'admin';
     if (isValid) {
       window.localStorage.setItem(AUTH_STORAGE_KEY, 'true');
       setIsAuthenticated(true);
     }
     return isValid;
-  };
+  }, []);
 
-  const logout = (): void => {
+  const logout = useCallback((): void => {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
     setIsAuthenticated(false);
-  };
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -57,7 +58,7 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
       login,
       logout,
     }),
-    [isAuthenticated, isLoading],
+    [isAuthenticated, isLoading, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

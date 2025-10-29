@@ -1,3 +1,47 @@
+@value buttonSize: var(--mf-navigation-button-size, 34px);
+
+.navBar {
+  composes: wrapper from '../topbar/TopBar.module.css';
+}
+
+.brandLink {
+  composes: mobileTrigger from '../topbar/TopBar.module.css';
+  justify-content: flex-start;
+  gap: 0.4rem;
+}
+
+.brandMark {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.navListWrapper {
+  composes: linksContainer from '../topbar/TopBar.module.css';
+}
+
+.navList {
+  composes: desktopLinks from '../topbar/TopBar.module.css';
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.navItem {
+  flex: 0 0 auto;
+}
+
+.navItemHidden {
+  composes: navLinkHidden from '../topbar/TopBar.module.css';
+}
+
 .wrapper {
   position: relative;
   display: flex;
@@ -31,31 +75,16 @@
   gap: 0.3rem;
   white-space: nowrap;
 }
-
 .navLink {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 0.85rem;
-  border-radius: 12px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--mf-text-secondary);
-  text-decoration: none;
-  transition: background 0.2s ease, color 0.2s ease;
-}
-
-.navLink:hover,
-.navLink:focus-visible {
-  background: rgba(148, 163, 184, 0.18);
-  color: var(--mf-text-primary);
-  outline: none;
+  composes: navLink from '../topbar/TopBar.module.css';
 }
 
 .navLinkActive {
-  background: var(--mf-accent-soft);
-  color: var(--mf-accent-strong);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.12);
+  composes: navLinkActive from '../topbar/TopBar.module.css';
+}
+
+.navActions {
+  composes: actions from '../topbar/TopBar.module.css';
 }
 
 .navLinkHidden {
@@ -71,29 +100,39 @@
 }
 
 .iconButton {
-  border: none;
-  background: rgba(148, 163, 184, 0.12);
-  color: var(--mf-text-primary);
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  composes: iconButton from '../topbar/TopBar.module.css';
 }
 
-.iconButton:hover,
-.iconButton:focus-visible {
-  background: rgba(99, 102, 241, 0.18);
-  color: var(--mf-accent-strong);
-  outline: none;
-  transform: translateY(-1px);
+.iconButtonHidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .iconButtonHidden {
   display: none;
+}
+
+.moreMenu {
+  composes: overflowDropdown from '../topbar/TopBar.module.css';
+}
+
+.moreMenuList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.moreMenuList a {
+  composes: dropdownLink from '../topbar/TopBar.module.css';
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.mobileMenuWrapper {
+  display: none;
+  align-items: center;
 }
 
 .mobileRow {
@@ -102,24 +141,23 @@
 }
 
 .mobileTrigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.45rem 0.75rem;
-  border: none;
-  border-radius: 14px;
-  background: rgba(148, 163, 184, 0.12);
-  color: var(--mf-text-primary);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
-  min-width: 0;
+  composes: mobileTrigger from '../topbar/TopBar.module.css';
 }
 
-.mobileTrigger:hover,
-.mobileTrigger:focus-visible {
-  background: rgba(99, 102, 241, 0.15);
-  outline: none;
+.mobileLabel {
+  composes: mobileTriggerLabel from '../topbar/TopBar.module.css';
+}
+
+.mobileMenu {
+  composes: mobileDropdown from '../topbar/TopBar.module.css';
+}
+
+.mobileMenuList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
 }
 
 .mobileTriggerLabel {
@@ -153,8 +191,22 @@
   border: 1px solid rgba(148, 163, 184, 0.18);
   box-shadow: var(--mf-elevation-md);
   z-index: 1000;
-  display: grid;
-  gap: 0.3rem;
+}
+
+.mobileMenuList a {
+  composes: dropdownLink from '../topbar/TopBar.module.css';
+}
+
+.mobileChevron {
+  composes: mobileChevron from '../topbar/TopBar.module.css';
+}
+
+.mobileChevronOpen {
+  composes: mobileChevronOpen from '../topbar/TopBar.module.css';
+}
+
+.visuallyHidden {
+  composes: visuallyHidden from '../topbar/TopBar.module.css';
 }
 
 .dropdownLink {
@@ -199,12 +251,22 @@
     gap: 0.35rem;
   }
 
+  .brandLink {
+    justify-self: flex-start;
+    grid-column: 1;
+  }
+
   .linksContainer {
     display: none;
   }
 
   .mobileRow {
     display: flex;
+  }
+
+  .mobileTrigger {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .actions {
