@@ -1,3 +1,5 @@
+import React from 'react';
+
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
 import accountsStyles from '../../styles/accounts.module.css';
 import cardStyles from '../../styles/accounts/cards.module.css';
@@ -128,6 +130,13 @@ export const ACCOUNT_COLUMN_DEFINITIONS: AccountColumnDefinition[] = [
     valueAccessor: (account) => renderBalanceCell(account.totalOut),
   }),
   optionalColumn({
+    id: 'parentAccountId',
+    label: 'Parent Account',
+    minWidth: 200,
+    defaultWidth: 220,
+    valueAccessor: (account) => account.parentAccountId ?? '—',
+  }),
+  optionalColumn({
     id: 'notes',
     label: 'Notes',
     minWidth: 220,
@@ -135,3 +144,33 @@ export const ACCOUNT_COLUMN_DEFINITIONS: AccountColumnDefinition[] = [
     valueAccessor: (account) => account.notes ?? '—',
   }),
 ];
+
+export function createDefaultColumnState(
+  definitions: AccountColumnDefinition[] = ACCOUNT_COLUMN_DEFINITIONS,
+) {
+  return definitions.map((definition, index) => {
+    const minWidth = Number.isFinite(definition.minWidth) ? definition.minWidth : 160;
+    const defaultWidth = Number.isFinite(definition.defaultWidth)
+      ? definition.defaultWidth
+      : minWidth;
+    return {
+      id: definition.id,
+      width: Math.max(defaultWidth, minWidth),
+      visible: definition.defaultVisible !== false,
+      order: index,
+      optional: Boolean(definition.optional),
+    };
+  });
+}
+
+export const ACCOUNT_SORTERS: Record<string, (account: AccountRow) => string | number> = {
+  accountName: (account) => account.accountName?.toLowerCase() ?? '',
+  accountType: (account) => account.accountType?.toLowerCase() ?? '',
+  currentBalance: (account) => account.currentBalance,
+  openingBalance: (account) => account.openingBalance,
+  totalIn: (account) => account.totalIn,
+  totalOut: (account) => account.totalOut,
+  status: (account) => account.status?.toLowerCase() ?? '',
+  parentAccountId: (account) => account.parentAccountId?.toLowerCase() ?? '',
+  notes: (account) => account.notes?.toLowerCase?.() ?? '',
+};
