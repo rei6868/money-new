@@ -2,7 +2,8 @@ import React from 'react';
 
 import { resolveCloudinaryImage } from '../../lib/cloudinary';
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
-import styles from '../../styles/accounts.module.css';
+import { EmptyStateCard } from '../layout/panels';
+import cardStyles from '../../styles/accounts/cards.module.css';
 import AccountsQuickActions from './AccountsQuickActions';
 import { AccountRow, getStatusClass } from './accountColumns';
 
@@ -22,32 +23,32 @@ function resolveBalance(account: AccountRow) {
 export function AccountsCardsView({ accounts, onQuickAction }: AccountsCardsViewProps) {
   if (!accounts || accounts.length === 0) {
     return (
-      <div className={styles.cardsEmpty}>
-        No accounts available yet. Connect a bank, wallet, or add an offline account to see it
-        appear here.
-      </div>
+      <EmptyStateCard className={cardStyles.cardsEmpty}>
+        No accounts available yet. Connect a bank, wallet, or add an offline account to see it appear
+        here.
+      </EmptyStateCard>
     );
   }
 
   return (
-    <div className={styles.cardsGrid}>
+    <div className={cardStyles.cardsGrid}>
       {accounts.map((account) => {
         const status = resolveStatus(account);
-        const statusClass = `${styles.statusBadge} ${getStatusClass(status)}`.trim();
+        const statusClass = `${cardStyles.statusBadge} ${getStatusClass(status)}`.trim();
         const backgroundImage = resolveCloudinaryImage(account.imgUrl);
         return (
-          <article key={account.accountId} className={styles.accountCard}>
-            <div className={styles.cardMedia} style={{ backgroundImage }}>
-              <span className={styles.cardOverlay} aria-hidden />
-              <div className={styles.cardContent}>
-                <h3 className={styles.cardTitle}>{account.accountName ?? 'Unnamed account'}</h3>
-                <div className={styles.cardMeta}>
+          <article key={account.accountId} className={cardStyles.accountCard}>
+            <div className={cardStyles.cardMedia} style={{ backgroundImage }}>
+              <span className={cardStyles.cardOverlay} aria-hidden />
+              <div className={cardStyles.cardContent}>
+                <h3 className={cardStyles.cardTitle}>{account.accountName ?? 'Unnamed account'}</h3>
+                <div className={cardStyles.cardMeta}>
                   <span>{account.accountType ?? 'Unknown type'}</span>
                 </div>
-                <div className={styles.cardBalance}>{resolveBalance(account)}</div>
+                <div className={cardStyles.cardBalance}>{resolveBalance(account)}</div>
               </div>
             </div>
-            <footer className={styles.cardFooter}>
+            <footer className={cardStyles.cardFooter}>
               <span className={statusClass}>{status}</span>
               <AccountsQuickActions
                 account={account}

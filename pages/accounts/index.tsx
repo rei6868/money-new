@@ -22,7 +22,9 @@ import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { useAccounts } from '../../hooks/useAccounts';
 import { getAccountTypeLabel } from '../../lib/accounts/accountTypes';
 import styles from '../../styles/accounts.module.css';
+import pageShellStyles from '../../styles/layout/page-shell.module.css';
 import PageToolbar, { PageToolbarSearch } from '../../components/layout/page/PageToolbar';
+import { EmptyStateCard, TablePanel } from '../../components/layout/panels';
 
 type ColumnState = ReturnType<typeof createDefaultColumnState>[number] & {
   pinned?: 'left' | 'right' | null;
@@ -779,8 +781,8 @@ export default function AccountsPage() {
 
   return (
     <AppLayout title="Accounts" subtitle="">
-      <div className={styles.pageShell}>
-        <div className={styles.pageContent}>
+      <div className={pageShellStyles.pageShell}>
+        <div className={pageShellStyles.pageContent}>
           <div className={styles.toolbarSection} role="toolbar" aria-label="Accounts controls">
             <div className={styles.toolbarPrimary}>
               <PageToolbar
@@ -839,8 +841,8 @@ export default function AccountsPage() {
             </div>
           </div>
           {fetchError ? (
-            <div className={styles.tableCard} role="alert">
-              <div className={styles.emptyState}>
+            <TablePanel role="alert">
+              <EmptyStateCard align="start">
                 <p>{fetchError}</p>
                 <button
                   type="button"
@@ -850,15 +852,15 @@ export default function AccountsPage() {
                 >
                   Retry
                 </button>
-              </div>
-            </div>
+              </EmptyStateCard>
+            </TablePanel>
           ) : activeTab === 'cards' ? (
             <AccountsCardsView
               accounts={filteredAccounts}
               onQuickAction={(actionId) => handleQuickActionSelect('accounts', actionId)}
             />
           ) : (
-            <div className={styles.tableWrapper}>
+            <TablePanel>
               <TableAccounts
                 tableScrollRef={tableScrollRef}
                 accounts={displayedAccounts}
@@ -880,7 +882,7 @@ export default function AccountsPage() {
                 onToggleShowSelected={handleToggleShowSelected}
                 onEditAccount={handleEditAccount}
               />
-            </div>
+            </TablePanel>
           )}
         </div>
 

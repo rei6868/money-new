@@ -1,34 +1,3 @@
-.screen {
-  composes: screen from './TransactionsHistory.module.css';
-}
-
-.pageShell {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  width: 100%;
-  min-height: clamp(320px, calc(100vh - 200px), 100vh);
-  gap: 1.5rem;
-}
-
-.pageContent {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.topBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  width: 100%;
-  flex-wrap: nowrap;
-  min-height: 44px;
-}
-
 .toolbarSection {
   display: flex;
   flex-direction: column;
@@ -54,7 +23,74 @@
   min-width: 0;
 }
 
+.filterActionsQuickAdd {
+  display: inline-flex;
+  flex-shrink: 0;
+}
 
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.65rem 1.25rem;
+  min-height: 44px;
+  height: 44px;
+  border-radius: 16px;
+  border: none;
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 16px 32px rgba(79, 70, 229, 0.32);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primaryButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 36px rgba(79, 70, 229, 0.38);
+}
+
+.primaryButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.iconPrimaryButton {
+  padding: 0.65rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 16px 32px rgba(79, 70, 229, 0.32);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.iconPrimaryButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 36px rgba(79, 70, 229, 0.38);
+}
+
+.iconPrimaryButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.iconPrimaryButton svg {
+  width: 20px;
+  height: 20px;
+}
 
 .viewToggleGroup {
   display: flex;
@@ -63,360 +99,6 @@
   gap: 0.5rem;
   flex: 0 0 auto;
   min-width: 0;
-}
-
-.viewToggleGroup .viewTabs {
-  display: inline-flex;
-}
-
-.toolbarTabsRow {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  width: 100%;
-}
-
-.toolbarTabsRow .accountTypeTabsWrapper {
-  width: 100%;
-}
-
-
-
-.filterActionsQuickAdd {
-  display: inline-flex;
-  flex-shrink: 0;
-}
-
-.pageFooter {
-  margin-top: auto;
-  padding: 0.75rem 0.25rem 0;
-  border-top: 1px solid rgba(148, 163, 184, 0.25);
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 0.5rem;
-  color: #64748b;
-  font-size: 0.85rem;
-  z-index: 40;
-}
-
-.footerNote {
-  font-weight: 500;
-  letter-spacing: 0.01em;
-}
-
-.pageHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1.5rem;
-  padding: 0.5rem 0;
-  flex-wrap: wrap;
-}
-
-.pageTitleGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  min-width: 0;
-}
-
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.pageSubtitle {
-  color: #5f6781;
-  font-size: 0.95rem;
-  line-height: 1.4;
-  max-width: 60ch;
-}
-
-.pageHeaderActions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.headerTabGroup {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: nowrap;
-  flex: 0 0 auto;
-  min-width: 0;
-}
-
-.accountTypeTabsWrapper {
-  display: flex;
-  align-items: center;
-  flex: 1 1 auto;
-  min-width: 220px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
-}
-
-.viewTabs {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  background: rgba(15, 23, 42, 0.05);
-  padding: 0.3rem;
-  border-radius: 999px;
-  position: relative;
-  flex-shrink: 0;
-}
-
-.tabIndicator {
-  position: absolute;
-  height: calc(100% - 0.6rem);
-  width: calc(50% - 0.15rem);
-  background: linear-gradient(135deg, #1d4ed8, #2563eb);
-  border-radius: 999px;
-  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  left: 0.3rem;
-  top: 0.3rem;
-  z-index: 0;
-  box-shadow: 0 8px 16px rgba(29, 78, 216, 0.25);
-}
-
-.viewTabs[data-position='cards'] .tabIndicator {
-  left: calc(50% + 0.15rem);
-}
-
-.tabButton {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.4rem 0.95rem;
-  border-radius: 999px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  transition: color 0.2s ease, transform 0.2s ease;
-  color: #475569;
-  font-size: 0.85rem;
-  font-weight: 600;
-  z-index: 1;
-  min-width: 60px;
-  white-space: nowrap;
-}
-
-.tabButton[data-active='true'] {
-  color: #ffffff;
-}
-
-.tabButton:hover:not([data-active='true']) {
-  color: #2f3367;
-}
-
-.toolbarCard {
-  composes: toolbarCard from './TransactionsHistory.module.css';
-}
-
-.searchGroup {
-  composes: searchGroup from './TransactionsHistory.module.css';
-}
-
-
-
-
-
-
-
-
-
-.actionsGroup {
-  composes: actionsGroup from './TransactionsHistory.module.css';
-}
-
-.customizeActionsGroup {
-  composes: customizeActionsGroup from './TransactionsHistory.module.css';
-}
-
-.primaryButton {
-  composes: primaryButton from './TransactionsHistory.module.css';
-  min-height: 44px;
-}
-
-.iconPrimaryButton {
-  composes: iconPrimaryButton from './TransactionsHistory.module.css';
-}
-
-.secondaryButton {
-  composes: secondaryButton from './TransactionsHistory.module.css';
-  min-height: 44px;
-}
-
-.toolbarIconButton {
-  composes: toolbarIconButton from './TransactionsHistory.module.css';
-  min-height: 44px;
-}
-
-.filterButton {
-  composes: filterButton from './TransactionsHistory.module.css';
-}
-
-.filterButtonActive {
-  composes: filterButtonActive from './TransactionsHistory.module.css';
-}
-
-.customizeButtonText {
-  composes: customizeButtonText from './TransactionsHistory.module.css';
-}
-
-.customizeToolbarActions {
-  composes: customizeToolbarActions from './TransactionsHistory.module.css';
-}
-
-.customizeSelectAll {
-  composes: customizeSelectAll from './TransactionsHistory.module.css';
-}
-
-.resetButtonText {
-  composes: resetButtonText from './TransactionsHistory.module.css';
-}
-
-.toolbarSearchRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.searchFieldCluster {
-  flex: 1 1 280px;
-  min-width: 0;
-}
-
-.searchButtonGroup {
-  display: inline-flex;
-  align-items: stretch;
-  gap: 0.5rem;
-  flex-wrap: nowrap;
-  flex-shrink: 0;
-}
-
-.toolbarActionRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.selectionActions {
-  display: inline-flex;
-  gap: 0.5rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.customizeRow {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  flex-wrap: wrap;
-  padding: 0.25rem 0;
-}
-
-.customizeToggleGroup {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.customizeActionsCluster {
-  display: inline-flex;
-  gap: 0.5rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.customizeRow[data-refresh-visible='false'] .customizeActionsCluster {
-  justify-content: flex-start;
-}
-
-.toggleSwitch {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border: none;
-  background: var(--mf-panel-bg, rgba(233, 238, 255, 0.48));
-  border-radius: 999px;
-  padding: 0.35rem 0.75rem;
-  cursor: pointer;
-  color: #2f3367;
-  font-weight: 600;
-  transition: background 0.18s ease, box-shadow 0.18s ease;
-}
-
-.toggleSwitch[aria-pressed='true'] {
-  background: linear-gradient(135deg, #818cf8, #6366f1);
-  color: #ffffff;
-  box-shadow: 0 12px 22px rgba(99, 102, 241, 0.25);
-}
-
-.toggleSwitch:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-.toggleVisual {
-  width: 28px;
-  height: 16px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.45);
-  position: relative;
-  transition: background 0.18s ease;
-}
-
-.toggleSwitch[aria-pressed='true'] .toggleVisual {
-  background: rgba(255, 255, 255, 0.75);
-}
-
-.toggleVisual::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #ffffff;
-  transition: transform 0.18s ease;
-}
-
-.toggleSwitch[aria-pressed='true'] .toggleVisual::after {
-  transform: translateX(12px);
-}
-
-.toggleLabel {
-  font-size: 0.85rem;
-  letter-spacing: 0.2px;
-}
-
-.tableCard {
-  composes: tableCard from './TransactionsHistory.module.css';
-}
-
-.emptyState {
-  composes: emptyState from './TransactionsHistory.module.css';
 }
 
 .viewTabs {
@@ -476,230 +158,40 @@
   cursor: not-allowed;
 }
 
-.cardsGrid {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-}
-
-.accountCard {
-  position: relative;
-  border-radius: 20px;
-  overflow: hidden;
-  background: linear-gradient(135deg, #4f6fd9, #8b9cf0);
-  color: #ffffff;
-  box-shadow: 0 15px 30px rgba(53, 76, 140, 0.18);
+.toolbarTabsRow {
   display: flex;
-  flex-direction: column;
-  min-height: 220px;
-}
-
-.cardMedia {
-  position: relative;
+  align-items: center;
+  justify-content: flex-start;
   width: 100%;
-  padding: 1.25rem;
+}
+
+.accountTypeTabsWrapper {
+  display: flex;
+  align-items: center;
   flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  background-size: cover;
-  background-position: center;
-}
-
-.cardOverlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(150deg, rgba(22, 24, 66, 0.78), rgba(94, 106, 195, 0.35));
-}
-
-.cardContent {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.cardTitle {
-  font-size: 1.25rem;
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
-}
-
-.cardMeta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.88);
-}
-
-.cardBalance {
-  font-size: 1.45rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  margin-top: 0.75rem;
-}
-
-.cardFooter {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.9rem 1.2rem;
-  background: rgba(12, 15, 44, 0.82);
-  backdrop-filter: blur(6px);
-}
-
-.statusBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border-radius: 999px;
-  padding: 0.3rem 0.8rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  text-transform: capitalize;
-}
-
-.statusActive {
-  background: rgba(36, 197, 152, 0.18);
-  color: #0f9c6d;
-}
-
-.statusPending {
-  background: rgba(247, 181, 67, 0.22);
-  color: #c07a11;
-}
-
-.statusInactive {
-  background: rgba(237, 59, 110, 0.2);
-  color: #bb1140;
-}
-
-.statusNeutral {
-  background: rgba(120, 133, 161, 0.22);
-  color: #5f6781;
-}
-
-.cardQuickActions {
-  display: inline-flex;
-  gap: 0.4rem;
-}
-
-.quickActionButton {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
-  cursor: pointer;
-  transition: transform 0.18s ease, background 0.18s ease;
-}
-
-.quickActionButton:hover {
-  transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.36);
-}
-
-.quickActionButton:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.quickDockLabel {
-  composes: srOnly from './TransactionsHistory.module.css';
-}
-
-.cardsEmpty {
-  composes: emptyState from './TransactionsHistory.module.css';
-  padding: 2.5rem 1.5rem;
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 12px 32px rgba(79, 114, 205, 0.08);
-  color: #5f6781;
-}
-
-.tableWrapper {
-  composes: tableCard from './TransactionsHistory.module.css';
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
+  min-width: 220px;
   overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
 }
 
-.tableHeader {
+.pageFooter {
+  margin-top: auto;
+  padding: 0.75rem 0.25rem 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-  margin-bottom: 1rem;
+  gap: 0.5rem;
+  color: #64748b;
+  font-size: 0.85rem;
+  z-index: 40;
 }
 
-.tableHeaderTitle {
-  font-weight: 600;
-  font-size: 1.05rem;
-  color: #2f3367;
-}
-
-.selectionCount {
-  composes: selectionCount from './TransactionsHistory.module.css';
-}
-
-.paginationControls {
-  composes: paginationControls from './TransactionsHistory.module.css';
-}
-
-.paginationButton {
-  composes: paginationButton from './TransactionsHistory.module.css';
-}
-
-.paginationButtonText {
-  composes: paginationButtonText from './TransactionsHistory.module.css';
-}
-
-.fontScaleButton {
-  composes: fontScaleButton from './TransactionsHistory.module.css';
-}
-
-.fontScaleButtonText {
-  composes: fontScaleButtonText from './TransactionsHistory.module.css';
-}
-
-.pageSizeGroup {
-  composes: pageSizeGroup from './TransactionsHistory.module.css';
-}
-
-.pageSizeSelect {
-  composes: pageSizeSelect from './TransactionsHistory.module.css';
-}
-
-.fontScaleReset {
-  composes: fontScaleReset from './TransactionsHistory.module.css';
-}
-
-.paginationMeta {
-  composes: paginationMeta from './TransactionsHistory.module.css';
-}
-
-.fontScaleMeta {
-  composes: fontScaleMeta from './TransactionsHistory.module.css';
-}
-
-.fontScaleLabel {
-  composes: fontScaleLabel from './TransactionsHistory.module.css';
-}
-
-.fontScaleValue {
-  composes: fontScaleValue from './TransactionsHistory.module.css';
-}
-
-.paginationStatus {
-  composes: paginationStatus from './TransactionsHistory.module.css';
+.footerNote {
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .columnSubline {
@@ -708,139 +200,125 @@
   color: #7a829f;
 }
 
-.headerTabGroup {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
+.selectionCount {
+  font-size: 0.9rem;
+  color: var(--mf-text-secondary);
+  font-weight: 600;
 }
 
-.toolbarCard[data-enhanced='true'] {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.headerActionButtons {
+.paginationControls {
   display: inline-flex;
-  gap: 0.75rem;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  flex-wrap: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.paginationButton {
+  border: 1px solid var(--mf-border-subtle);
+  background: transparent;
+  color: var(--mf-text-secondary);
+  border-radius: 12px;
+  padding: 0.45rem 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+}
+
+.paginationButton:hover:not(:disabled) {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--mf-text-primary);
+}
+
+.paginationButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.paginationButtonText {
+  display: inline;
+}
+
+.fontScaleButton {
+  border: 1px solid var(--mf-border-subtle);
+  background: transparent;
+  color: var(--mf-text-secondary);
+  border-radius: 10px;
+  padding: 0.2rem 0.55rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+}
+
+.fontScaleButton:hover:not(:disabled),
+.fontScaleButton:focus-visible:not(:disabled) {
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--mf-text-primary);
+  outline: none;
+}
+
+.fontScaleButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.fontScaleButtonText {
+  display: inline;
+}
+
+.fontScaleReset {
+  padding: 0.2rem 0.65rem;
+}
+
+.pageSizeGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: calc(var(--transactions-font-scale, 1) * 0.9rem);
+  color: var(--mf-text-secondary);
+  min-width: 0;
+}
+
+.pageSizeSelect {
+  border-radius: 10px;
+  border: 1px solid var(--mf-border-subtle);
+  padding: 0.35rem 0.75rem;
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--mf-text-primary);
+  font-size: calc(var(--transactions-font-scale, 1) * 0.9rem);
+}
+
+.paginationMeta {
+  display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-left: auto;
+  min-width: 0;
 }
 
-/* Media queries ordered from largest to smallest */
-
-@media (max-width: 900px) {
-  .pageHeaderActions {
-    flex-wrap: wrap;
-  }
-
-  .cardsGrid {
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  }
-
-  .toolbarActionRow {
-    justify-content: flex-start;
-  }
-
-  .filtersSection {
-    margin: 0 -0.5rem;
-    padding: 0 0.5rem;
-  }
-}
-
-@media (max-width: 768px) {
-  .toolbarPrimary {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-  }
-
-  .toolbarLead {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.45rem;
-  }
-
-  .viewToggleGroup {
-    width: 100%;
-    justify-content: flex-end;
-  }
-}
-
-@media (max-width: 640px) {
-  .viewToggleGroup .viewTabs {
-    gap: 0.35rem;
-  }
-
-
-
-}
-
-@media (max-width: 480px) {
-  .toolbarSearchRow {
-    flex-direction: column;
-  }
-
-  .searchButtonGroup {
-    justify-content: flex-start;
-    gap: 0.4rem;
-  }
-
-  .searchButtonGroup > button {
-    flex: 1 1 100%;
-    min-width: 0;
-  }
-
-  .toolbarActionRow {
-    gap: 0.6rem;
-  }
-
-  .customizeRow {
-    width: 100%;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.45rem;
-  }
-
-  .customizeActionsCluster {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .toggleLabel {
-    display: none;
-  }
-
-  .toggleSwitch {
-    padding: 0.35rem;
-    min-width: 42px;
-  }
-
-  .primaryButton,
-  .secondaryButton,
-  .toolbarIconButton {
-    font-size: 0.9rem;
-  }
-
-  .actionBar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .actionBar button {
-    width: 100%;
-  }
-}
-
-
-.tableQuickActions {
+.fontScaleMeta {
   display: inline-flex;
-  gap: 0.35rem;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
 }
 
-.tableQuickActionButton {
-  composes: quickActionButton;
-  width: 32px;
-  height: 32px;
+.fontScaleLabel {
+  font-weight: 600;
+}
+
+.fontScaleValue {
+  min-width: 3ch;
+  text-align: center;
+  font-weight: 600;
+  color: var(--mf-text-primary);
+}
+
+.paginationStatus {
+  font-size: calc(var(--transactions-font-scale, 1) * 0.85rem);
+  color: var(--mf-text-secondary);
 }

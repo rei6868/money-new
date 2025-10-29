@@ -1,7 +1,6 @@
-import React from 'react';
-
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
-import styles from '../../styles/accounts.module.css';
+import accountsStyles from '../../styles/accounts.module.css';
+import cardStyles from '../../styles/accounts/cards.module.css';
 
 export type AccountRow = {
   accountId: string;
@@ -32,10 +31,10 @@ export type AccountColumnDefinition = {
 export function getStatusClass(status: string | null | undefined) {
   const normalized = String(status ?? '').toLowerCase();
   if (normalized === 'active') {
-    return styles.statusActive;
+    return cardStyles.statusActive;
   }
   if (normalized === 'pending' || normalized === 'pending-activation') {
-    return styles.statusPending;
+    return cardStyles.statusPending;
   }
   if (
     normalized === 'void' ||
@@ -43,14 +42,14 @@ export function getStatusClass(status: string | null | undefined) {
     normalized === 'closed' ||
     normalized === 'archived'
   ) {
-    return styles.statusInactive;
+    return cardStyles.statusInactive;
   }
-  return styles.statusNeutral;
+  return cardStyles.statusNeutral;
 }
 
 function renderStatusBadge(account: AccountRow) {
   const status = account.status ?? '--';
-  const className = `${styles.statusBadge} ${getStatusClass(status)}`.trim();
+  const className = `${cardStyles.statusBadge} ${getStatusClass(status)}`.trim();
   return <span className={className}>{status || '--'}</span>;
 }
 
@@ -58,12 +57,10 @@ function renderAccountCell(account: AccountRow) {
   return (
     <div>
       <div>{account.accountName ?? '—'}</div>
-      <div className={styles.columnSubline}>{account.accountType ?? '—'}</div>
+      <div className={accountsStyles.columnSubline}>{account.accountType ?? '—'}</div>
     </div>
   );
 }
-
-
 
 function renderBalanceCell(value: number) {
   const formatted = formatAmountWithTrailing(value);
@@ -118,7 +115,7 @@ export const ACCOUNT_COLUMN_DEFINITIONS: AccountColumnDefinition[] = [
     id: 'totalIn',
     label: 'Total In',
     minWidth: 170,
-    defaultWidth: 190,
+    defaultWidth: 200,
     align: 'right',
     valueAccessor: (account) => renderBalanceCell(account.totalIn),
   }),
@@ -126,42 +123,15 @@ export const ACCOUNT_COLUMN_DEFINITIONS: AccountColumnDefinition[] = [
     id: 'totalOut',
     label: 'Total Out',
     minWidth: 170,
-    defaultWidth: 190,
+    defaultWidth: 200,
     align: 'right',
     valueAccessor: (account) => renderBalanceCell(account.totalOut),
   }),
   optionalColumn({
-    id: 'parentAccountId',
-    label: 'Parent Account',
-    minWidth: 200,
-    defaultWidth: 220,
-    valueAccessor: (account) => account.parentAccountId ?? '—',
+    id: 'notes',
+    label: 'Notes',
+    minWidth: 220,
+    defaultWidth: 260,
+    valueAccessor: (account) => account.notes ?? '—',
   }),
 ];
-
-export function createDefaultColumnState(definitions: AccountColumnDefinition[] = ACCOUNT_COLUMN_DEFINITIONS) {
-  return definitions.map((definition, index) => {
-    const minWidth = Number.isFinite(definition.minWidth) ? definition.minWidth : 160;
-    const defaultWidth = Number.isFinite(definition.defaultWidth)
-      ? definition.defaultWidth
-      : minWidth;
-    return {
-      id: definition.id,
-      width: Math.max(defaultWidth, minWidth),
-      visible: definition.defaultVisible !== false,
-      order: index,
-      optional: Boolean(definition.optional),
-    };
-  });
-}
-
-export const ACCOUNT_SORTERS: Record<string, (account: AccountRow) => string | number> = {
-  accountName: (account) => account.accountName.toLowerCase(),
-  accountType: (account) => account.accountType.toLowerCase(),
-  currentBalance: (account) => account.currentBalance,
-  openingBalance: (account) => account.openingBalance,
-  totalIn: (account) => account.totalIn,
-  totalOut: (account) => account.totalOut,
-  status: (account) => (account.status ?? '').toLowerCase(),
-  parentAccountId: (account) => (account.parentAccountId ?? '').toLowerCase(),
-};

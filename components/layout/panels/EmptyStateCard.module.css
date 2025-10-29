@@ -1,0 +1,16 @@
+.emptyStateCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2.5rem 1.5rem;
+  width: 100%;
+  text-align: center;
+  color: #5f6781;
+}
+
+.emptyStateCard[data-align='start'] {
+  align-items: flex-start;
+  text-align: left;
+}
