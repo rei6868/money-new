@@ -1,5 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
+/**
+ * @typedef {Object} AuthContextValue
+ * @property {boolean} isAuthenticated
+ * @property {boolean} isLoading
+ * @property {(username: string, password: string) => boolean} login
+ * @property {() => void} logout
+ */
+
+/** @type {import('react').Context<AuthContextValue | null>} */
 const AuthContext = createContext(null);
 
 const AUTH_STORAGE_KEY = 'finance-app-authenticated';
@@ -32,6 +41,7 @@ export function AuthProvider({ children }) {
     setIsAuthenticated(false);
   };
 
+  /** @type {AuthContextValue} */
   const value = useMemo(
     () => ({
       isAuthenticated,
