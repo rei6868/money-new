@@ -5,5 +5,4 @@ export * from './TableHamburgerMenu';
 export * from './TableTooltip';
 export * from './TableConfirmModal';
 export * from './SelectionToolbar';
-export * from './TableFilterRow';
 export * from './tableUtils';
