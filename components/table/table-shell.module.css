@@ -44,6 +44,9 @@
 }
 
 .table {
+  --table-header-top: 0px;
+  --table-header-first-row-height: 0px;
+
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
@@ -60,11 +63,15 @@
 
 .table thead th {
   position: sticky;
-  top: 0;
+  top: var(--table-header-top);
   z-index: 9;
   background: var(--table-sticky-surface);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--table-divider);
+}
+
+.table thead tr[data-table-filter-row] th {
+  top: calc(var(--table-header-top) + var(--table-header-first-row-height));
 }
 
 .table thead th.stickyLeft,
