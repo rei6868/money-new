@@ -849,9 +849,29 @@ export default function TransactionsHistoryPage() {
     </>
   );
 
-  const isAddModalOpen = addModalType !== null;
   const searchRowId = 'transactions-search-panel';
   const searchInputId = 'transactions-search-input';
+
+  const renderSearchField = (extraClassName) => {
+    const combinedClassName = [styles.searchField, extraClassName]
+      .filter(Boolean)
+      .join(' ');
+
+    return (
+      <PageToolbarSearch
+        id={searchInputId}
+        value={searchQuery}
+        onChange={handleSearchChange}
+        onClear={() => handleSearchChange('')}
+        placeholder="Search transactions..."
+        ariaLabel="Search transactions"
+        inputRef={searchInputRef}
+        className={combinedClassName}
+      />
+    );
+  };
+
+  const isAddModalOpen = addModalType !== null;
 
   const handleToggleSearch = useCallback(() => {
     if (!isCompact) {
@@ -896,38 +916,40 @@ export default function TransactionsHistoryPage() {
             data-search-open={isSearchOpen ? 'true' : 'false'}
           >
             <div className={styles.actionsRow}>
-              <div className={styles.actionButtons}>{filterActionButtons}</div>
-              <button
-                type="button"
-                className={styles.searchToggleButton}
-                onClick={handleToggleSearch}
-                aria-label={searchToggleAriaLabel}
-                aria-expanded={isSearchOpen}
-                aria-controls={searchRowId}
-                data-active={isSearchOpen ? 'true' : 'false'}
-              >
-                {isCompact && isSearchOpen ? <FiX aria-hidden /> : <FiSearch aria-hidden />}
-              </button>
+              <div className={styles.actionsMain}>
+                <div className={styles.actionButtons}>{filterActionButtons}</div>
+                {!isCompact && (
+                  <div className={styles.searchInline} role="search">
+                    {renderSearchField(styles.searchInlineField)}
+                  </div>
+                )}
+              </div>
+              {isCompact && (
+                <button
+                  type="button"
+                  className={styles.searchToggleButton}
+                  onClick={handleToggleSearch}
+                  aria-label={searchToggleAriaLabel}
+                  aria-expanded={isSearchOpen}
+                  aria-controls={searchRowId}
+                  data-active={isSearchOpen ? 'true' : 'false'}
+                >
+                  {isSearchOpen ? <FiX aria-hidden /> : <FiSearch aria-hidden />}
+                </button>
+              )}
             </div>
 
-            <div
-              id={searchRowId}
-              role="search"
-              className={styles.searchRow}
-              data-open={isSearchOpen ? 'true' : 'false'}
-              data-floating={isCompact ? 'true' : 'false'}
-            >
-              <PageToolbarSearch
-                id={searchInputId}
-                value={searchQuery}
-                onChange={handleSearchChange}
-                onClear={() => handleSearchChange('')}
-                placeholder="Search transactions..."
-                ariaLabel="Search transactions"
-                inputRef={searchInputRef}
-                className={styles.searchField}
-              />
-            </div>
+            {isCompact && (
+              <div
+                id={searchRowId}
+                role="search"
+                className={styles.searchRow}
+                data-open={isSearchOpen ? 'true' : 'false'}
+                data-floating={isCompact ? 'true' : 'false'}
+              >
+                {renderSearchField()}
+              </div>
+            )}
           </div>
         </div>
 
