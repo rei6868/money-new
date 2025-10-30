@@ -840,9 +840,9 @@ export default function AccountsPage() {
                   tabs={accountTypeTabMetrics}
                 />
               </div>
-            </div>
-            <div className={styles.toolbarActionsRow} role="group" aria-label="Account quick actions">
-              {actionButtons}
+              <div className={styles.toolbarQuickActions} role="group" aria-label="Account quick actions">
+                {actionButtons}
+              </div>
             </div>
           </div>
           {fetchError ? (
