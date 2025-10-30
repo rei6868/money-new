@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import AppLayout from '../../components/layout/AppShell/AppShell';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
-import { FiFilter, FiMoreHorizontal, FiPlus, FiSearch, FiSettings, FiX } from 'react-icons/fi';
+import { FiMoreHorizontal, FiPlus, FiSearch, FiSettings, FiX } from 'react-icons/fi';
 
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
@@ -17,7 +17,7 @@ import { PageToolbarSearch } from '../../components/layout/page/PageToolbar';
 import { EmptyStateCard, TablePanel } from '../../components/layout/panels';
 import { ModalWrapper } from '../../components/common/ModalWrapper';
 import { DropdownSimple } from '../../components/common/DropdownSimple';
-import { DropdownWithSearch } from '../../components/common/DropdownWithSearch';
+import { DropdownWithSearch, DropdownWithSearchContent } from '../../components/common/DropdownWithSearch';
 import { SelectionToolbar } from '../../components/table/SelectionToolbar';
 import {
   TRANSACTION_TYPE_VALUES,
@@ -72,6 +72,15 @@ const MONTH_OPTIONS = [
 const MONTH_LABEL_LOOKUP = new Map(MONTH_OPTIONS.map((option) => [option.value, option.label]));
 
 const MAX_VISIBLE_FILTER_BADGES = 4;
+
+const COLUMN_FILTER_DESCRIPTORS = Object.freeze([
+  { columnId: 'owner', key: 'person', label: 'Person' },
+  { columnId: 'account', key: 'account', label: 'Account' },
+  { columnId: 'category', key: 'category', label: 'Category' },
+  { columnId: 'debtTag', key: 'debtTags', label: 'Debt Tag' },
+  { columnId: 'amount', key: 'amount', label: 'Amount' },
+  { columnId: 'date', key: 'date', label: 'Date' },
+]);
 
 function expandTransferMatches(matches, base, transferLinkInfo) {
   const baseArray = Array.isArray(base) ? base : [];
@@ -344,7 +353,7 @@ export default function TransactionsHistoryPage() {
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS });
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isFilterManagerOpen, setIsFilterManagerOpen] = useState(false);
   const [openFilterDropdown, setOpenFilterDropdown] = useState(null);
   const [filterSearchValues, setFilterSearchValues] = useState({
     person: '',
@@ -352,6 +361,7 @@ export default function TransactionsHistoryPage() {
     category: '',
     debtTags: '',
   });
+  const [activeColumnFilter, setActiveColumnFilter] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
   const [availableTypes, setAvailableTypes] = useState([]);
   const [isCompact, setIsCompact] = useState(false);
@@ -359,6 +369,7 @@ export default function TransactionsHistoryPage() {
   const tableScrollRef = useRef(null);
   const savedScrollLeftRef = useRef(0);
   const searchInputRef = useRef(null);
+  const columnFilterPopoverRef = useRef(null);
   const transferLinkInfo = useMemo(() => buildTransferLinkInfo(transactions), [transactions]);
 
   useEffect(() => {
@@ -674,46 +685,59 @@ export default function TransactionsHistoryPage() {
   const selectedLookup = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   const matchesActiveFilters = useCallback(
-    (txn) => {
+    (txn, options = {}) => {
       if (!txn) {
         return false;
       }
 
-      if (
-        filters.person &&
-        !matchesEntityFilter(
-          txn.owner ?? txn.person ?? txn.personName ?? txn.person_name ?? txn.customerName,
-          filters.person,
-        )
-      ) {
-        return false;
+      const { exclude = [], overrides = {} } = options;
+      const excludeSet = new Set(
+        Array.isArray(exclude) ? exclude : exclude !== undefined ? [exclude] : [],
+      );
+      const mergedFilters = { ...filters, ...overrides };
+
+      if (!excludeSet.has('person')) {
+        if (
+          mergedFilters.person &&
+          !matchesEntityFilter(
+            txn.owner ?? txn.person ?? txn.personName ?? txn.person_name ?? txn.customerName,
+            mergedFilters.person,
+          )
+        ) {
+          return false;
+        }
       }
 
-      if (
-        filters.account &&
-        !matchesEntityFilter(
-          txn.account ?? txn.accountName ?? txn.account_name ?? txn.walletName,
-          filters.account,
-        )
-      ) {
-        return false;
+      if (!excludeSet.has('account')) {
+        if (
+          mergedFilters.account &&
+          !matchesEntityFilter(
+            txn.account ?? txn.accountName ?? txn.account_name ?? txn.walletName,
+            mergedFilters.account,
+          )
+        ) {
+          return false;
+        }
       }
 
-      if (
-        filters.category &&
-        !matchesEntityFilter(
-          txn.category ?? txn.categoryName ?? txn.category_name ?? txn.typeLabel,
-          filters.category,
-        )
-      ) {
-        return false;
+      if (!excludeSet.has('category')) {
+        if (
+          mergedFilters.category &&
+          !matchesEntityFilter(
+            txn.category ?? txn.categoryName ?? txn.category_name ?? txn.typeLabel,
+            mergedFilters.category,
+          )
+        ) {
+          return false;
+        }
       }
 
-      if (Array.isArray(filters.debtTags) && filters.debtTags.length > 0) {
+      const skipDebtTags = excludeSet.has('debtTags');
+      if (!skipDebtTags && Array.isArray(mergedFilters.debtTags) && mergedFilters.debtTags.length > 0) {
         const tagValue =
           txn.debtTag ?? txn.debtTagName ?? txn.debt_tag ?? txn.debtLabel ?? txn.tag ?? '';
         const normalizedValue = normalizeFilterString(tagValue);
-        const hasMatch = filters.debtTags.some(
+        const hasMatch = mergedFilters.debtTags.some(
           (tag) => normalizeFilterString(tag) === normalizedValue,
         );
         if (!hasMatch) {
@@ -721,18 +745,25 @@ export default function TransactionsHistoryPage() {
         }
       }
 
-      if (
-        !matchesAmountFilter(
-          txn.amount ?? txn.total ?? txn.value ?? txn.balance,
-          filters.amountOperator,
-          filters.amountValue,
-        )
-      ) {
-        return false;
+      if (!excludeSet.has('amount')) {
+        if (
+          !matchesAmountFilter(
+            txn.amount ?? txn.total ?? txn.value ?? txn.balance,
+            mergedFilters.amountOperator,
+            mergedFilters.amountValue,
+          )
+        ) {
+          return false;
+        }
       }
 
+      const skipDate = excludeSet.has('date');
+      const skipYear = skipDate || excludeSet.has('year');
+      const skipMonth = skipDate || excludeSet.has('month');
       const dateValue = resolveTransactionDate(txn);
-      if (!matchesDateFilter(dateValue, filters.year, filters.month)) {
+      const yearFilter = skipYear ? null : mergedFilters.year;
+      const monthFilter = skipMonth ? null : mergedFilters.month;
+      if (!matchesDateFilter(dateValue, yearFilter, monthFilter)) {
         return false;
       }
 
@@ -741,49 +772,56 @@ export default function TransactionsHistoryPage() {
     [filters],
   );
 
-  const personOptions = useMemo(
-    () =>
-      collectUniqueValues(transactions, (txn) =>
+  const personOptions = useMemo(() => {
+    const base = Array.isArray(transactions) ? transactions : [];
+    const scoped = base.filter((txn) => matchesActiveFilters(txn, { exclude: 'person' }));
+    return collectUniqueValues(
+      scoped,
+      (txn) =>
         txn?.owner ?? txn?.person ?? txn?.personName ?? txn?.person_name ?? txn?.customerName ?? '',
-      ),
-    [transactions],
-  );
+    );
+  }, [matchesActiveFilters, transactions]);
 
-  const accountOptions = useMemo(
-    () =>
-      collectUniqueValues(transactions, (txn) =>
-        txn?.account ?? txn?.accountName ?? txn?.account_name ?? txn?.walletName ?? '',
-      ),
-    [transactions],
-  );
+  const accountOptions = useMemo(() => {
+    const base = Array.isArray(transactions) ? transactions : [];
+    const scoped = base.filter((txn) => matchesActiveFilters(txn, { exclude: 'account' }));
+    return collectUniqueValues(
+      scoped,
+      (txn) => txn?.account ?? txn?.accountName ?? txn?.account_name ?? txn?.walletName ?? '',
+    );
+  }, [matchesActiveFilters, transactions]);
 
-  const categoryOptions = useMemo(
-    () =>
-      collectUniqueValues(transactions, (txn) =>
-        txn?.category ?? txn?.categoryName ?? txn?.category_name ?? txn?.typeLabel ?? '',
-      ),
-    [transactions],
-  );
+  const categoryOptions = useMemo(() => {
+    const base = Array.isArray(transactions) ? transactions : [];
+    const scoped = base.filter((txn) => matchesActiveFilters(txn, { exclude: 'category' }));
+    return collectUniqueValues(
+      scoped,
+      (txn) => txn?.category ?? txn?.categoryName ?? txn?.category_name ?? txn?.typeLabel ?? '',
+    );
+  }, [matchesActiveFilters, transactions]);
 
-  const debtTagOptions = useMemo(
-    () =>
-      collectUniqueValues(transactions, (txn) =>
-        txn?.debtTag ?? txn?.debtTagName ?? txn?.debt_tag ?? txn?.debtLabel ?? '',
-      ),
-    [transactions],
-  );
+  const debtTagOptions = useMemo(() => {
+    const base = Array.isArray(transactions) ? transactions : [];
+    const scoped = base.filter((txn) => matchesActiveFilters(txn, { exclude: 'debtTags' }));
+    return collectUniqueValues(
+      scoped,
+      (txn) => txn?.debtTag ?? txn?.debtTagName ?? txn?.debt_tag ?? txn?.debtLabel ?? '',
+    );
+  }, [matchesActiveFilters, transactions]);
 
   const yearOptions = useMemo(() => {
     const years = new Set();
     const base = Array.isArray(transactions) ? transactions : [];
-    base.forEach((txn) => {
-      const date = resolveTransactionDate(txn);
-      if (date instanceof Date) {
-        years.add(String(date.getFullYear()));
-      }
-    });
+    base
+      .filter((txn) => matchesActiveFilters(txn, { exclude: ['year', 'month', 'date'] }))
+      .forEach((txn) => {
+        const date = resolveTransactionDate(txn);
+        if (date instanceof Date) {
+          years.add(String(date.getFullYear()));
+        }
+      });
     return Array.from(years).sort((a, b) => Number(b) - Number(a));
-  }, [transactions]);
+  }, [matchesActiveFilters, transactions]);
 
   const amountOperatorLabelLookup = useMemo(() => {
     const lookup = new Map();
@@ -793,6 +831,70 @@ export default function TransactionsHistoryPage() {
     return lookup;
   }, []);
 
+  useEffect(() => {
+    if (!filters.person) {
+      return;
+    }
+    const normalizedOptions = new Set(
+      personOptions.map((option) => normalizeFilterString(option ?? '')),
+    );
+    if (!normalizedOptions.has(normalizeFilterString(filters.person))) {
+      setFilters((prev) => (prev.person ? { ...prev, person: null } : prev));
+    }
+  }, [filters.person, personOptions, setFilters]);
+
+  useEffect(() => {
+    if (!filters.account) {
+      return;
+    }
+    const normalizedOptions = new Set(
+      accountOptions.map((option) => normalizeFilterString(option ?? '')),
+    );
+    if (!normalizedOptions.has(normalizeFilterString(filters.account))) {
+      setFilters((prev) => (prev.account ? { ...prev, account: null } : prev));
+    }
+  }, [accountOptions, filters.account, setFilters]);
+
+  useEffect(() => {
+    if (!filters.category) {
+      return;
+    }
+    const normalizedOptions = new Set(
+      categoryOptions.map((option) => normalizeFilterString(option ?? '')),
+    );
+    if (!normalizedOptions.has(normalizeFilterString(filters.category))) {
+      setFilters((prev) => (prev.category ? { ...prev, category: null } : prev));
+    }
+  }, [categoryOptions, filters.category, setFilters]);
+
+  useEffect(() => {
+    if (!Array.isArray(filters.debtTags) || filters.debtTags.length === 0) {
+      return;
+    }
+    const normalizedOptions = new Set(
+      debtTagOptions.map((option) => normalizeFilterString(option ?? '')),
+    );
+    const next = filters.debtTags.filter((tag) =>
+      normalizedOptions.has(normalizeFilterString(tag ?? '')),
+    );
+    if (next.length !== filters.debtTags.length) {
+      setFilters((prev) => ({ ...prev, debtTags: next }));
+    }
+  }, [debtTagOptions, filters.debtTags, setFilters]);
+
+  useEffect(() => {
+    if (!filters.year) {
+      return;
+    }
+    if (!yearOptions.includes(filters.year)) {
+      setFilters((prev) => (prev.year ? { ...prev, year: null } : prev));
+    }
+  }, [filters.year, yearOptions, setFilters]);
+
+  const closeColumnFilterPopover = useCallback(() => {
+    setActiveColumnFilter(null);
+  }, []);
+
   const activeFilterDescriptors = useMemo(() => {
     const descriptors = [];
 
@@ -800,7 +902,10 @@ export default function TransactionsHistoryPage() {
       descriptors.push({
         key: 'person',
         label: `Person: ${filters.person}`,
-        onClear: () => setFilters((prev) => ({ ...prev, person: null })),
+        onClear: () => {
+          closeColumnFilterPopover();
+          setFilters((prev) => ({ ...prev, person: null }));
+        },
       });
     }
 
@@ -808,7 +913,10 @@ export default function TransactionsHistoryPage() {
       descriptors.push({
         key: 'account',
         label: `Account: ${filters.account}`,
-        onClear: () => setFilters((prev) => ({ ...prev, account: null })),
+        onClear: () => {
+          closeColumnFilterPopover();
+          setFilters((prev) => ({ ...prev, account: null }));
+        },
       });
     }
 
@@ -816,7 +924,10 @@ export default function TransactionsHistoryPage() {
       descriptors.push({
         key: 'category',
         label: `Category: ${filters.category}`,
-        onClear: () => setFilters((prev) => ({ ...prev, category: null })),
+        onClear: () => {
+          closeColumnFilterPopover();
+          setFilters((prev) => ({ ...prev, category: null }));
+        },
       });
     }
 
@@ -825,11 +936,13 @@ export default function TransactionsHistoryPage() {
         descriptors.push({
           key: `debt-tag-${tag}`,
           label: `Debt tag: ${tag}`,
-          onClear: () =>
+          onClear: () => {
+            closeColumnFilterPopover();
             setFilters((prev) => ({
               ...prev,
               debtTags: prev.debtTags.filter((value) => value !== tag),
-            })),
+            }));
+          },
         });
       });
     }
@@ -855,12 +968,14 @@ export default function TransactionsHistoryPage() {
       descriptors.push({
         key: 'amount',
         label: `Amount: ${badgeLabel}`.trim(),
-        onClear: () =>
+        onClear: () => {
+          closeColumnFilterPopover();
           setFilters((prev) => ({
             ...prev,
             amountOperator: null,
             amountValue: '',
-          })),
+          }));
+        },
       });
     }
 
@@ -868,7 +983,10 @@ export default function TransactionsHistoryPage() {
       descriptors.push({
         key: 'year',
         label: `Year: ${filters.year}`,
-        onClear: () => setFilters((prev) => ({ ...prev, year: null })),
+        onClear: () => {
+          closeColumnFilterPopover();
+          setFilters((prev) => ({ ...prev, year: null }));
+        },
       });
     }
 
@@ -877,12 +995,46 @@ export default function TransactionsHistoryPage() {
       descriptors.push({
         key: 'month',
         label: `Month: ${monthLabel}`,
-        onClear: () => setFilters((prev) => ({ ...prev, month: null })),
+        onClear: () => {
+          closeColumnFilterPopover();
+          setFilters((prev) => ({ ...prev, month: null }));
+        },
       });
     }
 
     return descriptors;
-  }, [amountOperatorLabelLookup, filters, setFilters]);
+  }, [amountOperatorLabelLookup, closeColumnFilterPopover, filters, setFilters]);
+
+  const activeFilterKeys = useMemo(() => {
+    const keys = new Set();
+    if (filters.person) {
+      keys.add('person');
+    }
+    if (filters.account) {
+      keys.add('account');
+    }
+    if (filters.category) {
+      keys.add('category');
+    }
+    if (Array.isArray(filters.debtTags) && filters.debtTags.length > 0) {
+      keys.add('debtTags');
+    }
+    if (
+      filters.amountOperator &&
+      (filters.amountOperator === 'is-null' || String(filters.amountValue).trim().length > 0)
+    ) {
+      keys.add('amount');
+    }
+    if (filters.year || filters.month) {
+      keys.add('date');
+    }
+    return keys;
+  }, [filters]);
+
+  const columnFilterMap = useMemo(
+    () => new Map(COLUMN_FILTER_DESCRIPTORS.map((descriptor) => [descriptor.columnId, descriptor])),
+    [],
+  );
 
   const activeFilterCount = activeFilterDescriptors.length;
   const visibleFilterDescriptors = activeFilterDescriptors.slice(0, MAX_VISIBLE_FILTER_BADGES);
@@ -897,14 +1049,15 @@ export default function TransactionsHistoryPage() {
     });
   }, []);
 
-  const handleOpenFilterModal = useCallback(() => {
+  const handleOpenFilterManager = useCallback(() => {
     setOpenFilterDropdown(null);
-    setIsFilterModalOpen(true);
+    setIsFilterManagerOpen(true);
+    closeColumnFilterPopover();
     resetFilterSearch();
-  }, [resetFilterSearch]);
+  }, [closeColumnFilterPopover, resetFilterSearch]);
 
-  const handleCloseFilterModal = useCallback(() => {
-    setIsFilterModalOpen(false);
+  const handleCloseFilterManager = useCallback(() => {
+    setIsFilterManagerOpen(false);
     setOpenFilterDropdown(null);
     resetFilterSearch();
   }, [resetFilterSearch]);
@@ -913,11 +1066,25 @@ export default function TransactionsHistoryPage() {
     setFilters({ ...DEFAULT_FILTERS });
     setOpenFilterDropdown(null);
     resetFilterSearch();
-  }, [resetFilterSearch, setFilters, setOpenFilterDropdown]);
+    closeColumnFilterPopover();
+  }, [closeColumnFilterPopover, resetFilterSearch, setFilters, setOpenFilterDropdown]);
 
   const handleDropdownToggle = useCallback((id) => {
     setOpenFilterDropdown((current) => (current === id ? null : id));
   }, []);
+
+  const handleColumnFilterRequest = useCallback((descriptor) => {
+    if (!descriptor || typeof descriptor !== 'object') {
+      closeColumnFilterPopover();
+      return;
+    }
+    setActiveColumnFilter((current) => {
+      if (current && current.columnId === descriptor.columnId && current.key === descriptor.key) {
+        return null;
+      }
+      return descriptor;
+    });
+  }, [closeColumnFilterPopover]);
 
   const handleSingleFilterChange = useCallback((field, value) => {
     const normalizedValue = value === 'all' || value === '' ? null : value;
@@ -927,6 +1094,321 @@ export default function TransactionsHistoryPage() {
     }));
     setOpenFilterDropdown(null);
   }, [setFilters, setOpenFilterDropdown]);
+
+  const handlePopoverSingleSelect = useCallback(
+    (field, value) => {
+      handleSingleFilterChange(field, value);
+      closeColumnFilterPopover();
+    },
+    [closeColumnFilterPopover, handleSingleFilterChange],
+  );
+
+  useEffect(() => {
+    if (!activeColumnFilter) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        closeColumnFilterPopover();
+      }
+    };
+
+    const handlePointerDown = (event) => {
+      const target = event.target;
+      if (columnFilterPopoverRef.current && target instanceof Node) {
+        if (!columnFilterPopoverRef.current.contains(target)) {
+          closeColumnFilterPopover();
+        }
+      }
+    };
+
+    window.addEventListener('resize', closeColumnFilterPopover);
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('resize', closeColumnFilterPopover);
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeColumnFilter, closeColumnFilterPopover]);
+
+  const renderColumnFilterContent = () => {
+    if (!activeColumnFilter) {
+      return null;
+    }
+
+    switch (activeColumnFilter.key) {
+      case 'person':
+        return (
+          <div className={styles.columnFilterSection}>
+            <DropdownWithSearchContent
+              options={personOptions}
+              searchValue={filterSearchValues.person}
+              onSearchChange={(value) => handleFilterSearchChange('person', value)}
+              onSelectOption={(value) => handlePopoverSingleSelect('person', value)}
+              selectedValue={filters.person ?? 'all'}
+              testIdPrefix="transactions-filter-person"
+            />
+            <div className={styles.columnFilterFooter}>
+              <button
+                type="button"
+                className={`${styles.secondaryButton} ${styles.columnFilterClear}`.trim()}
+                onClick={() => handlePopoverSingleSelect('person', 'all')}
+              >
+                Clear person
+              </button>
+            </div>
+          </div>
+        );
+      case 'account':
+        return (
+          <div className={styles.columnFilterSection}>
+            <DropdownWithSearchContent
+              options={accountOptions}
+              searchValue={filterSearchValues.account}
+              onSearchChange={(value) => handleFilterSearchChange('account', value)}
+              onSelectOption={(value) => handlePopoverSingleSelect('account', value)}
+              selectedValue={filters.account ?? 'all'}
+              testIdPrefix="transactions-filter-account"
+            />
+            <div className={styles.columnFilterFooter}>
+              <button
+                type="button"
+                className={`${styles.secondaryButton} ${styles.columnFilterClear}`.trim()}
+                onClick={() => handlePopoverSingleSelect('account', 'all')}
+              >
+                Clear account
+              </button>
+            </div>
+          </div>
+        );
+      case 'category':
+        return (
+          <div className={styles.columnFilterSection}>
+            <DropdownWithSearchContent
+              options={categoryOptions}
+              searchValue={filterSearchValues.category}
+              onSearchChange={(value) => handleFilterSearchChange('category', value)}
+              onSelectOption={(value) => handlePopoverSingleSelect('category', value)}
+              selectedValue={filters.category ?? 'all'}
+              testIdPrefix="transactions-filter-category"
+            />
+            <div className={styles.columnFilterFooter}>
+              <button
+                type="button"
+                className={`${styles.secondaryButton} ${styles.columnFilterClear}`.trim()}
+                onClick={() => handlePopoverSingleSelect('category', 'all')}
+              >
+                Clear category
+              </button>
+            </div>
+          </div>
+        );
+      case 'debtTags':
+        return (
+          <div className={styles.columnFilterSection}>
+            <DropdownWithSearchContent
+              options={debtTagOptions}
+              searchValue={filterSearchValues.debtTags}
+              onSearchChange={(value) => handleFilterSearchChange('debtTags', value)}
+              onSelectOption={handleToggleDebtTag}
+              selectedValues={filters.debtTags}
+              multi
+              testIdPrefix="transactions-filter-debt"
+            />
+            {Array.isArray(filters.debtTags) && filters.debtTags.length > 0 ? (
+              <div className={styles.modalTagBadges} aria-live="polite">
+                {filters.debtTags.map((tag) => (
+                  <button
+                    key={`column-debt-tag-${tag}`}
+                    type="button"
+                    className={styles.modalTagBadge}
+                    onClick={() => handleToggleDebtTag(tag)}
+                  >
+                    <span className={styles.modalTagLabel}>{tag}</span>
+                    <FiX aria-hidden className={styles.modalTagRemove} />
+                    <span className={styles.srOnly}>Remove {tag}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <div className={styles.columnFilterFooter}>
+              <button
+                type="button"
+                className={`${styles.secondaryButton} ${styles.columnFilterClear}`.trim()}
+                onClick={() => {
+                  handleToggleDebtTag('all');
+                  closeColumnFilterPopover();
+                }}
+              >
+                Clear debt tags
+              </button>
+            </div>
+          </div>
+        );
+      case 'amount': {
+        const operatorOptions = [{ value: 'all', label: 'Any amount' }, ...AMOUNT_OPERATOR_OPTIONS];
+        const activeOperator = filters.amountOperator ?? 'all';
+        return (
+          <div className={styles.columnFilterSection}>
+            <div className={styles.columnFilterGroup}>
+              <span className={styles.modalLabel}>Operator</span>
+              <div className={styles.columnFilterChips} role="list">
+                {operatorOptions.map((option) => {
+                  const isActive = activeOperator === option.value;
+                  return (
+                    <button
+                      key={`amount-operator-${option.value}`}
+                      type="button"
+                      className={`${styles.columnFilterChip} ${
+                        isActive ? styles.columnFilterChipActive : ''
+                      }`.trim()}
+                      onClick={() => {
+                        handleAmountOperatorSelect(option.value);
+                        if (option.value === 'all') {
+                          closeColumnFilterPopover();
+                        }
+                      }}
+                      data-active={isActive ? 'true' : undefined}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className={styles.columnFilterGroup}>
+              <label htmlFor="transactions-amount-filter" className={styles.modalLabel}>
+                Amount value
+              </label>
+              <input
+                id="transactions-amount-filter"
+                type="number"
+                inputMode="decimal"
+                className={styles.modalControl}
+                value={filters.amountValue}
+                onChange={handleAmountValueChange}
+                placeholder="Enter amount"
+                disabled={!filters.amountOperator || filters.amountOperator === 'is-null'}
+              />
+            </div>
+            <div className={styles.columnFilterFooter}>
+              <button
+                type="button"
+                className={`${styles.secondaryButton} ${styles.columnFilterClear}`.trim()}
+                onClick={() => {
+                  handleAmountOperatorSelect('all');
+                  closeColumnFilterPopover();
+                }}
+              >
+                Clear amount
+              </button>
+            </div>
+          </div>
+        );
+      }
+      case 'date': {
+        const handleClearDate = () => {
+          setFilters((prev) => ({ ...prev, year: null, month: null }));
+          closeColumnFilterPopover();
+        };
+        const yearValue = filters.year ?? 'all';
+        const monthValue = filters.month ?? 'all';
+        return (
+          <div className={styles.columnFilterSection}>
+            <div className={styles.columnFilterGrid}>
+              <label htmlFor="transactions-filter-year" className={styles.modalLabel}>
+                Year
+              </label>
+              <select
+                id="transactions-filter-year"
+                className={styles.modalControl}
+                value={yearValue}
+                onChange={(event) => handleSingleFilterChange('year', event.target.value)}
+              >
+                <option value="all">Any year</option>
+                {yearOptions.map((option) => (
+                  <option key={`year-option-${option}`} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.columnFilterGrid}>
+              <label htmlFor="transactions-filter-month" className={styles.modalLabel}>
+                Month
+              </label>
+              <select
+                id="transactions-filter-month"
+                className={styles.modalControl}
+                value={monthValue}
+                onChange={(event) => handleSingleFilterChange('month', event.target.value)}
+              >
+                <option value="all">Any month</option>
+                {MONTH_OPTIONS.map((option) => (
+                  <option key={`month-option-${option.value}`} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.columnFilterFooter}>
+              <button
+                type="button"
+                className={`${styles.secondaryButton} ${styles.columnFilterClear}`.trim()}
+                onClick={handleClearDate}
+              >
+                Clear date
+              </button>
+            </div>
+          </div>
+        );
+      }
+      default:
+        return null;
+    }
+  };
+
+  const columnFilterPopover = activeColumnFilter
+    ? (() => {
+        const rect = activeColumnFilter.rect ?? {
+          top: 0,
+          left: 0,
+          bottom: 0,
+          right: 0,
+          width: 0,
+          height: 0,
+        };
+        const top = Math.max(rect.bottom + 8, 16);
+        const left = rect.left + rect.width / 2;
+        return (
+          <div
+            ref={columnFilterPopoverRef}
+            className={styles.columnFilterPopover}
+            style={{ top: `${top}px`, left: `${left}px` }}
+            role="dialog"
+            aria-modal="false"
+            aria-label={`Filter ${activeColumnFilter.label}`}
+            data-filter-key={activeColumnFilter.key}
+          >
+            <div className={styles.columnFilterHeader}>
+              <span className={styles.columnFilterTitle}>{activeColumnFilter.label}</span>
+              <button
+                type="button"
+                className={`${styles.iconButton} ${styles.columnFilterClose}`.trim()}
+                onClick={closeColumnFilterPopover}
+                aria-label={`Close ${activeColumnFilter.label} filter`}
+              >
+                <FiX aria-hidden />
+              </button>
+            </div>
+            <div className={styles.columnFilterBody}>{renderColumnFilterContent()}</div>
+          </div>
+        );
+      })()
+    : null;
 
   const handleFilterSearchChange = useCallback((field, value) => {
     setFilterSearchValues((prev) => ({
@@ -967,7 +1449,12 @@ export default function TransactionsHistoryPage() {
     setFilters((prev) => ({
       ...prev,
       amountOperator: normalizedOperator,
-      amountValue: normalizedOperator === 'is-null' ? '' : prev.amountValue,
+      amountValue:
+        normalizedOperator === 'is-null'
+          ? ''
+          : normalizedOperator === null
+          ? ''
+          : prev.amountValue,
     }));
     setOpenFilterDropdown(null);
   }, [setFilters, setOpenFilterDropdown]);
@@ -1295,20 +1782,33 @@ export default function TransactionsHistoryPage() {
     });
   }, []);
 
-  const handleCustomizeChange = useCallback((columnsConfig) => {
-    setColumnState((prev) => {
-      const widthLookup = new Map(prev.map((column) => [column.id, column.width]));
-      const optionalLookup = new Map(prev.map((column) => [column.id, column.optional]));
-      return columnsConfig.map((column, index) => ({
-        id: column.id,
-        width: widthLookup.get(column.id) ?? 200,
-        visible: column.visible,
-        order: index,
-        pinned: column.pinned ?? null,
-        optional: optionalLookup.get(column.id) ?? false,
-      }));
-    });
-  }, []);
+  const handleCustomizeChange = useCallback(
+    (columnsConfig) => {
+      setColumnState((prev) => {
+        const widthLookup = new Map(prev.map((column) => [column.id, column.width]));
+        const optionalLookup = new Map(prev.map((column) => [column.id, column.optional]));
+        return columnsConfig.map((column, index) => {
+          const definition = definitionLookup.get(column.id) ?? {};
+          const minWidth = definition.minWidth ?? 120;
+          const nextWidth = Math.max(
+            minWidth,
+            Math.round(
+              column.width ?? widthLookup.get(column.id) ?? definition.defaultWidth ?? minWidth,
+            ),
+          );
+          return {
+            id: column.id,
+            width: nextWidth,
+            visible: column.visible,
+            order: index,
+            pinned: column.pinned ?? null,
+            optional: optionalLookup.get(column.id) ?? false,
+          };
+        });
+      });
+    },
+    [definitionLookup],
+  );
 
   const handleSearchChange = useCallback((value) => {
     setSearchQuery(value);
@@ -1330,6 +1830,11 @@ export default function TransactionsHistoryPage() {
         pinned: column.pinned ?? null,
         locked: Boolean(definition.locked),
         mandatory: Boolean(definition.locked),
+        width: Math.max(
+          definition.minWidth ?? 120,
+          Math.round(column.width ?? definition.defaultWidth ?? definition.minWidth ?? 120),
+        ),
+        minWidth: definition.minWidth ?? 120,
       };
     });
   }, [columnState, definitionLookup]);
@@ -1348,6 +1853,11 @@ export default function TransactionsHistoryPage() {
         pinned: column.pinned ?? null,
         locked: Boolean(definition.locked),
         mandatory: Boolean(definition.locked),
+        width: Math.max(
+          definition.minWidth ?? 120,
+          Math.round(column.width ?? definition.defaultWidth ?? definition.minWidth ?? 120),
+        ),
+        minWidth: definition.minWidth ?? 120,
       };
     });
   }, [defaultColumnState, definitionLookup, customizeColumns]);
@@ -1382,33 +1892,6 @@ export default function TransactionsHistoryPage() {
         <FiSettings aria-hidden />
       </button>
     </>
-  );
-
-  const filterButtonClassName = [
-    styles.filterButton,
-    activeFilterCount > 0 ? styles.filterButtonActive : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  const filterTriggerButton = (
-    <button
-      type="button"
-      className={filterButtonClassName}
-      onClick={handleOpenFilterModal}
-      aria-haspopup="dialog"
-      aria-expanded={isFilterModalOpen ? 'true' : 'false'}
-      aria-controls="transactions-filter-modal"
-      title="Filter transactions"
-    >
-      <FiFilter aria-hidden />
-      <span>Filters</span>
-      {activeFilterCount > 0 ? (
-        <span className={styles.countBadge} aria-label={`${activeFilterCount} filters active`}>
-          {activeFilterCount}
-        </span>
-      ) : null}
-    </button>
   );
 
   const selectionToolbarInline = selectedCount > 0 ? (
@@ -1450,10 +1933,10 @@ export default function TransactionsHistoryPage() {
     );
   };
 
-  const filterModal = (
+  const filterManagerModal = (
     <ModalWrapper
-      isOpen={isFilterModalOpen}
-      onBackdropClick={handleCloseFilterModal}
+      isOpen={isFilterManagerOpen}
+      onBackdropClick={handleCloseFilterManager}
       wrapperClassName={styles.modalWrapper}
       panelClassName={styles.modalContent}
       backdropClassName={styles.modalBackdrop}
@@ -1464,7 +1947,7 @@ export default function TransactionsHistoryPage() {
           <button
             type="button"
             className={`${styles.iconButton} ${styles.toolbarIconButton}`.trim()}
-            onClick={handleCloseFilterModal}
+            onClick={handleCloseFilterManager}
             aria-label="Close filters"
           >
             <FiX aria-hidden />
@@ -1634,7 +2117,7 @@ export default function TransactionsHistoryPage() {
           <button
             type="button"
             className={`${styles.primaryButton} ${styles.modalApply}`.trim()}
-            onClick={handleCloseFilterModal}
+            onClick={handleCloseFilterManager}
           >
             Done
           </button>
@@ -1663,7 +2146,7 @@ export default function TransactionsHistoryPage() {
           <button
             type="button"
             className={styles.activeFilterMore}
-            onClick={handleOpenFilterModal}
+            onClick={handleOpenFilterManager}
             aria-label="Show all filters"
           >
             <FiMoreHorizontal aria-hidden />
@@ -1713,7 +2196,8 @@ export default function TransactionsHistoryPage() {
       title="Transactions History"
       subtitle="Monitor every inflow, cashback, debt movement, and adjustment inside Money Flow."
     >
-      {filterModal}
+      {filterManagerModal}
+      {columnFilterPopover}
       <div className={pageShellStyles.screen}>
         <div className={styles.controlsRegion}>
           <div
@@ -1724,7 +2208,6 @@ export default function TransactionsHistoryPage() {
             <div className={styles.actionsRow}>
               <div className={styles.leadingActions}>
                 <div className={styles.actionButtons}>{filterActionButtons}</div>
-                {filterTriggerButton}
               </div>
               {selectionToolbarInline}
               {!isCompact && (
@@ -1814,6 +2297,9 @@ export default function TransactionsHistoryPage() {
             onToggleShowSelected={handleToggleShowSelected}
             isFetching={isFetching}
             showSelectionToolbar={false}
+            columnFilters={columnFilterMap}
+            onColumnFilter={handleColumnFilterRequest}
+            activeFilterKeys={activeFilterKeys}
           />
         )}
       </div>

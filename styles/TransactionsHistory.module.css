@@ -666,51 +666,6 @@
   transform: translateY(-1px);
 }
 
-.filterButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.6rem 1rem;
-  border-radius: 16px;
-  border: 1px solid var(--mf-border-subtle);
-  background: transparent;
-  color: var(--mf-text-secondary);
-  cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-  min-height: 44px;
-  height: 44px;
-}
-
-.filterButton:hover {
-  background: rgba(148, 163, 184, 0.18);
-  color: var(--mf-text-primary);
-}
-
-.filterButtonActive {
-  background: rgba(99, 102, 241, 0.18);
-  border-color: transparent;
-  color: var(--mf-accent-strong);
-}
-
-.filterButton:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.countBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 0.4rem;
-  border-radius: 999px;
-  background: rgba(67, 56, 202, 0.92);
-  color: #ffffff;
-  font-size: 0.7rem;
-  font-weight: 700;
-}
-
 .primaryButton {
   display: inline-flex;
   align-items: center;
@@ -2020,6 +1975,113 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0 1.5rem 1.35rem;
+}
+
+.columnFilterPopover {
+  position: fixed;
+  z-index: 120;
+  width: min(360px, calc(100vw - 32px));
+  border-radius: 18px;
+  background: var(--mf-surface, #ffffff);
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  padding: 1rem 1rem 0.85rem;
+  transform: translateX(-50%);
+  animation: fadeUp 0.18s ease;
+}
+
+.columnFilterHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.columnFilterTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--mf-text-primary);
+}
+
+.columnFilterClose {
+  color: var(--mf-text-muted);
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.columnFilterClose:hover,
+.columnFilterClose:focus-visible {
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--mf-accent-strong);
+}
+
+.columnFilterBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  max-height: min(420px, 70vh);
+  overflow-y: auto;
+  padding-top: 0.75rem;
+  padding-right: 0.2rem;
+}
+
+.columnFilterSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.columnFilterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.columnFilterChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.columnFilterChip {
+  border: none;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--mf-text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.columnFilterChip:hover,
+.columnFilterChip:focus-visible {
+  background: rgba(148, 163, 184, 0.24);
+  color: var(--mf-text-primary);
+  outline: none;
+}
+
+.columnFilterChipActive {
+  background: rgba(99, 102, 241, 0.22);
+  color: var(--mf-accent-strong);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.4);
+}
+
+.columnFilterFooter {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.columnFilterClear {
+  padding-inline: 0.95rem;
+}
+
+.columnFilterGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
 }
 
 .secondaryButton {
