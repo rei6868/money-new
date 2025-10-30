@@ -1,4 +1,4 @@
-import { FiFilter, FiList, FiXCircle } from 'react-icons/fi';
+import { FiFilter, FiList, FiTrash2, FiXCircle } from 'react-icons/fi';
 
 import styles from './table-selection.module.css';
 
@@ -31,7 +31,10 @@ export function SelectionToolbar({
   }
 
   const toggleLabel = isShowingSelectedOnly ? 'Show all rows' : 'Show selected rows';
+  const toggleVisibleLabel = isShowingSelectedOnly ? 'Show All' : 'Show Selected';
   const ToggleIcon = isShowingSelectedOnly ? FiList : FiFilter;
+  const deselectLabel = 'Deselect all rows';
+  const deleteLabel = 'Delete selected rows';
 
   const dockClassName = [styles.selectionToolbarDock, className].filter(Boolean).join(' ');
 
@@ -50,12 +53,13 @@ export function SelectionToolbar({
               onClick={onToggleShowSelected}
               data-active={isShowingSelectedOnly ? 'true' : 'false'}
               aria-pressed={isShowingSelectedOnly ? 'true' : 'false'}
+              aria-label={toggleLabel}
               title={toggleLabel}
             >
-              <span className={styles.selectionToolbarButtonIcon} aria-hidden>
-                <ToggleIcon />
+              <span className={styles.selectionToolbarButtonIcon} aria-hidden="true">
+                <ToggleIcon aria-hidden="true" focusable="false" />
               </span>
-              <span>{toggleLabel}</span>
+              <span className={styles.selectionToolbarButtonLabel}>{toggleVisibleLabel}</span>
             </button>
           ) : null}
           {onDeselectAll ? (
@@ -63,21 +67,26 @@ export function SelectionToolbar({
               type="button"
               className={styles.selectionToolbarButton}
               onClick={onDeselectAll}
-              title="Deselect all rows"
+              aria-label={deselectLabel}
+              title={deselectLabel}
             >
-              <span className={styles.selectionToolbarButtonIcon} aria-hidden>
-                <FiXCircle />
+              <span className={styles.selectionToolbarButtonIcon} aria-hidden="true">
+                <FiXCircle aria-hidden="true" focusable="false" />
               </span>
-              <span>Deselect all</span>
+              <span className={styles.selectionToolbarButtonLabel}>Deselect</span>
             </button>
           ) : null}
           <button
             type="button"
             className={`${styles.selectionToolbarButton} ${styles.selectionToolbarDanger}`.trim()}
             onClick={onDelete}
-            title="Delete selected rows"
+            aria-label={deleteLabel}
+            title={deleteLabel}
           >
-            Delete
+            <span className={styles.selectionToolbarButtonIcon} aria-hidden="true">
+              <FiTrash2 aria-hidden="true" focusable="false" />
+            </span>
+            <span className={styles.selectionToolbarButtonLabel}>Delete</span>
           </button>
         </div>
       </div>

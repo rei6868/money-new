@@ -374,6 +374,17 @@ const TableBaseInner = (
       style={{ '--transactions-font-scale': fontScale }}
     >
       {toolbarSlot}
+      {hasActiveSelection && showSelectionToolbar ? (
+        <MiniToolbar
+          selectedCount={selectionCount}
+          onDelete={handleBulkDelete}
+          onDeselectAll={handleClearSelection}
+          onToggleShowSelected={
+            typeof onToggleShowSelected === 'function' ? handleToggleShowSelected : undefined
+          }
+          isShowingSelectedOnly={isShowingSelectedOnly}
+        />
+      ) : null}
       <div className={shellStyles.tableShell}>
         <div
           ref={mergedScrollRef}
@@ -510,15 +521,6 @@ const TableBaseInner = (
           </div>
         ) : null}
       </div>
-      {hasActiveSelection && showSelectionToolbar ? (
-        <MiniToolbar
-          selectedCount={selectionCount}
-          onDelete={handleBulkDelete}
-          onDeselectAll={handleClearSelection}
-          onToggleShowSelected={typeof onToggleShowSelected === 'function' ? handleToggleShowSelected : undefined}
-          isShowingSelectedOnly={isShowingSelectedOnly}
-        />
-      ) : null}
     </section>
   );
 };

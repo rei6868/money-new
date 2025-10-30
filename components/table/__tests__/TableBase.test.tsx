@@ -96,7 +96,7 @@ describe('TableBase selection toolbar', () => {
     fireEvent.click(toggleButton);
     expect(onToggleShowSelected).toHaveBeenCalledWith(true);
 
-    const deselectButton = screen.getByRole('button', { name: 'Deselect all' });
+    const deselectButton = screen.getByRole('button', { name: 'Deselect all rows' });
     fireEvent.click(deselectButton);
     expect(onSelectAll).toHaveBeenCalledWith(false);
   });
