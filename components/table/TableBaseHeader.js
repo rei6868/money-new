@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { FiChevronDown, FiChevronUp, FiEdit2, FiFilter, FiMinus } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiEdit2, FiMinus } from 'react-icons/fi';
 
 import headerStyles from './TableBaseHeader.module.css';
 import shellStyles from './table-shell.module.css';
@@ -106,9 +106,6 @@ export function TableBaseHeader({
   transactions = [],
   pinnedLeftOffsets = new Map(),
   pinnedRightOffsets = new Map(),
-  columnFilters = new Map(),
-  onFilterClick,
-  activeFilterKeys = new Set(),
 }) {
   const visibleIdSet = useMemo(() => new Set(visibleColumnIds), [visibleColumnIds]);
   const totalVisibleColumns = visibleIdSet.size;
@@ -150,10 +147,6 @@ export function TableBaseHeader({
     const ariaSort = isSorted ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none';
 
     const isTaskColumn = id === 'task';
-
-    const filterDescriptor = columnFilters.get(id);
-    const hasFilter = Boolean(filterDescriptor);
-    const filterIsActive = hasFilter && activeFilterKeys.has(filterDescriptor.key);
 
     const headerClassName = [
       headerStyles.headerCell,
@@ -222,55 +215,6 @@ export function TableBaseHeader({
       .filter(Boolean)
       .join(' ');
 
-    const handleFilterOpen = (event) => {
-      if (!hasFilter || typeof onFilterClick !== 'function') {
-        return;
-      }
-      const rect = event.currentTarget.getBoundingClientRect();
-      onFilterClick({
-        columnId: id,
-        key: filterDescriptor.key,
-        label: title,
-        rect: {
-          top: rect.top,
-          left: rect.left,
-          width: rect.width,
-          height: rect.height,
-          right: rect.right,
-          bottom: rect.bottom,
-        },
-      });
-    };
-
-    const handleHeaderActivate = (event) => {
-      if (!hasFilter || isColumnReorderMode) {
-        return;
-      }
-      if (event.type === 'keydown') {
-        const isActivationKey = event.key === 'Enter' || event.key === ' ';
-        if (!isActivationKey) {
-          return;
-        }
-        event.preventDefault();
-      }
-      if (typeof onFilterClick === 'function') {
-        const rect = event.currentTarget.getBoundingClientRect();
-        onFilterClick({
-          columnId: id,
-          key: filterDescriptor.key,
-          label: title,
-          rect: {
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height,
-            right: rect.right,
-            bottom: rect.bottom,
-          },
-        });
-      }
-    };
-
     const columnToggleControl = isColumnReorderMode ? (
       <label
         className={headerStyles.columnToggle}
@@ -326,27 +270,10 @@ export function TableBaseHeader({
         aria-sort={ariaSort}
       >
         <div className={shellClassName}>
-          <div
-            className={`${headerStyles.headerContent} ${
-              hasFilter ? headerStyles.headerContentFilterable : ''
-            }`.trim()}
-          >
-            {hasFilter ? (
-              <button
-                type="button"
-                className={`${headerLabelClassName} ${headerStyles.headerLabelButton}`.trim()}
-                onClick={handleHeaderActivate}
-                onKeyDown={handleHeaderActivate}
-                data-filter-active={filterIsActive ? 'true' : undefined}
-                aria-label={`${title} filters`}
-              >
-                <span className={headerLabelTextClassName}>{title}</span>
-              </button>
-            ) : (
-              <div className={headerLabelClassName}>
-                <span className={headerLabelTextClassName}>{title}</span>
-              </div>
-            )}
+          <div className={headerStyles.headerContent}>
+            <div className={headerLabelClassName}>
+              <span className={headerLabelTextClassName}>{title}</span>
+            </div>
           </div>
           {isColumnReorderMode ? (
             columnToggleControl
@@ -365,18 +292,6 @@ export function TableBaseHeader({
               </button>
             </Tooltip>
           )}
-          {hasFilter ? (
-            <button
-              type="button"
-              className={`${headerStyles.filterButton} ${
-                filterIsActive ? headerStyles.filterButtonActive : ''
-              }`.trim()}
-              onClick={handleFilterOpen}
-              aria-label={`Filter ${title}`}
-            >
-              <FiFilter aria-hidden />
-            </button>
-          ) : null}
         </div>
       </th>
     );
