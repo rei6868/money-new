@@ -19,6 +19,7 @@ import { ModalWrapper } from '../../components/common/ModalWrapper';
 import { DropdownSimple } from '../../components/common/DropdownSimple';
 import { DropdownWithSearch, DropdownWithSearchContent } from '../../components/common/DropdownWithSearch';
 import { SelectionToolbar } from '../../components/table/SelectionToolbar';
+import { ColumnFilterPopover } from '../../components/table/filter/ColumnFilterPopover';
 import {
   AMOUNT_OPERATOR_OPTIONS,
   MONTH_LABEL_LOOKUP,
@@ -190,7 +191,8 @@ export default function TransactionsHistoryPage() {
     overflowBadgeCount,
     columnFilterMap,
     activeFilterKeys,
-    columnFilterPopover,
+    columnFilterContent,
+    activeColumnFilter,
     handleColumnFilterTrigger,
     handleClearAllFilters,
     handleSingleFilterChange,
@@ -1307,7 +1309,11 @@ export default function TransactionsHistoryPage() {
       subtitle="Monitor every inflow, cashback, debt movement, and adjustment inside Money Flow."
     >
       {filterManagerModal}
-      {columnFilterPopover}
+      <ColumnFilterPopover
+        activeFilter={activeColumnFilter}
+        contentMap={columnFilterContent}
+        onRequestClose={closeColumnFilterPopover}
+      />
       <div className={pageShellStyles.screen}>
         <div className={styles.controlsRegion}>
           <div

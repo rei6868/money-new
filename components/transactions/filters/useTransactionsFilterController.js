@@ -1,9 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FiX } from 'react-icons/fi';
-
-import styles from '../../../styles/TransactionsHistory.module.css';
-import { DropdownSimple } from '../../common/DropdownSimple';
-import { DropdownWithSearch, DropdownWithSearchContent } from '../../common/DropdownWithSearch';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getTransactionTypeLabel, normalizeTransactionType } from '../../../lib/transactions/transactionTypes';
 
 const DEFAULT_FILTERS = Object.freeze({
@@ -368,7 +363,6 @@ export function useTransactionsFilterController({
     type: '',
   });
   const [activeColumnFilter, setActiveColumnFilter] = useState(null);
-  const columnFilterPopoverRef = useRef(null);
 
   const amountOperatorLabelLookup = useMemo(
     () => new Map(AMOUNT_OPERATOR_OPTIONS.map((option) => [option.value, option.label])),
@@ -746,33 +740,8 @@ export function useTransactionsFilterController({
       return undefined;
     }
 
-    const handleOutsideClick = (event) => {
-      const target = event.target;
-      if (columnFilterPopoverRef.current && target instanceof Node) {
-        if (!columnFilterPopoverRef.current.contains(target)) {
-          closeColumnFilterPopover();
-        }
-      }
-    };
-
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        closeColumnFilterPopover();
-      }
-    };
-
-    const handleResize = () => {
-      closeColumnFilterPopover();
-    };
-
-    document.addEventListener('mousedown', handleOutsideClick);
-    document.addEventListener('keydown', handleEscape);
-    window.addEventListener('resize', handleResize);
-
     return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('keydown', handleEscape);
-      window.removeEventListener('resize', handleResize);
+      closeColumnFilterPopover();
     };
   }, [activeColumnFilter, closeColumnFilterPopover]);
 
@@ -857,199 +826,157 @@ export function useTransactionsFilterController({
     onRequestTabChange?.('all');
   }, [closeColumnFilterPopover, onRequestTabChange, resetFilterSearchValues]);
 
-  const renderColumnFilterContent = useCallback(() => {
-    if (!activeColumnFilter) {
-      return null;
-    }
+  const columnFilterContent = useMemo(() => {
+    const map = new Map();
 
-    switch (activeColumnFilter.key) {
-      case 'person':
-        return (
-          <DropdownWithSearch
-            id="transactions-filter-person"
-            ariaLabel="Filter by person"
-            placeholder="Search people"
-            options={personOptions}
-            selectedValue={filters.person ?? 'all'}
-            onSelectOption={(value) => handlePopoverSingleSelect('person', value)}
-            searchValue={filterSearchValues.person}
-            onSearchChange={(value) => handleFilterSearchChange('person', value)}
-            emptyLabel="No people"
-          />
-        );
-      case 'account':
-        return (
-          <DropdownWithSearch
-            id="transactions-filter-account"
-            ariaLabel="Filter by account"
-            placeholder="Search accounts"
-            options={accountOptions}
-            selectedValue={filters.account ?? 'all'}
-            onSelectOption={(value) => handlePopoverSingleSelect('account', value)}
-            searchValue={filterSearchValues.account}
-            onSearchChange={(value) => handleFilterSearchChange('account', value)}
-            emptyLabel="No accounts"
-          />
-        );
-      case 'category':
-        return (
-          <DropdownWithSearch
-            id="transactions-filter-category"
-            ariaLabel="Filter by category"
-            placeholder="Search categories"
-            options={categoryOptions}
-            selectedValue={filters.category ?? 'all'}
-            onSelectOption={(value) => handlePopoverSingleSelect('category', value)}
-            searchValue={filterSearchValues.category}
-            onSearchChange={(value) => handleFilterSearchChange('category', value)}
-            emptyLabel="No categories"
-          />
-        );
-      case 'shop':
-        return (
-          <DropdownWithSearch
-            id="transactions-filter-shop"
-            ariaLabel="Filter by shop"
-            placeholder="Search shops"
-            options={shopOptions}
-            selectedValue={filters.shop ?? 'all'}
-            onSelectOption={(value) => handlePopoverSingleSelect('shop', value)}
-            searchValue={filterSearchValues.shop}
-            onSearchChange={(value) => handleFilterSearchChange('shop', value)}
-            emptyLabel="No shops"
-          />
-        );
-      case 'debtTags':
-        return (
-          <DropdownWithSearchContent
-            id="transactions-filter-debt-tags"
-            ariaLabel="Filter by debt tags"
-            placeholder="Search debt tags"
-            options={debtTagOptions}
-            selectedValues={filters.debtTags}
-            onToggleOption={handleToggleDebtTag}
-            searchValue={filterSearchValues.debtTags}
-            onSearchChange={(value) => handleFilterSearchChange('debtTags', value)}
-            emptyLabel="No tags"
-          />
-        );
-      case 'amount': {
-        const activeOperator = filters.amountOperator ?? 'all';
-        return (
-          <div className={styles.columnFilterSection}>
-            <DropdownSimple
-              id="transactions-filter-amount-operator"
-              ariaLabel="Select amount operator"
-              options={[{ value: 'all', label: 'Any amount' }, ...AMOUNT_OPERATOR_OPTIONS]}
-              selectedValue={activeOperator}
-              onSelect={(value) => handlePopoverSingleSelect('amountOperator', value)}
-            />
-            <input
-              type="number"
-              inputMode="decimal"
-              className={styles.modalControl}
-              value={filters.amountValue}
-              onChange={(event) => handleAmountValueChange(event.target.value)}
-              disabled={!filters.amountOperator || filters.amountOperator === 'is-null'}
-              placeholder="Enter amount"
-              aria-label="Filter amount value"
-            />
-          </div>
-        );
-      }
-      case 'date': {
-        const yearValue = filters.year ?? 'all';
-        const monthValue = filters.month ?? 'all';
-        return (
-          <div className={styles.columnFilterSection}>
-            <div className={styles.columnFilterGrid}>
-              <label htmlFor="transactions-filter-year" className={styles.modalLabel}>
-                Year
-              </label>
-              <select
-                id="transactions-filter-year"
-                className={styles.modalControl}
-                value={yearValue}
-                onChange={(event) => handleSingleFilterChange('year', event.target.value)}
-              >
-                <option value="all">Any year</option>
-                {yearOptions.map((option) => (
-                  <option key={`year-option-${option}`} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.columnFilterGrid}>
-              <label htmlFor="transactions-filter-month" className={styles.modalLabel}>
-                Month
-              </label>
-              <select
-                id="transactions-filter-month"
-                className={styles.modalControl}
-                value={monthValue}
-                onChange={(event) => handleSingleFilterChange('month', event.target.value)}
-              >
-                <option value="all">Any month</option>
-                {MONTH_OPTIONS.map((option) => (
-                  <option key={`month-option-${option.value}`} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.columnFilterFooter}>
-              <button
-                type="button"
-                className={`${styles.secondaryButton} ${styles.columnFilterClear}`.trim()}
-                onClick={handleClearDate}
-              >
-                Clear date
-              </button>
-            </div>
-          </div>
-        );
-      }
-      case 'type':
-        return (
-          <DropdownWithSearch
-            id="transactions-filter-type"
-            ariaLabel="Filter by type"
-            placeholder="Search types"
-            options={typeOptions}
-            selectedValue={filters.type ?? 'all'}
-            onSelectOption={(value) => handlePopoverSingleSelect('type', value)}
-            searchValue={filterSearchValues.type}
-            onSearchChange={(value) => handleFilterSearchChange('type', value)}
-            emptyLabel="No types"
-          />
-        );
-      case 'notes':
-        return (
-          <div className={styles.columnFilterSection}>
-            <label htmlFor="transactions-filter-notes" className={styles.modalLabel}>
-              Contains text
-            </label>
-            <input
-              id="transactions-filter-notes"
-              type="text"
-              className={styles.modalControl}
-              value={filters.notes}
-              onChange={(event) => handleSingleFilterChange('notes', event.target.value)}
-              placeholder="e.g. refund"
-            />
-          </div>
-        );
-      default:
-        return null;
-    }
+    map.set('person', {
+      type: 'dropdown-search',
+      props: {
+        id: 'transactions-filter-person',
+        ariaLabel: 'Filter by person',
+        placeholder: 'Search people',
+        options: personOptions,
+        selectedValue: filters.person ?? 'all',
+        onSelectOption: (value) => handlePopoverSingleSelect('person', value),
+        searchValue: filterSearchValues.person,
+        onSearchChange: (value) => handleFilterSearchChange('person', value),
+        emptyLabel: 'No people',
+      },
+    });
+
+    map.set('account', {
+      type: 'dropdown-search',
+      props: {
+        id: 'transactions-filter-account',
+        ariaLabel: 'Filter by account',
+        placeholder: 'Search accounts',
+        options: accountOptions,
+        selectedValue: filters.account ?? 'all',
+        onSelectOption: (value) => handlePopoverSingleSelect('account', value),
+        searchValue: filterSearchValues.account,
+        onSearchChange: (value) => handleFilterSearchChange('account', value),
+        emptyLabel: 'No accounts',
+      },
+    });
+
+    map.set('category', {
+      type: 'dropdown-search',
+      props: {
+        id: 'transactions-filter-category',
+        ariaLabel: 'Filter by category',
+        placeholder: 'Search categories',
+        options: categoryOptions,
+        selectedValue: filters.category ?? 'all',
+        onSelectOption: (value) => handlePopoverSingleSelect('category', value),
+        searchValue: filterSearchValues.category,
+        onSearchChange: (value) => handleFilterSearchChange('category', value),
+        emptyLabel: 'No categories',
+      },
+    });
+
+    map.set('shop', {
+      type: 'dropdown-search',
+      props: {
+        id: 'transactions-filter-shop',
+        ariaLabel: 'Filter by shop',
+        placeholder: 'Search shops',
+        options: shopOptions,
+        selectedValue: filters.shop ?? 'all',
+        onSelectOption: (value) => handlePopoverSingleSelect('shop', value),
+        searchValue: filterSearchValues.shop,
+        onSearchChange: (value) => handleFilterSearchChange('shop', value),
+        emptyLabel: 'No shops',
+      },
+    });
+
+    map.set('debtTags', {
+      type: 'dropdown-multi-search',
+      props: {
+        id: 'transactions-filter-debt-tags',
+        ariaLabel: 'Filter by debt tags',
+        placeholder: 'Search debt tags',
+        options: debtTagOptions,
+        selectedValues: filters.debtTags,
+        onToggleOption: handleToggleDebtTag,
+        searchValue: filterSearchValues.debtTags,
+        onSearchChange: (value) => handleFilterSearchChange('debtTags', value),
+        emptyLabel: 'No tags',
+      },
+    });
+
+    map.set('amount', {
+      type: 'amount',
+      props: {
+        operatorOptions: [{ value: 'all', label: 'Any amount' }, ...AMOUNT_OPERATOR_OPTIONS],
+        operatorValue: filters.amountOperator ?? 'all',
+        onOperatorSelect: (value) => handlePopoverSingleSelect('amountOperator', value),
+        amountValue: filters.amountValue,
+        onAmountChange: handleAmountValueChange,
+        isAmountDisabled: !filters.amountOperator || filters.amountOperator === 'is-null',
+      },
+    });
+
+    map.set('date', {
+      type: 'date',
+      props: {
+        yearValue: filters.year ?? 'all',
+        yearOptions,
+        onYearChange: (value) => handleSingleFilterChange('year', value),
+        monthValue: filters.month ?? 'all',
+        monthOptions: MONTH_OPTIONS,
+        onMonthChange: (value) => handleSingleFilterChange('month', value),
+        onClear: handleClearDate,
+      },
+    });
+
+    map.set('type', {
+      type: 'dropdown-search',
+      props: {
+        id: 'transactions-filter-type',
+        ariaLabel: 'Filter by type',
+        placeholder: 'Search types',
+        options: typeOptions,
+        selectedValue: filters.type ?? 'all',
+        onSelectOption: (value) => handlePopoverSingleSelect('type', value),
+        searchValue: filterSearchValues.type,
+        onSearchChange: (value) => handleFilterSearchChange('type', value),
+        emptyLabel: 'No types',
+      },
+    });
+
+    map.set('notes', {
+      type: 'text',
+      props: {
+        id: 'transactions-filter-notes',
+        label: 'Contains text',
+        value: filters.notes,
+        onChange: (value) => handleSingleFilterChange('notes', value),
+        placeholder: 'e.g. refund',
+      },
+    });
+
+    return map;
   }, [
     accountOptions,
-    activeColumnFilter,
     categoryOptions,
     debtTagOptions,
-    filterSearchValues,
-    filters,
+    filterSearchValues.account,
+    filterSearchValues.category,
+    filterSearchValues.debtTags,
+    filterSearchValues.person,
+    filterSearchValues.shop,
+    filterSearchValues.type,
+    filters.account,
+    filters.amountOperator,
+    filters.amountValue,
+    filters.category,
+    filters.debtTags,
+    filters.notes,
+    filters.person,
+    filters.shop,
+    filters.type,
+    filters.year,
+    filters.month,
     handleAmountValueChange,
     handleClearDate,
     handleFilterSearchChange,
@@ -1061,55 +988,6 @@ export function useTransactionsFilterController({
     typeOptions,
     yearOptions,
   ]);
-
-  const columnFilterPopover = useMemo(() => {
-    if (!activeColumnFilter) {
-      return null;
-    }
-
-    const rect = activeColumnFilter.rect ?? {
-      top: 0,
-      left: 0,
-      bottom: 0,
-      right: 0,
-      width: 0,
-      height: 0,
-    };
-
-    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
-    const popoverWidth = Math.min(360, viewportWidth > 0 ? viewportWidth - 32 : 360);
-    const halfWidth = popoverWidth / 2;
-    const centerX = rect.left + rect.width / 2;
-    const clampedLeft = viewportWidth
-      ? Math.min(Math.max(centerX, 16 + halfWidth), viewportWidth - 16 - halfWidth)
-      : centerX;
-    const top = Math.max(rect.bottom + 8, 16);
-
-    return (
-      <div
-        ref={columnFilterPopoverRef}
-        className={styles.columnFilterPopover}
-        style={{ top: `${top}px`, left: `${clampedLeft}px` }}
-        role="dialog"
-        aria-modal="false"
-        aria-label={`Filter ${activeColumnFilter.label}`}
-        data-filter-key={activeColumnFilter.key}
-      >
-        <div className={styles.columnFilterHeader}>
-          <span className={styles.columnFilterTitle}>{activeColumnFilter.label}</span>
-          <button
-            type="button"
-            className={`${styles.iconButton} ${styles.columnFilterClose}`.trim()}
-            onClick={closeColumnFilterPopover}
-            aria-label={`Close ${activeColumnFilter.label} filter`}
-          >
-            <FiX aria-hidden />
-          </button>
-        </div>
-        <div className={styles.columnFilterBody}>{renderColumnFilterContent()}</div>
-      </div>
-    );
-  }, [activeColumnFilter, closeColumnFilterPopover, renderColumnFilterContent]);
 
   return {
     filters,
@@ -1133,7 +1011,8 @@ export function useTransactionsFilterController({
     overflowBadgeCount,
     columnFilterMap,
     activeFilterKeys,
-    columnFilterPopover,
+    columnFilterContent,
+    activeColumnFilter,
     handleColumnFilterTrigger,
     handleClearAllFilters,
     handleSingleFilterChange,
