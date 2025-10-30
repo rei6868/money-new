@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import AppLayout from '../../components/layout/AppShell/AppShell';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
-import { FiMoreHorizontal, FiPlus, FiSearch, FiSettings, FiX } from 'react-icons/fi';
+import { FiFilter, FiMoreHorizontal, FiPlus, FiSearch, FiSettings, FiX } from 'react-icons/fi';
 
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
@@ -944,6 +944,15 @@ export default function TransactionsHistoryPage() {
 
   const filterActionButtons = (
     <>
+      <button
+        type="button"
+        className={styles.iconPrimaryButton}
+        onClick={handleOpenFilterManager}
+        aria-label="Open filters"
+        title="Open filters"
+      >
+        <FiFilter aria-hidden />
+      </button>
       <button
         type="button"
         className={styles.iconPrimaryButton}
