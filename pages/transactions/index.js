@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import AppLayout from '../../components/layout/AppShell/AppShell';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
-import { FiPlus, FiSearch, FiSettings, FiX } from 'react-icons/fi';
+import { FiFilter, FiPlus, FiSearch, FiSettings, FiX } from 'react-icons/fi';
 
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
@@ -15,6 +15,9 @@ import ColumnsCustomizeModal from '../../components/customize/ColumnsCustomizeMo
 import TxnTabs from '../../components/transactions/TxnTabs';
 import { PageToolbarSearch } from '../../components/layout/page/PageToolbar';
 import { EmptyStateCard, TablePanel } from '../../components/layout/panels';
+import { ModalWrapper } from '../../components/common/ModalWrapper';
+import { DropdownSimple } from '../../components/common/DropdownSimple';
+import { SelectionToolbar } from '../../components/table/SelectionToolbar';
 import {
   TRANSACTION_TYPE_VALUES,
   getTransactionTypeLabel,
@@ -28,6 +31,39 @@ import {
 } from '../../lib/transactions/transferFilters';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
+
+const DEFAULT_FILTERS = Object.freeze({
+  person: 'all',
+  account: 'all',
+  category: 'all',
+  debtTag: 'all',
+  amountRange: 'all',
+  dateRange: 'all',
+});
+
+const AMOUNT_FILTER_OPTIONS = ['positive', 'negative', 'zero', 'under-100k', '100k-1m', 'over-1m'];
+
+const AMOUNT_FILTER_LABELS = {
+  all: 'Any amount',
+  positive: 'Positive amounts',
+  negative: 'Negative amounts',
+  zero: 'Zero amount',
+  'under-100k': 'Under ₫100k',
+  '100k-1m': '₫100k – ₫1M',
+  'over-1m': 'Over ₫1M',
+};
+
+const DATE_FILTER_OPTIONS = ['today', 'last-7', 'last-30', 'this-month', 'last-month', 'this-year'];
+
+const DATE_FILTER_LABELS = {
+  all: 'Any date',
+  today: 'Today',
+  'last-7': 'Last 7 days',
+  'last-30': 'Last 30 days',
+  'this-month': 'This month',
+  'last-month': 'Last month',
+  'this-year': 'This year',
+};
 
 function expandTransferMatches(matches, base, transferLinkInfo) {
   const baseArray = Array.isArray(base) ? base : [];
@@ -125,6 +161,164 @@ function applyTypeMetadata(txn) {
   };
 }
 
+function normalizeFilterString(value) {
+  if (typeof value === 'string') {
+    return value.trim().toLowerCase();
+  }
+  if (value instanceof Date) {
+    return value.toISOString().toLowerCase();
+  }
+  if (value === null || value === undefined) {
+    return '';
+  }
+  return String(value).trim().toLowerCase();
+}
+
+function collectUniqueValues(source, accessor) {
+  if (!Array.isArray(source)) {
+    return [];
+  }
+
+  const values = new Set();
+  source.forEach((item) => {
+    if (!item) {
+      return;
+    }
+    const candidate = accessor(item);
+    if (typeof candidate === 'string') {
+      const normalized = candidate.trim();
+      if (normalized.length > 0) {
+        values.add(normalized);
+      }
+      return;
+    }
+    if (candidate instanceof Date) {
+      values.add(candidate.toISOString());
+    }
+  });
+
+  return Array.from(values).sort((a, b) => a.localeCompare(b));
+}
+
+function resolveTransactionDate(transaction) {
+  if (!transaction) {
+    return null;
+  }
+
+  const candidates = [
+    transaction.date,
+    transaction.transactionDate,
+    transaction.occurredOn,
+    transaction.createdAt,
+    transaction.updatedAt,
+  ];
+
+  for (const value of candidates) {
+    if (!value) {
+      continue;
+    }
+    if (value instanceof Date) {
+      return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    }
+    if (typeof value === 'string') {
+      const normalized = value.includes('T') ? value : `${value}T00:00:00`;
+      const parsed = new Date(normalized);
+      if (!Number.isNaN(parsed.getTime())) {
+        return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+      }
+    }
+  }
+
+  return null;
+}
+
+function matchesAmountRange(amountValue, range) {
+  if (!range || range === 'all') {
+    return true;
+  }
+
+  const numeric = Number(amountValue);
+  if (!Number.isFinite(numeric)) {
+    return false;
+  }
+
+  const absolute = Math.abs(numeric);
+  switch (range) {
+    case 'positive':
+      return numeric > 0;
+    case 'negative':
+      return numeric < 0;
+    case 'zero':
+      return Math.abs(numeric) < 1e-6;
+    case 'under-100k':
+      return absolute > 0 && absolute < 100000;
+    case '100k-1m':
+      return absolute >= 100000 && absolute <= 1000000;
+    case 'over-1m':
+      return absolute > 1000000;
+    default:
+      return true;
+  }
+}
+
+function isWithinDateRange(date, range) {
+  if (!range || range === 'all') {
+    return true;
+  }
+  if (!(date instanceof Date)) {
+    return false;
+  }
+
+  const today = new Date();
+  const base = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  const compareDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  switch (range) {
+    case 'today':
+      return compareDate.getTime() === base.getTime();
+    case 'last-7': {
+      const threshold = new Date(base);
+      threshold.setDate(base.getDate() - 6);
+      return compareDate >= threshold && compareDate <= base;
+    }
+    case 'last-30': {
+      const threshold = new Date(base);
+      threshold.setDate(base.getDate() - 29);
+      return compareDate >= threshold && compareDate <= base;
+    }
+    case 'this-month':
+      return (
+        compareDate.getFullYear() === base.getFullYear() &&
+        compareDate.getMonth() === base.getMonth()
+      );
+    case 'last-month': {
+      const lastMonthDate = new Date(base);
+      lastMonthDate.setMonth(base.getMonth() - 1);
+      return (
+        compareDate.getFullYear() === lastMonthDate.getFullYear() &&
+        compareDate.getMonth() === lastMonthDate.getMonth()
+      );
+    }
+    case 'this-year':
+      return compareDate.getFullYear() === base.getFullYear();
+    default:
+      return true;
+  }
+}
+
+function matchesEntityFilter(value, filterValue) {
+  if (!filterValue || filterValue === 'all') {
+    return true;
+  }
+  const normalizedFilter = normalizeFilterString(filterValue);
+  if (!normalizedFilter) {
+    return true;
+  }
+  const normalizedValue = normalizeFilterString(value);
+  return normalizedFilter === normalizedValue;
+}
+
 export default function TransactionsHistoryPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
   const [transactions, setTransactions] = useState([]);
@@ -149,6 +343,10 @@ export default function TransactionsHistoryPage() {
   const [quickAction, setQuickAction] = useState(null);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState({ ...DEFAULT_FILTERS });
+  const [pendingFilters, setPendingFilters] = useState({ ...DEFAULT_FILTERS });
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [openFilterDropdown, setOpenFilterDropdown] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
   const [availableTypes, setAvailableTypes] = useState([]);
   const [isCompact, setIsCompact] = useState(false);
@@ -470,6 +668,147 @@ export default function TransactionsHistoryPage() {
 
   const selectedLookup = useMemo(() => new Set(selectedIds), [selectedIds]);
 
+  const matchesActiveFilters = useCallback(
+    (txn) => {
+      if (!txn) {
+        return false;
+      }
+
+      if (!matchesEntityFilter(
+        txn.owner ?? txn.person ?? txn.personName ?? txn.person_name ?? txn.customerName,
+        filters.person,
+      )) {
+        return false;
+      }
+
+      if (
+        !matchesEntityFilter(
+          txn.account ?? txn.accountName ?? txn.account_name ?? txn.walletName,
+          filters.account,
+        )
+      ) {
+        return false;
+      }
+
+      if (
+        !matchesEntityFilter(
+          txn.category ?? txn.categoryName ?? txn.category_name ?? txn.typeLabel,
+          filters.category,
+        )
+      ) {
+        return false;
+      }
+
+      if (
+        !matchesEntityFilter(
+          txn.debtTag ?? txn.debtTagName ?? txn.debt_tag ?? txn.debtLabel,
+          filters.debtTag,
+        )
+      ) {
+        return false;
+      }
+
+      if (!matchesAmountRange(txn.amount ?? txn.total ?? txn.value, filters.amountRange)) {
+        return false;
+      }
+
+      const dateValue = resolveTransactionDate(txn);
+      if (!isWithinDateRange(dateValue, filters.dateRange)) {
+        return false;
+      }
+
+      return true;
+    },
+    [filters],
+  );
+
+  const personOptions = useMemo(
+    () =>
+      collectUniqueValues(transactions, (txn) =>
+        txn?.owner ?? txn?.person ?? txn?.personName ?? txn?.person_name ?? txn?.customerName ?? '',
+      ),
+    [transactions],
+  );
+
+  const accountOptions = useMemo(
+    () =>
+      collectUniqueValues(transactions, (txn) =>
+        txn?.account ?? txn?.accountName ?? txn?.account_name ?? txn?.walletName ?? '',
+      ),
+    [transactions],
+  );
+
+  const categoryOptions = useMemo(
+    () =>
+      collectUniqueValues(transactions, (txn) =>
+        txn?.category ?? txn?.categoryName ?? txn?.category_name ?? txn?.typeLabel ?? '',
+      ),
+    [transactions],
+  );
+
+  const debtTagOptions = useMemo(
+    () =>
+      collectUniqueValues(transactions, (txn) =>
+        txn?.debtTag ?? txn?.debtTagName ?? txn?.debt_tag ?? txn?.debtLabel ?? '',
+      ),
+    [transactions],
+  );
+
+  const activeFilterCount = useMemo(
+    () =>
+      Object.values(filters).reduce(
+        (count, value) => (value && value !== 'all' ? count + 1 : count),
+        0,
+      ),
+    [filters],
+  );
+
+  const pendingFilterCount = useMemo(
+    () =>
+      Object.values(pendingFilters).reduce(
+        (count, value) => (value && value !== 'all' ? count + 1 : count),
+        0,
+      ),
+    [pendingFilters],
+  );
+
+  const handleOpenFilterModal = useCallback(() => {
+    setPendingFilters({ ...filters });
+    setOpenFilterDropdown(null);
+    setIsFilterModalOpen(true);
+  }, [filters]);
+
+  const handleCloseFilterModal = useCallback(() => {
+    setIsFilterModalOpen(false);
+    setOpenFilterDropdown(null);
+    setPendingFilters({ ...filters });
+  }, [filters]);
+
+  const handleApplyFilterModal = useCallback(() => {
+    const next = { ...pendingFilters };
+    setFilters(next);
+    setPendingFilters(next);
+    setIsFilterModalOpen(false);
+    setOpenFilterDropdown(null);
+  }, [pendingFilters]);
+
+  const handleClearAllFilters = useCallback(() => {
+    const reset = { ...DEFAULT_FILTERS };
+    setFilters(reset);
+    setPendingFilters(reset);
+    setOpenFilterDropdown(null);
+    setIsFilterModalOpen(false);
+  }, []);
+
+  const handleDropdownToggle = useCallback((id) => {
+    setOpenFilterDropdown((current) => (current === id ? null : id));
+  }, []);
+
+  const handleFilterOptionSelect = useCallback((field, value) => {
+    setPendingFilters((prev) => ({ ...prev, [field]: value }));
+    setOpenFilterDropdown(null);
+  }, []);
+
   const filteredTransactions = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -479,18 +818,19 @@ export default function TransactionsHistoryPage() {
       transferLinkInfo.linkedIds,
     );
     const matches = base.filter(predicate);
-
-    let expandedMatches = matches;
+    const scoped = matches.filter(matchesActiveFilters);
 
     if (activeTab === TRANSACTION_TYPE_VALUES.TRANSFER) {
-      expandedMatches = expandTransferMatches(matches, base, transferLinkInfo);
+      return expandTransferMatches(scoped, base, transferLinkInfo).filter(matchesActiveFilters);
     }
-    return expandedMatches;
+
+    return scoped;
   }, [
     transactions,
     searchQuery,
     activeTab,
     transferLinkInfo,
+    matchesActiveFilters,
   ]);
 
   // Sync selected IDs with available transactions (remove IDs that no longer exist)
@@ -527,6 +867,27 @@ export default function TransactionsHistoryPage() {
     setShowSelectedOnly(Boolean(next));
   }, []);
 
+  const selectedCount = selectedIds.length;
+
+  const handleBulkDelete = useCallback((ids) => {
+    console.info('Transactions bulk delete placeholder', ids);
+  }, []);
+
+  const handleDeselectAll = useCallback(() => {
+    handleSelectAll(false);
+  }, [handleSelectAll]);
+
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedIds.length === 0) {
+      return;
+    }
+    if (typeof handleBulkDelete === 'function') {
+      handleBulkDelete(selectedIds);
+      return;
+    }
+    setAdvancedPanel({ mode: 'delete-many', ids: selectedIds });
+  }, [handleBulkDelete, selectedIds]);
+
   const tabMetrics = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -535,7 +896,7 @@ export default function TransactionsHistoryPage() {
       false,
       transferLinkInfo.linkedIds,
     );
-    const baseMatches = base.filter(predicate);
+    const baseMatches = base.filter(predicate).filter(matchesActiveFilters);
     const counts = new Map();
 
     baseMatches.forEach((txn) => {
@@ -547,7 +908,9 @@ export default function TransactionsHistoryPage() {
     });
 
     const transferPairs = new Set();
-    const scopedTransfers = expandTransferMatches(baseMatches, base, transferLinkInfo);
+    const scopedTransfers = expandTransferMatches(baseMatches, base, transferLinkInfo).filter(
+      matchesActiveFilters,
+    );
 
     scopedTransfers.forEach((txn) => {
       const txnId = extractString(txn.id);
@@ -587,7 +950,7 @@ export default function TransactionsHistoryPage() {
     });
 
     return tabs;
-  }, [searchQuery, transactions, resolvedTypeList, transferLinkInfo]);
+  }, [searchQuery, transactions, resolvedTypeList, transferLinkInfo, matchesActiveFilters]);
 
   useEffect(() => {
     if (selectedIds.length === 0) {
@@ -784,6 +1147,7 @@ export default function TransactionsHistoryPage() {
     setActiveTab(tabId);
   }, []);
 
+
   const customizeColumns = useMemo(() => {
     const sorted = columnState.slice().sort((a, b) => a.order - b.order);
     return sorted.map((column) => {
@@ -849,6 +1213,46 @@ export default function TransactionsHistoryPage() {
     </>
   );
 
+  const filterButtonClassName = [
+    styles.filterButton,
+    activeFilterCount > 0 ? styles.filterButtonActive : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const filterTriggerButton = (
+    <button
+      type="button"
+      className={filterButtonClassName}
+      onClick={handleOpenFilterModal}
+      aria-haspopup="dialog"
+      aria-expanded={isFilterModalOpen ? 'true' : 'false'}
+      aria-controls="transactions-filter-modal"
+      title="Filter transactions"
+    >
+      <FiFilter aria-hidden />
+      <span>Filters</span>
+      {activeFilterCount > 0 ? (
+        <span className={styles.countBadge} aria-label={`${activeFilterCount} filters active`}>
+          {activeFilterCount}
+        </span>
+      ) : null}
+    </button>
+  );
+
+  const selectionToolbarInline = selectedCount > 0 ? (
+    <div className={styles.selectionInlineToolbar}>
+      <SelectionToolbar
+        selectedCount={selectedCount}
+        onDelete={handleDeleteSelected}
+        onDeselectAll={handleDeselectAll}
+        onToggleShowSelected={() => handleToggleShowSelected(!showSelectedOnly)}
+        isShowingSelectedOnly={showSelectedOnly}
+        className={styles.selectionInlineDock}
+      />
+    </div>
+  ) : null;
+
   const tabControls = (
     <TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />
   );
@@ -874,6 +1278,146 @@ export default function TransactionsHistoryPage() {
       />
     );
   };
+
+  const filterModal = (
+    <ModalWrapper
+      isOpen={isFilterModalOpen}
+      onBackdropClick={handleCloseFilterModal}
+      wrapperClassName={styles.modalWrapper}
+      panelClassName={styles.modalContent}
+      backdropClassName={styles.modalBackdrop}
+    >
+      <div id="transactions-filter-modal" className={styles.modalInner}>
+        <div className={styles.modalHeader}>
+          <h2 className={styles.modalTitle}>Filter transactions</h2>
+          <button
+            type="button"
+            className={`${styles.iconButton} ${styles.toolbarIconButton}`.trim()}
+            onClick={handleCloseFilterModal}
+            aria-label="Close filters"
+          >
+            <FiX aria-hidden />
+          </button>
+        </div>
+        <div className={styles.modalBody} role="group" aria-label="Filter transactions">
+          <p className={styles.modalDescription}>
+            Narrow down the history by people, accounts, categories, debt tags, amount ranges, and
+            date periods.
+          </p>
+          <div className={styles.modalField}>
+            <DropdownSimple
+              id="transactions-filter-person"
+              label="People"
+              isOpen={openFilterDropdown === 'person'}
+              onToggle={handleDropdownToggle}
+              options={personOptions}
+              value={pendingFilters.person}
+              onSelect={(value) => handleFilterOptionSelect('person', value)}
+              placeholder="Any person"
+              optionFormatter={(value) =>
+                value === 'all' ? 'Any person' : value
+              }
+            />
+          </div>
+          <div className={styles.modalField}>
+            <DropdownSimple
+              id="transactions-filter-account"
+              label="Accounts"
+              isOpen={openFilterDropdown === 'account'}
+              onToggle={handleDropdownToggle}
+              options={accountOptions}
+              value={pendingFilters.account}
+              onSelect={(value) => handleFilterOptionSelect('account', value)}
+              placeholder="Any account"
+              optionFormatter={(value) =>
+                value === 'all' ? 'Any account' : value
+              }
+            />
+          </div>
+          <div className={styles.modalField}>
+            <DropdownSimple
+              id="transactions-filter-category"
+              label="Categories"
+              isOpen={openFilterDropdown === 'category'}
+              onToggle={handleDropdownToggle}
+              options={categoryOptions}
+              value={pendingFilters.category}
+              onSelect={(value) => handleFilterOptionSelect('category', value)}
+              placeholder="Any category"
+              optionFormatter={(value) =>
+                value === 'all' ? 'Any category' : value
+              }
+            />
+          </div>
+          <div className={styles.modalField}>
+            <DropdownSimple
+              id="transactions-filter-debt-tag"
+              label="Debt tags"
+              isOpen={openFilterDropdown === 'debtTag'}
+              onToggle={handleDropdownToggle}
+              options={debtTagOptions}
+              value={pendingFilters.debtTag}
+              onSelect={(value) => handleFilterOptionSelect('debtTag', value)}
+              placeholder="Any debt tag"
+              optionFormatter={(value) =>
+                value === 'all' ? 'Any debt tag' : value
+              }
+            />
+          </div>
+          <div className={styles.modalField}>
+            <DropdownSimple
+              id="transactions-filter-amount"
+              label="Amount"
+              isOpen={openFilterDropdown === 'amount'}
+              onToggle={handleDropdownToggle}
+              options={AMOUNT_FILTER_OPTIONS}
+              value={pendingFilters.amountRange}
+              onSelect={(value) => handleFilterOptionSelect('amountRange', value)}
+              placeholder={AMOUNT_FILTER_LABELS.all}
+              optionFormatter={(value) => AMOUNT_FILTER_LABELS[value] ?? value}
+            />
+          </div>
+          <div className={styles.modalField}>
+            <DropdownSimple
+              id="transactions-filter-date"
+              label="Date"
+              isOpen={openFilterDropdown === 'date'}
+              onToggle={handleDropdownToggle}
+              options={DATE_FILTER_OPTIONS}
+              value={pendingFilters.dateRange}
+              onSelect={(value) => handleFilterOptionSelect('dateRange', value)}
+              placeholder={DATE_FILTER_LABELS.all}
+              optionFormatter={(value) => DATE_FILTER_LABELS[value] ?? value}
+            />
+          </div>
+        </div>
+        <div className={styles.modalFooter}>
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            onClick={handleCloseFilterModal}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={`${styles.secondaryButton} ${styles.clearFilterButton}`.trim()}
+            onClick={handleClearAllFilters}
+            disabled={pendingFilterCount === 0}
+          >
+            Clear all
+          </button>
+          <button
+            type="button"
+            className={`${styles.primaryButton} ${styles.modalApply}`.trim()}
+            onClick={handleApplyFilterModal}
+          >
+            Apply filters
+          </button>
+        </div>
+      </div>
+    </ModalWrapper>
+  );
 
   const isAddModalOpen = addModalType !== null;
 
@@ -908,6 +1452,7 @@ export default function TransactionsHistoryPage() {
       title="Transactions History"
       subtitle="Monitor every inflow, cashback, debt movement, and adjustment inside Money Flow."
     >
+      {filterModal}
       <div className={pageShellStyles.screen}>
         <div className={styles.controlsRegion}>
           <div
@@ -916,7 +1461,11 @@ export default function TransactionsHistoryPage() {
             data-search-open={isSearchOpen ? 'true' : 'false'}
           >
             <div className={styles.actionsRow}>
-              <div className={styles.actionButtons}>{filterActionButtons}</div>
+              <div className={styles.leadingActions}>
+                <div className={styles.actionButtons}>{filterActionButtons}</div>
+                {filterTriggerButton}
+              </div>
+              {selectionToolbarInline}
               {!isCompact && (
                 <div className={styles.actionsTools}>
                   <div className={styles.searchInline} role="search">
@@ -971,9 +1520,7 @@ export default function TransactionsHistoryPage() {
             onSelectAll={handleSelectAll}
             selectionSummary={selectionSummary}
             onOpenAdvanced={handleAdvanced}
-            onBulkDelete={(ids) => {
-              console.info('Transactions bulk delete placeholder', ids);
-            }}
+            onBulkDelete={handleBulkDelete}
             columnDefinitions={columnDefinitions}
             allColumns={orderedColumns}
             visibleColumns={visibleColumns}
@@ -1003,6 +1550,7 @@ export default function TransactionsHistoryPage() {
             isShowingSelectedOnly={showSelectedOnly}
             onToggleShowSelected={handleToggleShowSelected}
             isFetching={isFetching}
+            showSelectionToolbar={false}
           />
         )}
       </div>

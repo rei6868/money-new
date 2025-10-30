@@ -126,6 +126,7 @@ const TableBaseInner = (
     rowIdAccessor,
     renderRowActionsCell,
     onEditRow,
+    showSelectionToolbar = true,
   },
   forwardedRef,
 ) => {
@@ -509,7 +510,7 @@ const TableBaseInner = (
           </div>
         ) : null}
       </div>
-      {hasActiveSelection ? (
+      {hasActiveSelection && showSelectionToolbar ? (
         <MiniToolbar
           selectedCount={selectionCount}
           onDelete={handleBulkDelete}
