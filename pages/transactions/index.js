@@ -189,11 +189,8 @@ export default function TransactionsHistoryPage() {
     visibleFilterDescriptors,
     hasHiddenFilters,
     overflowBadgeCount,
-    columnFilterMap,
-    activeFilterKeys,
     columnFilterContent,
     activeColumnFilter,
-    handleColumnFilterTrigger,
     handleClearAllFilters,
     handleSingleFilterChange,
     handleToggleDebtTag,
@@ -1413,9 +1410,6 @@ export default function TransactionsHistoryPage() {
             onToggleShowSelected={handleToggleShowSelected}
             isFetching={isFetching}
             showSelectionToolbar={false}
-            columnFilters={columnFilterMap}
-            onColumnFilter={handleColumnFilterTrigger}
-            activeFilterKeys={activeFilterKeys}
           />
         )}
       </div>
