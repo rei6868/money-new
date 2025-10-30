@@ -2,9 +2,12 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   FiChevronLeft,
   FiChevronRight,
+  FiHash,
+  FiList,
   FiMinus,
   FiPlus,
   FiRefreshCw,
+  FiType,
 } from 'react-icons/fi';
 
 import { AccountColumnDefinition, AccountRow } from './accountColumns';
@@ -61,6 +64,7 @@ export type TableAccountsProps = {
   isShowingSelectedOnly?: boolean;
   onToggleShowSelected?: (next: boolean) => void;
   onEditAccount?: (account: AccountRow) => void;
+  showSelectionToolbar?: boolean;
 };
 
 type FontScaleState = {
@@ -94,11 +98,7 @@ function usePaginationRenderer(
             selectedCount={props.selectedCount}
             className={styles.selectionCount}
           />
-          <div
-            className={styles.paginationControls}
-            role="group"
-            aria-label="Accounts table pagination"
-          >
+          <div className={styles.paginationControls} role="group" aria-label="Accounts table pagination">
             <button
               type="button"
               className={styles.paginationButton}
@@ -107,7 +107,6 @@ function usePaginationRenderer(
               aria-label="Previous page"
             >
               <FiChevronLeft aria-hidden />
-              <span className={styles.paginationButtonText}>Prev</span>
             </button>
             <button
               type="button"
@@ -117,15 +116,18 @@ function usePaginationRenderer(
               aria-label="Decrease table font size"
             >
               <FiMinus aria-hidden />
-              <span className={styles.fontScaleButtonText}>-</span>
             </button>
             <div className={styles.pageSizeGroup}>
-              <label htmlFor="accounts-page-size">Rows per page</label>
+              <FiList aria-hidden className={styles.pageSizeIcon} />
+              <label className={styles.srOnly} htmlFor="accounts-page-size">
+                Rows per page
+              </label>
               <select
                 id="accounts-page-size"
                 className={styles.pageSizeSelect}
                 value={pagination.pageSize}
                 onChange={(event) => pagination.onPageSizeChange(Number(event.target.value))}
+                aria-label="Rows per page"
               >
                 {pagination.pageSizeOptions.map((option) => (
                   <option key={option} value={option}>
@@ -142,7 +144,6 @@ function usePaginationRenderer(
               aria-label="Reset table font size"
             >
               <FiRefreshCw aria-hidden />
-              <span className={styles.fontScaleButtonText}>Reset</span>
             </button>
             <button
               type="button"
@@ -152,7 +153,6 @@ function usePaginationRenderer(
               aria-label="Increase table font size"
             >
               <FiPlus aria-hidden />
-              <span className={styles.fontScaleButtonText}>+</span>
             </button>
             <button
               type="button"
@@ -162,19 +162,29 @@ function usePaginationRenderer(
               aria-label="Next page"
             >
               <FiChevronRight aria-hidden />
-              <span className={styles.paginationButtonText}>Next</span>
             </button>
           </div>
           <div className={styles.paginationMeta}>
-            <div className={styles.fontScaleMeta}>
-              <span className={styles.fontScaleLabel}>Font size</span>
-              <span className={styles.fontScaleValue} aria-live="polite">
-                {formattedScale}
+            <div
+              className={styles.paginationMetaItem}
+              aria-label={`Font size ${formattedScale}`}
+            >
+              <FiType aria-hidden />
+              <span aria-hidden>{formattedScale}</span>
+              <span className={styles.srOnly}>Font size {formattedScale}</span>
+            </div>
+            <div
+              className={styles.paginationMetaItem}
+              aria-label={`Page ${pagination.currentPage} of ${pagination.totalPages}`}
+            >
+              <FiHash aria-hidden />
+              <span aria-hidden>
+                {pagination.currentPage}&nbsp;/&nbsp;{pagination.totalPages}
+              </span>
+              <span className={styles.srOnly}>
+                Page {pagination.currentPage} of {pagination.totalPages}
               </span>
             </div>
-            <span className={styles.paginationStatus}>
-              Page {pagination.currentPage} of {pagination.totalPages}
-            </span>
           </div>
         </>
       ),
@@ -205,6 +215,7 @@ export function TableAccounts({
   isShowingSelectedOnly = false,
   onToggleShowSelected,
   onEditAccount,
+  showSelectionToolbar = true,
 }: TableAccountsProps) {
   const [fontScale, setFontScale] = useState(FONT_SCALE_DEFAULT);
 
@@ -250,6 +261,7 @@ export function TableAccounts({
       onBulkDelete={(ids: string[]) => {
         console.info('Accounts bulk delete placeholder', ids);
       }}
+      showSelectionToolbar={showSelectionToolbar}
     />
   );
 }

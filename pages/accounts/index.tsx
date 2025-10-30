@@ -7,7 +7,19 @@ import TableAccounts from '../../components/accounts/TableAccounts';
 import AccountEditModal, { AccountEditPayload } from '../../components/accounts/AccountEditModal';
 import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGlobal';
 import QuickAddModal from '../../components/common/QuickAddModal';
-import { FiEye, FiPlus, FiRefreshCcw, FiSettings } from 'react-icons/fi';
+import {
+  FiEye,
+  FiFilter,
+  FiGrid,
+  FiList,
+  FiPlus,
+  FiRefreshCcw,
+  FiSearch,
+  FiSettings,
+  FiTrash2,
+  FiX,
+  FiXCircle,
+} from 'react-icons/fi';
 import ColumnsCustomizeModal, {
   ColumnConfig as CustomizeColumnConfig,
 } from '../../components/customize/ColumnsCustomizeModal';
@@ -23,7 +35,7 @@ import { useAccounts } from '../../hooks/useAccounts';
 import { getAccountTypeLabel } from '../../lib/accounts/accountTypes';
 import styles from '../../styles/accounts.module.css';
 import pageShellStyles from '../../styles/layout/page-shell.module.css';
-import PageToolbar, { PageToolbarSearch } from '../../components/layout/page/PageToolbar';
+import { PageToolbarSearch } from '../../components/layout/page/PageToolbar';
 import { EmptyStateCard, TablePanel } from '../../components/layout/panels';
 
 type ColumnState = ReturnType<typeof createDefaultColumnState>[number] & {
@@ -179,6 +191,27 @@ function resolveSortedAccounts(
   });
 }
 
+function useBreakpoint(query: string) {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const media = window.matchMedia(query);
+    const updateMatch = () => setMatches(media.matches);
+    updateMatch();
+    media.addEventListener('change', updateMatch);
+
+    return () => {
+      media.removeEventListener('change', updateMatch);
+    };
+  }, [query]);
+
+  return matches;
+}
+
 export default function AccountsPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
   const { accounts: accountsData, refetch: refetchAccounts, createAccount } = useAccounts();
@@ -221,10 +254,29 @@ export default function AccountsPage() {
   const [quickAction, setQuickAction] = useState<string | null>(null);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<NormalizedAccount | null>(null);
   const [accountTypes, setAccountTypes] = useState<string[]>([]);
 
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const isCompactLayout = useBreakpoint('(max-width: 720px)');
+  const previousLayoutRef = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (isCompactLayout && isMobileSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isCompactLayout, isMobileSearchOpen]);
+
+  useEffect(() => {
+    if (!isCompactLayout) {
+      setIsMobileSearchOpen(false);
+    } else if (previousLayoutRef.current === false) {
+      setIsMobileSearchOpen(false);
+    }
+    previousLayoutRef.current = isCompactLayout;
+  }, [isCompactLayout]);
 
   // Persist active type tab to localStorage
   useEffect(() => {
@@ -515,6 +567,18 @@ export default function AccountsPage() {
     setShowSelectedOnly(next);
   }, []);
 
+  const handleToggleShowSelectedClick = useCallback(() => {
+    handleToggleShowSelected(!showSelectedOnly);
+  }, [handleToggleShowSelected, showSelectedOnly]);
+
+  const handleClearSelection = useCallback(() => {
+    handleSelectAll(false);
+  }, [handleSelectAll]);
+
+  const handleDeleteSelected = useCallback(() => {
+    console.info('Accounts bulk delete placeholder', selectedIds);
+  }, [selectedIds]);
+
   const handleColumnVisibilityChange = useCallback((columnId: string, visible: boolean) => {
     setColumnState((prev) =>
       prev.map((column) =>
@@ -569,6 +633,19 @@ export default function AccountsPage() {
     }),
     [currentPage, pageSize, totalPages],
   );
+
+  const handleToggleSearch = useCallback(() => {
+    setIsMobileSearchOpen((prev) => {
+      if (prev && searchInputRef.current) {
+        searchInputRef.current.blur();
+      }
+      return !prev;
+    });
+  }, []);
+
+  const handleCloseSearch = useCallback(() => {
+    setIsMobileSearchOpen(false);
+  }, []);
 
   const handleRefresh = useCallback(() => {
     void refetchAccounts();
@@ -778,70 +855,152 @@ export default function AccountsPage() {
 
   const isAddModalOpen = addModalType !== null;
   const isEditModalOpen = editingAccount !== null;
+  const searchFieldId = 'accounts-search-input';
+  const selectionCount = selectionSummary.count ?? 0;
+  const isSearchOpen = isCompactLayout ? isMobileSearchOpen : true;
+  const toolbarLayout = isCompactLayout ? 'stacked' : 'inline';
+
+  const inlineSelectionToolbar =
+    !isCompactLayout && selectionCount > 0 ? (
+      <div
+        className={styles.toolbarSelectionActions}
+        role="group"
+        aria-label="Selected account actions"
+      >
+        <span className={styles.toolbarSelectionCount}>{selectionCount} selected</span>
+        <div className={styles.toolbarSelectionButtons}>
+          <button
+            type="button"
+            className={styles.toolbarSelectionButton}
+            onClick={handleToggleShowSelectedClick}
+            data-active={showSelectedOnly ? 'true' : undefined}
+            aria-pressed={showSelectedOnly}
+            title={showSelectedOnly ? 'Show all rows' : 'Show selected rows'}
+          >
+            <span className={styles.toolbarSelectionButtonIcon} aria-hidden>
+              <FiFilter />
+            </span>
+            <span className={styles.toolbarSelectionButtonLabel}>Show Selected</span>
+          </button>
+          <button
+            type="button"
+            className={styles.toolbarSelectionButton}
+            onClick={handleClearSelection}
+            title="Deselect all rows"
+          >
+            <span className={styles.toolbarSelectionButtonIcon} aria-hidden>
+              <FiXCircle />
+            </span>
+            <span className={styles.toolbarSelectionButtonLabel}>Deselected</span>
+          </button>
+          <button
+            type="button"
+            className={`${styles.toolbarSelectionButton} ${styles.toolbarSelectionButtonDanger}`.trim()}
+            onClick={handleDeleteSelected}
+            title="Delete selected accounts"
+          >
+            <span className={styles.toolbarSelectionButtonIcon} aria-hidden>
+              <FiTrash2 />
+            </span>
+            <span className={styles.toolbarSelectionButtonLabel}>Delete</span>
+          </button>
+        </div>
+      </div>
+    ) : null;
 
   return (
     <AppLayout title="Accounts" subtitle="">
       <div className={pageShellStyles.pageShell}>
         <div className={pageShellStyles.pageContent}>
           <div className={styles.toolbarSection} role="toolbar" aria-label="Accounts controls">
-            <div className={styles.toolbarPrimaryRow}>
-              <div className={styles.toolbarSearchArea}>
-                <PageToolbar
-                  className={styles.toolbarSearch}
-                  search={(
+            <div className={styles.toolbarRow} data-layout={toolbarLayout}>
+              <div className={styles.toolbarQuickActions} role="group" aria-label="Account quick actions">
+                {actionButtons}
+              </div>
+              <div className={styles.toolbarViewToggle}>
+                <div className={styles.viewToggleGroup} role="tablist" aria-label="Accounts view mode">
+                  <button
+                    type="button"
+                    className={styles.viewToggleButton}
+                    data-active={activeTab === 'table' ? 'true' : 'false'}
+                    onClick={() => setActiveTab('table')}
+                    role="tab"
+                    aria-label="Show table view"
+                    aria-selected={activeTab === 'table'}
+                  >
+                    <FiList aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.viewToggleButton}
+                    data-active={activeTab === 'cards' ? 'true' : 'false'}
+                    onClick={() => setActiveTab('cards')}
+                    role="tab"
+                    aria-label="Show cards view"
+                    aria-selected={activeTab === 'cards'}
+                  >
+                    <FiGrid aria-hidden />
+                  </button>
+                </div>
+              </div>
+              {isCompactLayout ? (
+                <div
+                  className={styles.toolbarSearchArea}
+                  data-open={isSearchOpen ? 'true' : 'false'}
+                  role="search"
+                >
+                  <button
+                    type="button"
+                    className={styles.toolbarSearchToggle}
+                    onClick={handleToggleSearch}
+                    aria-label={isSearchOpen ? 'Close search' : 'Open search'}
+                    aria-expanded={isSearchOpen}
+                    aria-controls={searchFieldId}
+                    data-active={isSearchOpen ? 'true' : 'false'}
+                  >
+                    {isSearchOpen ? <FiX aria-hidden /> : <FiSearch aria-hidden />}
+                  </button>
+                  <div className={styles.toolbarSearchInput} data-open={isSearchOpen ? 'true' : 'false'}>
                     <PageToolbarSearch
+                      className={styles.toolbarSearch}
                       value={searchQuery}
                       onChange={handleSearchChange}
                       onClear={() => handleSearchChange('')}
                       placeholder="Search accounts..."
                       ariaLabel="Search accounts"
+                      inputRef={searchInputRef}
+                      id={searchFieldId}
+                      variant="mobile"
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') {
+                          handleCloseSearch();
+                        }
+                      }}
                     />
-                  )}
-                />
-              </div>
-              <div className={styles.toolbarViewToggle}>
-                <div className={styles.viewToggleGroup} role="tablist" aria-label="Accounts view mode">
-                  <div className={styles.viewTabs}>
-                    <span
-                      className={styles.tabIndicator}
-                      data-position={activeTab === 'cards' ? 'cards' : 'table'}
-                      aria-hidden
-                    />
-                    <button
-                      type="button"
-                      className={styles.tabButton}
-                      data-active={activeTab === 'table' ? 'true' : 'false'}
-                      onClick={() => setActiveTab('table')}
-                      role="tab"
-                      aria-selected={activeTab === 'table'}
-                    >
-                      Table
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.tabButton}
-                      data-active={activeTab === 'cards' ? 'true' : 'false'}
-                      onClick={() => setActiveTab('cards')}
-                      role="tab"
-                      aria-selected={activeTab === 'cards'}
-                    >
-                      Cards
-                    </button>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <div className={styles.toolbarTabsRow}>
-              <div className={styles.accountTypeTabsWrapper}>
+              ) : (
+                <div className={styles.toolbarSearchDesktop} role="search">
+                  <PageToolbarSearch
+                    className={styles.toolbarSearch}
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    onClear={() => handleSearchChange('')}
+                    placeholder="Search accounts..."
+                    ariaLabel="Search accounts"
+                    inputRef={searchInputRef}
+                    id={searchFieldId}
+                    variant="desktop"
+                  />
+                </div>
+              )}
+              {inlineSelectionToolbar}
+              <div className={styles.toolbarTabs}>
                 <AccountTypeTabs
                   activeTab={activeTypeTab}
                   onTabChange={setActiveTypeTab}
                   tabs={accountTypeTabMetrics}
                 />
-              </div>
-              <div className={styles.toolbarQuickActions} role="group" aria-label="Account quick actions">
-                {actionButtons}
               </div>
             </div>
           </div>
@@ -886,6 +1045,7 @@ export default function AccountsPage() {
                 isShowingSelectedOnly={showSelectedOnly}
                 onToggleShowSelected={handleToggleShowSelected}
                 onEditAccount={handleEditAccount}
+                showSelectionToolbar={isCompactLayout}
               />
             </TablePanel>
           )}
