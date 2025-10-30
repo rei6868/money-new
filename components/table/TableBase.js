@@ -126,6 +126,10 @@ const TableBaseInner = (
     rowIdAccessor,
     renderRowActionsCell,
     onEditRow,
+    showSelectionToolbar = true,
+    columnFilters = new Map(),
+    onColumnFilter,
+    activeFilterKeys = new Set(),
   },
   forwardedRef,
 ) => {
@@ -401,12 +405,15 @@ const TableBaseInner = (
               onColumnVisibilityChange={onColumnVisibilityChange}
               visibleColumnIds={activeVisibleColumnIds}
               sortState={sortState}
-              onSortChange={onSortChange}
-              isFetching={isFetching}
-              transactions={transactions}
-              pinnedLeftOffsets={pinnedLeftOffsets}
-              pinnedRightOffsets={pinnedRightOffsets}
-            />
+            onSortChange={onSortChange}
+            isFetching={isFetching}
+            transactions={transactions}
+            pinnedLeftOffsets={pinnedLeftOffsets}
+            pinnedRightOffsets={pinnedRightOffsets}
+            columnFilters={columnFilters}
+            onFilterClick={onColumnFilter}
+            activeFilterKeys={activeFilterKeys}
+          />
             <TableBaseBody
               transactions={transactions}
               columns={columnDescriptors}
@@ -509,7 +516,7 @@ const TableBaseInner = (
           </div>
         ) : null}
       </div>
-      {hasActiveSelection ? (
+      {hasActiveSelection && showSelectionToolbar ? (
         <MiniToolbar
           selectedCount={selectionCount}
           onDelete={handleBulkDelete}

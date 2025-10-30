@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import AppLayout from '../../components/layout/AppShell/AppShell';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
-import { FiPlus, FiSearch, FiSettings, FiX } from 'react-icons/fi';
+import { FiMoreHorizontal, FiPlus, FiSearch, FiSettings, FiX } from 'react-icons/fi';
 
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
@@ -15,6 +15,16 @@ import ColumnsCustomizeModal from '../../components/customize/ColumnsCustomizeMo
 import TxnTabs from '../../components/transactions/TxnTabs';
 import { PageToolbarSearch } from '../../components/layout/page/PageToolbar';
 import { EmptyStateCard, TablePanel } from '../../components/layout/panels';
+import { ModalWrapper } from '../../components/common/ModalWrapper';
+import { DropdownSimple } from '../../components/common/DropdownSimple';
+import { DropdownWithSearch, DropdownWithSearchContent } from '../../components/common/DropdownWithSearch';
+import { SelectionToolbar } from '../../components/table/SelectionToolbar';
+import {
+  AMOUNT_OPERATOR_OPTIONS,
+  MONTH_LABEL_LOOKUP,
+  MONTH_OPTIONS,
+  useTransactionsFilterController,
+} from '../../components/transactions/filters/useTransactionsFilterController';
 import {
   TRANSACTION_TYPE_VALUES,
   getTransactionTypeLabel,
@@ -28,7 +38,6 @@ import {
 } from '../../lib/transactions/transferFilters';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
-
 function expandTransferMatches(matches, base, transferLinkInfo) {
   const baseArray = Array.isArray(base) ? base : [];
 
@@ -125,6 +134,7 @@ function applyTypeMetadata(txn) {
   };
 }
 
+
 export default function TransactionsHistoryPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
   const [transactions, setTransactions] = useState([]);
@@ -149,6 +159,7 @@ export default function TransactionsHistoryPage() {
   const [quickAction, setQuickAction] = useState(null);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isFilterManagerOpen, setIsFilterManagerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [availableTypes, setAvailableTypes] = useState([]);
   const [isCompact, setIsCompact] = useState(false);
@@ -157,6 +168,43 @@ export default function TransactionsHistoryPage() {
   const savedScrollLeftRef = useRef(0);
   const searchInputRef = useRef(null);
   const transferLinkInfo = useMemo(() => buildTransferLinkInfo(transactions), [transactions]);
+
+  const {
+    filters,
+    matchesActiveFilters,
+    personOptions,
+    accountOptions,
+    categoryOptions,
+    shopOptions,
+    debtTagOptions,
+    yearOptions,
+    typeOptions,
+    filterSearchValues,
+    handleFilterSearchChange,
+    resetFilterSearchValues,
+    openFilterDropdown,
+    setOpenFilterDropdown,
+    activeFilterDescriptors,
+    visibleFilterDescriptors,
+    hasHiddenFilters,
+    overflowBadgeCount,
+    columnFilterMap,
+    activeFilterKeys,
+    columnFilterPopover,
+    handleColumnFilterTrigger,
+    handleClearAllFilters,
+    handleSingleFilterChange,
+    handleToggleDebtTag,
+    handleAmountOperatorSelect,
+    handleAmountValueChange,
+    handleClearDate,
+    amountOperatorLabelLookup,
+    closeColumnFilterPopover,
+  } = useTransactionsFilterController({
+    transactions,
+    resolvedTypeList: availableTypes.length > 0 ? availableTypes : undefined,
+    onRequestTabChange: setActiveTab,
+  });
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -470,6 +518,33 @@ export default function TransactionsHistoryPage() {
 
   const selectedLookup = useMemo(() => new Set(selectedIds), [selectedIds]);
 
+  const activeFilterCount = activeFilterDescriptors.length;
+
+  const handleOpenFilterManager = useCallback(() => {
+    setOpenFilterDropdown(null);
+    setIsFilterManagerOpen(true);
+    closeColumnFilterPopover();
+    resetFilterSearchValues();
+  }, [closeColumnFilterPopover, resetFilterSearchValues, setOpenFilterDropdown]);
+
+  const handleCloseFilterManager = useCallback(() => {
+    setIsFilterManagerOpen(false);
+    setOpenFilterDropdown(null);
+    resetFilterSearchValues();
+  }, [resetFilterSearchValues, setOpenFilterDropdown]);
+
+  const handleClearAllFiltersClick = useCallback(() => {
+    handleClearAllFilters();
+    resetFilterSearchValues();
+  }, [handleClearAllFilters, resetFilterSearchValues]);
+
+  const handleDropdownToggle = useCallback(
+    (id) => {
+      setOpenFilterDropdown((current) => (current === id ? null : id));
+    },
+    [setOpenFilterDropdown],
+  );
+
   const filteredTransactions = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -479,18 +554,19 @@ export default function TransactionsHistoryPage() {
       transferLinkInfo.linkedIds,
     );
     const matches = base.filter(predicate);
-
-    let expandedMatches = matches;
+    const scoped = matches.filter(matchesActiveFilters);
 
     if (activeTab === TRANSACTION_TYPE_VALUES.TRANSFER) {
-      expandedMatches = expandTransferMatches(matches, base, transferLinkInfo);
+      return expandTransferMatches(scoped, base, transferLinkInfo).filter(matchesActiveFilters);
     }
-    return expandedMatches;
+
+    return scoped;
   }, [
     transactions,
     searchQuery,
     activeTab,
     transferLinkInfo,
+    matchesActiveFilters,
   ]);
 
   // Sync selected IDs with available transactions (remove IDs that no longer exist)
@@ -527,6 +603,27 @@ export default function TransactionsHistoryPage() {
     setShowSelectedOnly(Boolean(next));
   }, []);
 
+  const selectedCount = selectedIds.length;
+
+  const handleBulkDelete = useCallback((ids) => {
+    console.info('Transactions bulk delete placeholder', ids);
+  }, []);
+
+  const handleDeselectAll = useCallback(() => {
+    handleSelectAll(false);
+  }, [handleSelectAll]);
+
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedIds.length === 0) {
+      return;
+    }
+    if (typeof handleBulkDelete === 'function') {
+      handleBulkDelete(selectedIds);
+      return;
+    }
+    setAdvancedPanel({ mode: 'delete-many', ids: selectedIds });
+  }, [handleBulkDelete, selectedIds]);
+
   const tabMetrics = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -535,7 +632,7 @@ export default function TransactionsHistoryPage() {
       false,
       transferLinkInfo.linkedIds,
     );
-    const baseMatches = base.filter(predicate);
+    const baseMatches = base.filter(predicate).filter(matchesActiveFilters);
     const counts = new Map();
 
     baseMatches.forEach((txn) => {
@@ -547,7 +644,9 @@ export default function TransactionsHistoryPage() {
     });
 
     const transferPairs = new Set();
-    const scopedTransfers = expandTransferMatches(baseMatches, base, transferLinkInfo);
+    const scopedTransfers = expandTransferMatches(baseMatches, base, transferLinkInfo).filter(
+      matchesActiveFilters,
+    );
 
     scopedTransfers.forEach((txn) => {
       const txnId = extractString(txn.id);
@@ -587,7 +686,7 @@ export default function TransactionsHistoryPage() {
     });
 
     return tabs;
-  }, [searchQuery, transactions, resolvedTypeList, transferLinkInfo]);
+  }, [searchQuery, transactions, resolvedTypeList, transferLinkInfo, matchesActiveFilters]);
 
   useEffect(() => {
     if (selectedIds.length === 0) {
@@ -761,20 +860,33 @@ export default function TransactionsHistoryPage() {
     });
   }, []);
 
-  const handleCustomizeChange = useCallback((columnsConfig) => {
-    setColumnState((prev) => {
-      const widthLookup = new Map(prev.map((column) => [column.id, column.width]));
-      const optionalLookup = new Map(prev.map((column) => [column.id, column.optional]));
-      return columnsConfig.map((column, index) => ({
-        id: column.id,
-        width: widthLookup.get(column.id) ?? 200,
-        visible: column.visible,
-        order: index,
-        pinned: column.pinned ?? null,
-        optional: optionalLookup.get(column.id) ?? false,
-      }));
-    });
-  }, []);
+  const handleCustomizeChange = useCallback(
+    (columnsConfig) => {
+      setColumnState((prev) => {
+        const widthLookup = new Map(prev.map((column) => [column.id, column.width]));
+        const optionalLookup = new Map(prev.map((column) => [column.id, column.optional]));
+        return columnsConfig.map((column, index) => {
+          const definition = definitionLookup.get(column.id) ?? {};
+          const minWidth = definition.minWidth ?? 120;
+          const nextWidth = Math.max(
+            minWidth,
+            Math.round(
+              column.width ?? widthLookup.get(column.id) ?? definition.defaultWidth ?? minWidth,
+            ),
+          );
+          return {
+            id: column.id,
+            width: nextWidth,
+            visible: column.visible,
+            order: index,
+            pinned: column.pinned ?? null,
+            optional: optionalLookup.get(column.id) ?? false,
+          };
+        });
+      });
+    },
+    [definitionLookup],
+  );
 
   const handleSearchChange = useCallback((value) => {
     setSearchQuery(value);
@@ -783,6 +895,7 @@ export default function TransactionsHistoryPage() {
   const handleTabChange = useCallback((tabId) => {
     setActiveTab(tabId);
   }, []);
+
 
   const customizeColumns = useMemo(() => {
     const sorted = columnState.slice().sort((a, b) => a.order - b.order);
@@ -795,6 +908,11 @@ export default function TransactionsHistoryPage() {
         pinned: column.pinned ?? null,
         locked: Boolean(definition.locked),
         mandatory: Boolean(definition.locked),
+        width: Math.max(
+          definition.minWidth ?? 120,
+          Math.round(column.width ?? definition.defaultWidth ?? definition.minWidth ?? 120),
+        ),
+        minWidth: definition.minWidth ?? 120,
       };
     });
   }, [columnState, definitionLookup]);
@@ -813,6 +931,11 @@ export default function TransactionsHistoryPage() {
         pinned: column.pinned ?? null,
         locked: Boolean(definition.locked),
         mandatory: Boolean(definition.locked),
+        width: Math.max(
+          definition.minWidth ?? 120,
+          Math.round(column.width ?? definition.defaultWidth ?? definition.minWidth ?? 120),
+        ),
+        minWidth: definition.minWidth ?? 120,
       };
     });
   }, [defaultColumnState, definitionLookup, customizeColumns]);
@@ -849,9 +972,308 @@ export default function TransactionsHistoryPage() {
     </>
   );
 
-  const isAddModalOpen = addModalType !== null;
+  const selectionToolbarInline = selectedCount > 0 ? (
+    <div className={styles.selectionInlineToolbar}>
+      <SelectionToolbar
+        selectedCount={selectedCount}
+        onDelete={handleDeleteSelected}
+        onDeselectAll={handleDeselectAll}
+        onToggleShowSelected={() => handleToggleShowSelected(!showSelectedOnly)}
+        isShowingSelectedOnly={showSelectedOnly}
+        className={styles.selectionInlineDock}
+      />
+    </div>
+  ) : null;
+
+  const tabControls = (
+    <TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />
+  );
+
   const searchRowId = 'transactions-search-panel';
   const searchInputId = 'transactions-search-input';
+
+  const renderSearchField = (extraClassName) => {
+    const combinedClassName = [styles.searchField, extraClassName]
+      .filter(Boolean)
+      .join(' ');
+
+    return (
+      <PageToolbarSearch
+        id={searchInputId}
+        value={searchQuery}
+        onChange={handleSearchChange}
+        onClear={() => handleSearchChange('')}
+        placeholder="Search transactions..."
+        ariaLabel="Search transactions"
+        inputRef={searchInputRef}
+        className={combinedClassName}
+      />
+    );
+  };
+
+  const filterManagerModal = (
+    <ModalWrapper
+      isOpen={isFilterManagerOpen}
+      onBackdropClick={handleCloseFilterManager}
+      wrapperClassName={styles.modalWrapper}
+      panelClassName={styles.modalContent}
+      backdropClassName={styles.modalBackdrop}
+    >
+      <div id="transactions-filter-modal" className={styles.modalInner}>
+        <div className={styles.modalHeader}>
+          <h2 className={styles.modalTitle}>Filter transactions</h2>
+          <button
+            type="button"
+            className={`${styles.iconButton} ${styles.toolbarIconButton}`.trim()}
+            onClick={handleCloseFilterManager}
+            aria-label="Close filters"
+          >
+            <FiX aria-hidden />
+          </button>
+        </div>
+        <div className={styles.modalBody} role="group" aria-label="Filter transactions">
+          <p className={styles.modalDescription}>
+            Narrow down the history by people, accounts, categories, debt tags, amount, year, and
+            month.
+          </p>
+          <div className={styles.modalGrid}>
+            <div className={styles.modalField}>
+              <DropdownWithSearch
+                id="person"
+                label="People"
+                isOpen={openFilterDropdown === 'person'}
+                onToggle={handleDropdownToggle}
+                options={personOptions}
+                searchValue={filterSearchValues.person}
+                onSearchChange={(value) => handleFilterSearchChange('person', value)}
+                onSelectOption={(value) => handleSingleFilterChange('person', value)}
+                selectedValue={filters.person ?? 'all'}
+                placeholder="Any person"
+                optionFormatter={(value) => (value === 'all' ? 'Any person' : value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <DropdownWithSearch
+                id="account"
+                label="Accounts"
+                isOpen={openFilterDropdown === 'account'}
+                onToggle={handleDropdownToggle}
+                options={accountOptions}
+                searchValue={filterSearchValues.account}
+                onSearchChange={(value) => handleFilterSearchChange('account', value)}
+                onSelectOption={(value) => handleSingleFilterChange('account', value)}
+                selectedValue={filters.account ?? 'all'}
+                placeholder="Any account"
+                optionFormatter={(value) => (value === 'all' ? 'Any account' : value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <DropdownWithSearch
+                id="category"
+                label="Categories"
+                isOpen={openFilterDropdown === 'category'}
+                onToggle={handleDropdownToggle}
+                options={categoryOptions}
+                searchValue={filterSearchValues.category}
+                onSearchChange={(value) => handleFilterSearchChange('category', value)}
+                onSelectOption={(value) => handleSingleFilterChange('category', value)}
+                selectedValue={filters.category ?? 'all'}
+                placeholder="Any category"
+                optionFormatter={(value) => (value === 'all' ? 'Any category' : value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <DropdownWithSearch
+                id="type"
+                label="Type"
+                isOpen={openFilterDropdown === 'type'}
+                onToggle={handleDropdownToggle}
+                options={typeOptions}
+                searchValue={filterSearchValues.type}
+                onSearchChange={(value) => handleFilterSearchChange('type', value)}
+                onSelectOption={(value) => handleSingleFilterChange('type', value)}
+                selectedValue={filters.type ?? 'all'}
+                placeholder="Any type"
+                optionFormatter={(value) => (value === 'all' ? 'Any type' : value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <DropdownWithSearch
+                id="shop"
+                label="Shop"
+                isOpen={openFilterDropdown === 'shop'}
+                onToggle={handleDropdownToggle}
+                options={shopOptions}
+                searchValue={filterSearchValues.shop}
+                onSearchChange={(value) => handleFilterSearchChange('shop', value)}
+                onSelectOption={(value) => handleSingleFilterChange('shop', value)}
+                selectedValue={filters.shop ?? 'all'}
+                placeholder="Any shop"
+                optionFormatter={(value) => (value === 'all' ? 'Any shop' : value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <DropdownWithSearch
+                id="debtTags"
+                label="Debt tags"
+                isOpen={openFilterDropdown === 'debtTags'}
+                onToggle={handleDropdownToggle}
+                options={debtTagOptions}
+                searchValue={filterSearchValues.debtTags}
+                onSearchChange={(value) => handleFilterSearchChange('debtTags', value)}
+                onSelectOption={handleToggleDebtTag}
+                selectedValues={filters.debtTags}
+                multi
+                placeholder="Any debt tag"
+                optionFormatter={(value) => (value === 'all' ? 'Any debt tag' : value)}
+                renderValue={(_, fallback) =>
+                  Array.isArray(filters.debtTags) && filters.debtTags.length > 0
+                    ? `${filters.debtTags.length} selected`
+                    : fallback
+                }
+              />
+            </div>
+            <div className={`${styles.modalField} ${styles.modalFieldWide}`.trim()}>
+              <div className={styles.amountFilterRow}>
+                <DropdownSimple
+                  id="amount-operator"
+                  label="Amount operator"
+                  isOpen={openFilterDropdown === 'amount-operator'}
+                  onToggle={handleDropdownToggle}
+                  options={AMOUNT_OPERATOR_OPTIONS.map((option) => option.value)}
+                  value={filters.amountOperator ?? 'all'}
+                  onSelect={handleAmountOperatorSelect}
+                  placeholder="Any amount"
+                  optionFormatter={(value) =>
+                    value === 'all'
+                      ? 'Any amount'
+                      : amountOperatorLabelLookup.get(value) ?? value
+                  }
+                />
+                <label htmlFor="transactions-filter-amount-value" className={styles.modalLabel}>
+                  Amount value
+                  <input
+                    id="transactions-filter-amount-value"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    className={styles.modalControl}
+                    value={filters.amountValue}
+                    onChange={handleAmountValueChange}
+                    placeholder="Enter amount"
+                    disabled={filters.amountOperator === 'is-null' || !filters.amountOperator}
+                  />
+                </label>
+              </div>
+            </div>
+            <div className={styles.modalField}>
+              <DropdownSimple
+                id="year"
+                label="Year"
+                isOpen={openFilterDropdown === 'year'}
+                onToggle={handleDropdownToggle}
+                options={yearOptions}
+                value={filters.year ?? 'all'}
+                onSelect={(value) => handleSingleFilterChange('year', value)}
+                placeholder="Any year"
+                optionFormatter={(value) => (value === 'all' ? 'Any year' : value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <DropdownSimple
+                id="month"
+                label="Month"
+                isOpen={openFilterDropdown === 'month'}
+                onToggle={handleDropdownToggle}
+                options={MONTH_OPTIONS.map((option) => option.value)}
+                value={filters.month ?? 'all'}
+                onSelect={(value) => handleSingleFilterChange('month', value)}
+                placeholder="Any month"
+                optionFormatter={(value) =>
+                  value === 'all' ? 'Any month' : MONTH_LABEL_LOOKUP.get(String(value)) ?? value
+                }
+              />
+            </div>
+          </div>
+          {Array.isArray(filters.debtTags) && filters.debtTags.length > 0 ? (
+            <div className={styles.modalTagBadges} aria-live="polite">
+              {filters.debtTags.map((tag) => (
+                <button
+                  key={`selected-debt-tag-${tag}`}
+                  type="button"
+                  className={styles.modalTagBadge}
+                  onClick={() => handleToggleDebtTag(tag)}
+                  title={`Remove ${tag}`}
+                >
+                  <span className={styles.modalTagLabel}>{tag}</span>
+                  <FiX aria-hidden className={styles.modalTagRemove} />
+                  <span className={styles.srOnly}>Remove {tag}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        <div className={styles.modalFooter}>
+          <button
+            type="button"
+            className={`${styles.secondaryButton} ${styles.clearFilterButton}`.trim()}
+            onClick={handleClearAllFiltersClick}
+            disabled={activeFilterCount === 0}
+          >
+            Clear all
+          </button>
+          <button
+            type="button"
+            className={`${styles.primaryButton} ${styles.modalApply}`.trim()}
+            onClick={handleCloseFilterManager}
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </ModalWrapper>
+  );
+
+  const activeFiltersRow = activeFilterCount > 0 ? (
+    <div className={styles.activeFiltersRow} role="region" aria-live="polite">
+      <div className={styles.activeFilterBadges}>
+        {visibleFilterDescriptors.map((descriptor) => (
+          <button
+            key={descriptor.key}
+            type="button"
+            className={styles.activeFilterBadge}
+            onClick={descriptor.onClear}
+            title={`Remove ${descriptor.label}`}
+          >
+            <span className={styles.activeFilterLabel}>{descriptor.label}</span>
+            <FiX aria-hidden className={styles.activeFilterRemove} />
+            <span className={styles.srOnly}>Remove {descriptor.label}</span>
+          </button>
+        ))}
+        {hasHiddenFilters ? (
+          <button
+            type="button"
+            className={styles.activeFilterMore}
+            onClick={handleOpenFilterManager}
+            aria-label="Show all filters"
+          >
+            <FiMoreHorizontal aria-hidden />
+            <span className={styles.activeFilterMoreCount}>+{overflowBadgeCount}</span>
+            <span className={styles.srOnly}>Show {overflowBadgeCount} more filters</span>
+          </button>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        className={`${styles.secondaryButton} ${styles.clearFilterButton}`.trim()}
+        onClick={handleClearAllFiltersClick}
+      >
+        Clear all
+      </button>
+    </div>
+  ) : null;
+
+  const isAddModalOpen = addModalType !== null;
 
   const handleToggleSearch = useCallback(() => {
     if (!isCompact) {
@@ -884,52 +1306,60 @@ export default function TransactionsHistoryPage() {
       title="Transactions History"
       subtitle="Monitor every inflow, cashback, debt movement, and adjustment inside Money Flow."
     >
+      {filterManagerModal}
+      {columnFilterPopover}
       <div className={pageShellStyles.screen}>
         <div className={styles.controlsRegion}>
-          <div className={styles.tabsRow}>
-            <TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />
-          </div>
-
           <div
             className={styles.actionsWrapper}
             data-floating={isCompact ? 'true' : 'false'}
             data-search-open={isSearchOpen ? 'true' : 'false'}
           >
             <div className={styles.actionsRow}>
-              <div className={styles.actionButtons}>{filterActionButtons}</div>
-              <button
-                type="button"
-                className={styles.searchToggleButton}
-                onClick={handleToggleSearch}
-                aria-label={searchToggleAriaLabel}
-                aria-expanded={isSearchOpen}
-                aria-controls={searchRowId}
-                data-active={isSearchOpen ? 'true' : 'false'}
-              >
-                {isCompact && isSearchOpen ? <FiX aria-hidden /> : <FiSearch aria-hidden />}
-              </button>
+              <div className={styles.leadingActions}>
+                <div className={styles.actionButtons}>{filterActionButtons}</div>
+              </div>
+              {selectionToolbarInline}
+              {!isCompact && (
+                <div className={styles.actionsTools}>
+                  <div className={styles.searchInline} role="search">
+                    {renderSearchField(styles.searchInlineField)}
+                  </div>
+                  <div className={styles.filtersInline}>{tabControls}</div>
+                </div>
+              )}
+              {isCompact && (
+                <button
+                  type="button"
+                  className={styles.searchToggleButton}
+                  onClick={handleToggleSearch}
+                  aria-label={searchToggleAriaLabel}
+                  aria-expanded={isSearchOpen}
+                  aria-controls={searchRowId}
+                  data-active={isSearchOpen ? 'true' : 'false'}
+                >
+                  {isSearchOpen ? <FiX aria-hidden /> : <FiSearch aria-hidden />}
+                </button>
+              )}
             </div>
 
-            <div
-              id={searchRowId}
-              role="search"
-              className={styles.searchRow}
-              data-open={isSearchOpen ? 'true' : 'false'}
-              data-floating={isCompact ? 'true' : 'false'}
-            >
-              <PageToolbarSearch
-                id={searchInputId}
-                value={searchQuery}
-                onChange={handleSearchChange}
-                onClear={() => handleSearchChange('')}
-                placeholder="Search transactions..."
-                ariaLabel="Search transactions"
-                inputRef={searchInputRef}
-                className={styles.searchField}
-              />
-            </div>
+            {isCompact && (
+              <div
+                id={searchRowId}
+                role="search"
+                className={styles.searchRow}
+                data-open={isSearchOpen ? 'true' : 'false'}
+                data-floating={isCompact ? 'true' : 'false'}
+              >
+                {renderSearchField()}
+              </div>
+            )}
+
+            {isCompact && <div className={styles.tabsRow}>{tabControls}</div>}
           </div>
         </div>
+
+        {activeFiltersRow}
 
         {columnDefinitions.length === 0 ? (
           <TablePanel data-testid="transactions-loading">
@@ -946,9 +1376,7 @@ export default function TransactionsHistoryPage() {
             onSelectAll={handleSelectAll}
             selectionSummary={selectionSummary}
             onOpenAdvanced={handleAdvanced}
-            onBulkDelete={(ids) => {
-              console.info('Transactions bulk delete placeholder', ids);
-            }}
+            onBulkDelete={handleBulkDelete}
             columnDefinitions={columnDefinitions}
             allColumns={orderedColumns}
             visibleColumns={visibleColumns}
@@ -978,6 +1406,10 @@ export default function TransactionsHistoryPage() {
             isShowingSelectedOnly={showSelectedOnly}
             onToggleShowSelected={handleToggleShowSelected}
             isFetching={isFetching}
+            showSelectionToolbar={false}
+            columnFilters={columnFilterMap}
+            onColumnFilter={handleColumnFilterTrigger}
+            activeFilterKeys={activeFilterKeys}
           />
         )}
       </div>

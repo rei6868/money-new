@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FiEdit2 } from 'react-icons/fi';
+import { useRouter } from 'next/router';
+import { FiEdit2, FiExternalLink } from 'react-icons/fi';
 
 import {
   TRANSACTION_TYPE_VALUES,
@@ -127,7 +128,33 @@ const columnRenderers = {
     const { value, label } = resolveTransactionType(txn);
     return <span className={getTypePillClass(value)}>{label ?? '—'}</span>;
   },
-  account: (txn) => txn.account ?? '—',
+  account: (txn, descriptor, helpers = {}) => {
+    const label = txn.account ?? txn.accountName ?? txn.account_name ?? '—';
+    const accountId = txn.accountId ?? txn.account_id ?? txn.account_uuid ?? null;
+
+    if (!accountId) {
+      return label;
+    }
+
+    const handleClick = (event) => {
+      event.stopPropagation();
+      event.preventDefault();
+      helpers.onAccountDrilldown?.(accountId, txn, descriptor);
+    };
+
+    return (
+      <button
+        type="button"
+        className={bodyStyles.accountLink}
+        onClick={handleClick}
+        title={`Open account ${label}`}
+      >
+        <span className={bodyStyles.accountLabel}>{label}</span>
+        <FiExternalLink aria-hidden className={bodyStyles.accountIcon} />
+        <span className={bodyStyles.srOnly}>Open account details</span>
+      </button>
+    );
+  },
   shop: (txn) => txn.shop ?? '—',
   notes: (txn) => txn.notes ?? '—',
   amount: (txn) => {
@@ -154,14 +181,14 @@ const columnRenderers = {
   id: (txn) => txn.id ?? '—',
 };
 
-function resolveCellContent(descriptor, transaction) {
+function resolveCellContent(descriptor, transaction, helpers = {}) {
   if (!descriptor) {
     return '--';
   }
 
   const definition = descriptor.definition ?? {};
   if (typeof definition.renderCell === 'function') {
-    return definition.renderCell(transaction, descriptor);
+    return definition.renderCell(transaction, descriptor, helpers);
   }
   if (typeof definition.valueAccessor === 'function') {
     return definition.valueAccessor(transaction, descriptor);
@@ -172,7 +199,7 @@ function resolveCellContent(descriptor, transaction) {
 
   const renderer = columnRenderers[descriptor.id];
   if (renderer) {
-    return renderer(transaction, descriptor);
+    return renderer(transaction, descriptor, helpers);
   }
 
   if (transaction && transaction[descriptor.id] !== undefined) {
@@ -259,6 +286,23 @@ export function TableBaseBody({
   const tooltipAnchor = tooltipState.anchor;
   const tooltipContent = tooltipState.content;
   const tooltipVisible = tooltipState.isVisible;
+
+  const router = useRouter();
+
+  const handleAccountDrilldown = useCallback(
+    (accountId) => {
+      if (!accountId) {
+        return;
+      }
+      router.push(`/accounts/${encodeURIComponent(accountId)}`);
+    },
+    [router],
+  );
+
+  const cellHelpers = useMemo(
+    () => ({ onAccountDrilldown: handleAccountDrilldown }),
+    [handleAccountDrilldown],
+  );
 
   const renderDefaultRowActions = (transaction, isSelected, rowId) => {
     const resolvedId = rowId ?? transaction?.id;
@@ -369,7 +413,7 @@ export function TableBaseBody({
                       onFocus={handleCellEnter}
                       onBlur={handleCellLeave}
                     >
-                      {resolveCellContent(descriptor, transaction)}
+                      {resolveCellContent(descriptor, transaction, cellHelpers)}
                     </td>
                   );
                 })}

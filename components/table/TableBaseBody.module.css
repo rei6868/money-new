@@ -107,6 +107,52 @@
   align-items: center;
 }
 
+.accountLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  max-width: 100%;
+}
+
+.accountLink:hover,
+.accountLink:focus-visible {
+  color: var(--mf-accent-strong, #4f46e5);
+  outline: none;
+  text-decoration: underline;
+}
+
+.accountLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.accountIcon {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  opacity: 0.75;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .inlineEditButton {
   width: 32px;
   height: 32px;
