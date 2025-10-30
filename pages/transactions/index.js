@@ -29,12 +29,6 @@ import {
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
 
-const ACCOUNT_FILTERS = {
-  ALL: 'all',
-  ASSIGNED: 'assigned',
-  UNASSIGNED: 'unassigned',
-};
-
 function expandTransferMatches(matches, base, transferLinkInfo) {
   const baseArray = Array.isArray(base) ? base : [];
 
@@ -157,7 +151,6 @@ export default function TransactionsHistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [availableTypes, setAvailableTypes] = useState([]);
-  const [accountFilter, setAccountFilter] = useState(ACCOUNT_FILTERS.ALL);
   const [isCompact, setIsCompact] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const tableScrollRef = useRef(null);
@@ -477,29 +470,7 @@ export default function TransactionsHistoryPage() {
 
   const selectedLookup = useMemo(() => new Set(selectedIds), [selectedIds]);
 
-  const applyAccountFilter = useCallback(
-    (txn) => {
-      if (accountFilter === ACCOUNT_FILTERS.ALL) {
-        return true;
-      }
-
-      const accountValue = extractString(txn?.account);
-      const hasAccount = Boolean(accountValue);
-
-      if (accountFilter === ACCOUNT_FILTERS.ASSIGNED) {
-        return hasAccount;
-      }
-
-      if (accountFilter === ACCOUNT_FILTERS.UNASSIGNED) {
-        return !hasAccount;
-      }
-
-      return true;
-    },
-    [accountFilter],
-  );
-
-  const { filteredTransactions, accountMetrics } = useMemo(() => {
+  const filteredTransactions = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const predicate = buildTransactionPredicate(
@@ -514,39 +485,12 @@ export default function TransactionsHistoryPage() {
     if (activeTab === TRANSACTION_TYPE_VALUES.TRANSFER) {
       expandedMatches = expandTransferMatches(matches, base, transferLinkInfo);
     }
-
-    let assignedCount = 0;
-    let unassignedCount = 0;
-
-    expandedMatches.forEach((txn) => {
-      const accountValue = extractString(txn?.account);
-      if (accountValue) {
-        assignedCount += 1;
-      } else {
-        unassignedCount += 1;
-      }
-    });
-
-    const scopedMatches =
-      accountFilter === ACCOUNT_FILTERS.ALL
-        ? expandedMatches
-        : expandedMatches.filter((txn) => applyAccountFilter(txn));
-
-    return {
-      filteredTransactions: scopedMatches,
-      accountMetrics: {
-        total: expandedMatches.length,
-        assigned: assignedCount,
-        unassigned: unassignedCount,
-      },
-    };
+    return expandedMatches;
   }, [
     transactions,
     searchQuery,
     activeTab,
     transferLinkInfo,
-    accountFilter,
-    applyAccountFilter,
   ]);
 
   // Sync selected IDs with available transactions (remove IDs that no longer exist)
@@ -592,13 +536,9 @@ export default function TransactionsHistoryPage() {
       transferLinkInfo.linkedIds,
     );
     const baseMatches = base.filter(predicate);
-    const accountScopedMatches =
-      accountFilter === ACCOUNT_FILTERS.ALL
-        ? baseMatches
-        : baseMatches.filter((txn) => applyAccountFilter(txn));
     const counts = new Map();
 
-    accountScopedMatches.forEach((txn) => {
+    baseMatches.forEach((txn) => {
       const rawType = extractString(txn.typeRaw ?? txn.type);
       if (rawType) {
         const key = rawType;
@@ -607,13 +547,9 @@ export default function TransactionsHistoryPage() {
     });
 
     const transferPairs = new Set();
-    const scopedTransfers = expandTransferMatches(accountScopedMatches, base, transferLinkInfo);
-    const filteredTransfers =
-      accountFilter === ACCOUNT_FILTERS.ALL
-        ? scopedTransfers
-        : scopedTransfers.filter((txn) => applyAccountFilter(txn));
+    const scopedTransfers = expandTransferMatches(baseMatches, base, transferLinkInfo);
 
-    filteredTransfers.forEach((txn) => {
+    scopedTransfers.forEach((txn) => {
       const txnId = extractString(txn.id);
       const linkedId = extractString(txn.linkedTxn);
       const directKey = createTransferPairKey(txnId, linkedId);
@@ -642,7 +578,7 @@ export default function TransactionsHistoryPage() {
         count: counts.get(type) ?? 0,
       }));
 
-    const tabs = [{ id: 'all', label: 'All', count: accountScopedMatches.length }, ...derivedTabs];
+    const tabs = [{ id: 'all', label: 'All', count: baseMatches.length }, ...derivedTabs];
 
     tabs.push({
       id: TRANSACTION_TYPE_VALUES.TRANSFER,
@@ -651,14 +587,7 @@ export default function TransactionsHistoryPage() {
     });
 
     return tabs;
-  }, [
-    searchQuery,
-    transactions,
-    resolvedTypeList,
-    transferLinkInfo,
-    accountFilter,
-    applyAccountFilter,
-  ]);
+  }, [searchQuery, transactions, resolvedTypeList, transferLinkInfo]);
 
   useEffect(() => {
     if (selectedIds.length === 0) {
@@ -924,15 +853,6 @@ export default function TransactionsHistoryPage() {
   const searchRowId = 'transactions-search-panel';
   const searchInputId = 'transactions-search-input';
 
-  const accountToggleOptions = useMemo(
-    () => [
-      { id: ACCOUNT_FILTERS.ALL, label: 'All accounts', count: accountMetrics.total },
-      { id: ACCOUNT_FILTERS.ASSIGNED, label: 'Assigned', count: accountMetrics.assigned },
-      { id: ACCOUNT_FILTERS.UNASSIGNED, label: 'Unassigned', count: accountMetrics.unassigned },
-    ],
-    [accountMetrics],
-  );
-
   const handleToggleSearch = useCallback(() => {
     if (!isCompact) {
       if (searchInputRef.current) {
@@ -966,29 +886,6 @@ export default function TransactionsHistoryPage() {
     >
       <div className={pageShellStyles.screen}>
         <div className={styles.controlsRegion}>
-          <div
-            className={styles.accountToggleRow}
-            role="group"
-            aria-label="Account filter"
-          >
-            {accountToggleOptions.map((option) => {
-              const isActive = accountFilter === option.id;
-              return (
-                <button
-                  key={option.id}
-                  type="button"
-                  className={styles.accountToggleButton}
-                  data-active={isActive ? 'true' : 'false'}
-                  onClick={() => setAccountFilter(option.id)}
-                  aria-pressed={isActive}
-                >
-                  <span className={styles.accountToggleLabel}>{option.label}</span>
-                  <span className={styles.accountToggleCount}>{option.count}</span>
-                </button>
-              );
-            })}
-          </div>
-
           <div className={styles.tabsRow}>
             <TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />
           </div>
