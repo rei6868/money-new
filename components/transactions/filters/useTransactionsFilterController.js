@@ -644,6 +644,13 @@ export function useTransactionsFilterController({
     });
   }, []);
 
+  const handleFilterDropdownToggle = useCallback(
+    (id) => {
+      setOpenFilterDropdown((current) => (current === id ? null : id));
+    },
+    [setOpenFilterDropdown],
+  );
+
   const handleToggleDebtTag = useCallback((value) => {
     if (value === 'all') {
       setFilters((prev) => ({ ...prev, debtTags: [] }));
@@ -732,13 +739,19 @@ export function useTransactionsFilterController({
           closeDropdown: false,
           closePopover: shouldClosePopover,
         });
+        setOpenFilterDropdown(null);
         return;
       }
 
       handleSingleFilterChange(field, value);
       closeColumnFilterPopover();
     },
-    [closeColumnFilterPopover, handleAmountOperatorSelect, handleSingleFilterChange],
+    [
+      closeColumnFilterPopover,
+      handleAmountOperatorSelect,
+      handleSingleFilterChange,
+      setOpenFilterDropdown,
+    ],
   );
 
   useEffect(() => {
@@ -938,11 +951,19 @@ export function useTransactionsFilterController({
         return (
           <div className={styles.columnFilterSection}>
             <DropdownSimple
-              id="transactions-filter-amount-operator"
-              ariaLabel="Select amount operator"
-              options={[{ value: 'all', label: 'Any amount' }, ...AMOUNT_OPERATOR_OPTIONS]}
-              selectedValue={activeOperator}
+              id="amount-operator"
+              label="Amount operator"
+              isOpen={openFilterDropdown === 'amount-operator'}
+              onToggle={handleFilterDropdownToggle}
+              options={AMOUNT_OPERATOR_OPTIONS.map((option) => option.value)}
+              value={activeOperator}
               onSelect={(value) => handlePopoverSingleSelect('amountOperator', value)}
+              placeholder="Any amount"
+              optionFormatter={(value) =>
+                value === 'all'
+                  ? 'Any amount'
+                  : amountOperatorLabelLookup.get(value) ?? value
+              }
             />
             <input
               type="number"
@@ -950,7 +971,7 @@ export function useTransactionsFilterController({
               className={styles.modalControl}
               value={filters.amountValue}
               onChange={(event) => handleAmountValueChange(event.target.value)}
-              disabled={!filters.amountOperator || filters.amountOperator === 'is-null'}
+              disabled={filters.amountOperator === 'is-null' || !filters.amountOperator}
               placeholder="Enter amount"
               aria-label="Filter amount value"
             />
@@ -1046,16 +1067,19 @@ export function useTransactionsFilterController({
   }, [
     accountOptions,
     activeColumnFilter,
+    amountOperatorLabelLookup,
     categoryOptions,
     debtTagOptions,
     filterSearchValues,
     filters,
     handleAmountValueChange,
     handleClearDate,
+    handleFilterDropdownToggle,
     handleFilterSearchChange,
     handlePopoverSingleSelect,
     handleSingleFilterChange,
     handleToggleDebtTag,
+    openFilterDropdown,
     personOptions,
     shopOptions,
     typeOptions,
