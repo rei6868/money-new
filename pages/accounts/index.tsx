@@ -7,7 +7,16 @@ import TableAccounts from '../../components/accounts/TableAccounts';
 import AccountEditModal, { AccountEditPayload } from '../../components/accounts/AccountEditModal';
 import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGlobal';
 import QuickAddModal from '../../components/common/QuickAddModal';
-import { FiEye, FiGrid, FiList, FiPlus, FiRefreshCcw, FiSettings } from 'react-icons/fi';
+import {
+  FiEye,
+  FiGrid,
+  FiList,
+  FiPlus,
+  FiRefreshCcw,
+  FiSearch,
+  FiSettings,
+  FiX,
+} from 'react-icons/fi';
 import ColumnsCustomizeModal, {
   ColumnConfig as CustomizeColumnConfig,
 } from '../../components/customize/ColumnsCustomizeModal';
@@ -221,10 +230,18 @@ export default function AccountsPage() {
   const [quickAction, setQuickAction] = useState<string | null>(null);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<NormalizedAccount | null>(null);
   const [accountTypes, setAccountTypes] = useState<string[]>([]);
 
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
 
   // Persist active type tab to localStorage
   useEffect(() => {
@@ -570,6 +587,19 @@ export default function AccountsPage() {
     [currentPage, pageSize, totalPages],
   );
 
+  const handleToggleSearch = useCallback(() => {
+    setIsSearchOpen((prev) => {
+      if (prev && searchInputRef.current) {
+        searchInputRef.current.blur();
+      }
+      return !prev;
+    });
+  }, []);
+
+  const handleCloseSearch = useCallback(() => {
+    setIsSearchOpen(false);
+  }, []);
+
   const handleRefresh = useCallback(() => {
     void refetchAccounts();
   }, [refetchAccounts]);
@@ -778,6 +808,7 @@ export default function AccountsPage() {
 
   const isAddModalOpen = addModalType !== null;
   const isEditModalOpen = editingAccount !== null;
+  const searchFieldId = 'accounts-search-input';
 
   return (
     <AppLayout title="Accounts" subtitle="">
@@ -787,16 +818,6 @@ export default function AccountsPage() {
             <div className={styles.toolbarRow}>
               <div className={styles.toolbarQuickActions} role="group" aria-label="Account quick actions">
                 {actionButtons}
-              </div>
-              <div className={styles.toolbarSearchArea}>
-                <PageToolbarSearch
-                  className={styles.toolbarSearch}
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  onClear={() => handleSearchChange('')}
-                  placeholder="Search accounts..."
-                  ariaLabel="Search accounts"
-                />
               </div>
               <div className={styles.toolbarViewToggle}>
                 <div className={styles.viewToggleGroup} role="tablist" aria-label="Accounts view mode">
@@ -824,14 +845,48 @@ export default function AccountsPage() {
                   </button>
                 </div>
               </div>
-              <div className={styles.accountTypeTabsWrapper}>
-                <AccountTypeTabs
-                  activeTab={activeTypeTab}
-                  onTabChange={setActiveTypeTab}
-                  tabs={accountTypeTabMetrics}
-                />
+              <div
+                className={styles.toolbarSearchArea}
+                data-open={isSearchOpen ? 'true' : 'false'}
+                role="search"
+              >
+                <button
+                  type="button"
+                  className={styles.toolbarSearchToggle}
+                  onClick={handleToggleSearch}
+                  aria-label={isSearchOpen ? 'Close search' : 'Open search'}
+                  aria-expanded={isSearchOpen}
+                  aria-controls={searchFieldId}
+                  data-active={isSearchOpen ? 'true' : 'false'}
+                >
+                  {isSearchOpen ? <FiX aria-hidden /> : <FiSearch aria-hidden />}
+                </button>
+                <div className={styles.toolbarSearchInput} data-open={isSearchOpen ? 'true' : 'false'}>
+                  <PageToolbarSearch
+                    className={styles.toolbarSearch}
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    onClear={() => handleSearchChange('')}
+                    placeholder="Search accounts..."
+                    ariaLabel="Search accounts"
+                    inputRef={searchInputRef}
+                    id={searchFieldId}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') {
+                        handleCloseSearch();
+                      }
+                    }}
+                  />
+                </div>
               </div>
             </div>
+          </div>
+          <div className={styles.toolbarTabsRow}>
+            <AccountTypeTabs
+              activeTab={activeTypeTab}
+              onTabChange={setActiveTypeTab}
+              tabs={accountTypeTabMetrics}
+            />
           </div>
           {fetchError ? (
             <TablePanel role="alert">
