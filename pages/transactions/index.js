@@ -584,6 +584,94 @@ export default function TransactionsHistoryPage() {
     return filteredTransactions.filter((txn) => selectedLookup.has(txn.id));
   }, [filteredTransactions, selectedLookup, showSelectedOnly]);
 
+  const displayedTransactionsWithMetadata = useMemo(() => {
+    const base = Array.isArray(displayedTransactions) ? displayedTransactions : [];
+    if (base.length === 0) {
+      return base;
+    }
+
+    const lookup = new Map();
+    base.forEach((txn) => {
+      const txnId = extractString(txn?.id);
+      if (txnId) {
+        lookup.set(txnId, txn);
+      }
+    });
+
+    if (lookup.size === 0) {
+      return base;
+    }
+
+    const pairAssignments = new Map();
+
+    const assignPair = (idA, idB, roleA, roleB) => {
+      const pairId = createTransferPairKey(idA, idB);
+      if (!pairId) {
+        return;
+      }
+
+      const existingA = pairAssignments.get(idA);
+      if (!existingA) {
+        pairAssignments.set(idA, { groupId: pairId, role: roleA });
+      }
+
+      const existingB = pairAssignments.get(idB);
+      if (!existingB) {
+        pairAssignments.set(idB, { groupId: pairId, role: roleB });
+      }
+    };
+
+    base.forEach((txn) => {
+      const txnId = extractString(txn?.id);
+      if (!txnId) {
+        return;
+      }
+
+      const linkedId = extractString(txn?.linkedTxn);
+      if (linkedId && lookup.has(linkedId)) {
+        assignPair(txnId, linkedId, 'source', 'target');
+      }
+
+      const inbound = transferLinkInfo?.inbound?.get(txnId);
+      if (inbound instanceof Set) {
+        inbound.forEach((sourceId) => {
+          if (lookup.has(sourceId)) {
+            assignPair(sourceId, txnId, 'source', 'target');
+          }
+        });
+      }
+    });
+
+    if (pairAssignments.size === 0) {
+      return base;
+    }
+
+    return base.map((txn) => {
+      const txnId = extractString(txn?.id);
+      if (!txnId) {
+        return txn;
+      }
+
+      const assignment = pairAssignments.get(txnId);
+      if (!assignment) {
+        return txn;
+      }
+
+      if (
+        txn.transferGroupId === assignment.groupId &&
+        txn.transferGroupRole === assignment.role
+      ) {
+        return txn;
+      }
+
+      return {
+        ...txn,
+        transferGroupId: assignment.groupId,
+        transferGroupRole: assignment.role,
+      };
+    });
+  }, [displayedTransactions, transferLinkInfo]);
+
   const handleSelectAll = useCallback(
     (checked) => {
       if (!checked) {
@@ -1373,7 +1461,7 @@ export default function TransactionsHistoryPage() {
         ) : (
           <TransactionsTable
             tableScrollRef={tableScrollRef}
-            transactions={displayedTransactions}
+            transactions={displayedTransactionsWithMetadata}
             selectedIds={selectedIds}
             onSelectRow={handleSelectRow}
             onSelectAll={handleSelectAll}

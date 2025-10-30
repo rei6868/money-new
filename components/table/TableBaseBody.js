@@ -350,10 +350,35 @@ export function TableBaseBody({
             const resolvedId = rowId ?? transaction.id;
             const normalizedId = resolvedId ?? `row-${index}`;
             const isSelected = normalizedId !== undefined && normalizedId !== null && selectionSet.has(normalizedId);
+            const currentGroupId = transaction?.transferGroupId ?? null;
+            const previousGroupId = index > 0 ? transactions[index - 1]?.transferGroupId ?? null : null;
+            const nextGroupId =
+              index < transactions.length - 1 ? transactions[index + 1]?.transferGroupId ?? null : null;
+            const isGroupedWithPrev = Boolean(
+              currentGroupId && previousGroupId && previousGroupId === currentGroupId,
+            );
+            const isGroupedWithNext = Boolean(currentGroupId && nextGroupId && nextGroupId === currentGroupId);
+            const isTransferGroupRow = isGroupedWithPrev || isGroupedWithNext;
+            const isTransferBoundary = isTransferGroupRow && !isGroupedWithNext;
+            const rowClassName = [
+              bodyStyles.row,
+              isSelected ? bodyStyles.rowSelected : '',
+              isTransferGroupRow ? bodyStyles.transferGroupRow : '',
+              isTransferBoundary ? bodyStyles.transferGroupTrailing : '',
+            ]
+              .filter(Boolean)
+              .join(' ');
             return (
               <tr
                 key={normalizedId}
-                className={`${bodyStyles.row} ${isSelected ? bodyStyles.rowSelected : ''}`.trim()}
+                className={rowClassName}
+                data-transfer-group={isTransferGroupRow ? currentGroupId : undefined}
+                data-transfer-role={
+                  isTransferGroupRow && transaction?.transferGroupRole
+                    ? transaction.transferGroupRole
+                    : undefined
+                }
+                data-transfer-boundary={isTransferBoundary ? 'true' : undefined}
               >
                 <td
                   className={`${shellStyles.bodyCell} ${shellStyles.checkboxCell} ${shellStyles.stickyLeft}`}

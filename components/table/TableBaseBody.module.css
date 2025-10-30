@@ -2,6 +2,29 @@
   transition: background 0.2s ease;
 }
 
+.transferGroupRow {
+  position: relative;
+}
+
+.transferGroupRow :global(.bodyCell) {
+  border-bottom-color: rgba(148, 163, 184, 0.4);
+}
+
+.transferGroupTrailing :global(.bodyCell) {
+  border-bottom: 3px double var(--table-transfer-divider, rgba(79, 70, 229, 0.45)) !important;
+}
+
+.transferGroupTrailing :global(.stickyLeft),
+.transferGroupTrailing :global(.stickyRight) {
+  box-shadow: inset -1px 0 0 var(--table-border),
+    inset 0 -3px 0 var(--table-transfer-divider, rgba(79, 70, 229, 0.45));
+}
+
+.transferGroupTrailing.rowSelected :global(.stickyLeft),
+.transferGroupTrailing.rowSelected :global(.stickyRight) {
+  background-color: var(--table-row-selected);
+}
+
 .row :global(.stickyLeft),
 .row :global(.stickyRight) {
   background-color: var(--table-sticky-surface, #f8fafc);
