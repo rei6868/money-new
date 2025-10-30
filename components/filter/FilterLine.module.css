@@ -1,0 +1,114 @@
+.container {
+  background: var(--filter-background, #fff);
+  border: 1px solid var(--filter-border, rgba(0, 0, 0, 0.08));
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filtersRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.filterCard {
+  background: var(--filter-card-background, #f9fafb);
+  border: 1px solid var(--filter-card-border, rgba(0, 0, 0, 0.05));
+  border-radius: 10px;
+  padding: 12px;
+  flex: 1 1 280px;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filterHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.filterTitle {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--filter-title-color, #1f2933);
+}
+
+.filterControls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.collapsedBadge {
+  cursor: pointer;
+}
+
+.actionsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.addButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px dashed var(--filter-border, rgba(0, 0, 0, 0.1));
+  background: transparent;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.addButton:hover {
+  background: rgba(15, 76, 129, 0.04);
+}
+
+@media (max-width: 920px) {
+  .container {
+    gap: 16px;
+  }
+
+  .filtersRow {
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scroll-snap-type: x mandatory;
+  }
+
+  .filterCard {
+    flex: 0 0 calc(100% - 48px);
+    min-width: unset;
+    scroll-snap-align: start;
+  }
+}
+
+@media (max-width: 600px) {
+  .filtersRow {
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .filterCard {
+    width: 100%;
+  }
+
+  .filterControls {
+    flex-direction: column;
+  }
+}
