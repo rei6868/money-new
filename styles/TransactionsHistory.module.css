@@ -291,21 +291,6 @@
   .tabsRow {
     margin-top: 0.35rem;
   }
-
-  .activeFiltersRow {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.6rem;
-  }
-
-  .activeFilterBadges {
-    width: 100%;
-  }
-
-  .activeFiltersRow .secondaryButton {
-    width: 100%;
-    justify-content: center;
-  }
 }
 
 .filterActionsQuickAdd {
