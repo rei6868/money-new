@@ -72,6 +72,16 @@
   z-index: 12;
 }
 
+.filterRowShell {
+  background: var(--table-sticky-surface);
+}
+
+.filterRowCell {
+  padding: 0;
+  border-bottom: 1px solid var(--table-divider);
+  background: var(--table-sticky-surface);
+}
+
 .table tfoot {
   position: sticky;
   bottom: 0;

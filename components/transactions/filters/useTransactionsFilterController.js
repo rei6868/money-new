@@ -1,9 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FiX } from 'react-icons/fi';
-
-import styles from '../../../styles/TransactionsHistory.module.css';
-import { DropdownSimple } from '../../common/DropdownSimple';
-import { DropdownWithSearch, DropdownWithSearchContent } from '../../common/DropdownWithSearch';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getTransactionTypeLabel, normalizeTransactionType } from '../../../lib/transactions/transactionTypes';
 
 const DEFAULT_FILTERS = Object.freeze({
@@ -48,18 +43,6 @@ const MONTH_OPTIONS = [
 const MONTH_LABEL_LOOKUP = new Map(MONTH_OPTIONS.map((option) => [option.value, option.label]));
 
 const MAX_VISIBLE_FILTER_BADGES = 4;
-
-const COLUMN_FILTER_DESCRIPTORS = Object.freeze([
-  { columnId: 'owner', key: 'person', label: 'People' },
-  { columnId: 'account', key: 'account', label: 'Account' },
-  { columnId: 'category', key: 'category', label: 'Category' },
-  { columnId: 'shop', key: 'shop', label: 'Shop' },
-  { columnId: 'debtTag', key: 'debtTags', label: 'Debt Tag' },
-  { columnId: 'amount', key: 'amount', label: 'Amount' },
-  { columnId: 'date', key: 'date', label: 'Date' },
-  { columnId: 'type', key: 'type', label: 'Type' },
-  { columnId: 'notes', key: 'notes', label: 'Notes' },
-]);
 
 function normalizeFilterString(value) {
   if (typeof value === 'string') {
@@ -200,12 +183,7 @@ function matchesEntityFilter(value, filterValue) {
   return normalizedValue === normalizedFilter;
 }
 
-function buildFilterDescriptors({
-  filters,
-  amountOperatorLabelLookup,
-  closeColumnFilterPopover,
-  setFilters,
-}) {
+function buildFilterDescriptors({ filters, amountOperatorLabelLookup, setFilters }) {
   const descriptors = [];
 
   if (filters.person) {
@@ -213,7 +191,6 @@ function buildFilterDescriptors({
       key: 'person',
       label: `Person: ${filters.person}`,
       onClear: () => {
-        closeColumnFilterPopover();
         setFilters((prev) => ({ ...prev, person: null }));
       },
     });
@@ -224,7 +201,6 @@ function buildFilterDescriptors({
       key: 'account',
       label: `Account: ${filters.account}`,
       onClear: () => {
-        closeColumnFilterPopover();
         setFilters((prev) => ({ ...prev, account: null }));
       },
     });
@@ -235,7 +211,6 @@ function buildFilterDescriptors({
       key: 'category',
       label: `Category: ${filters.category}`,
       onClear: () => {
-        closeColumnFilterPopover();
         setFilters((prev) => ({ ...prev, category: null }));
       },
     });
@@ -246,7 +221,6 @@ function buildFilterDescriptors({
       key: 'shop',
       label: `Shop: ${filters.shop}`,
       onClear: () => {
-        closeColumnFilterPopover();
         setFilters((prev) => ({ ...prev, shop: null }));
       },
     });
@@ -258,7 +232,6 @@ function buildFilterDescriptors({
         key: `debt-tag-${tag}`,
         label: `Debt tag: ${tag}`,
         onClear: () => {
-          closeColumnFilterPopover();
           setFilters((prev) => ({
             ...prev,
             debtTags: prev.debtTags.filter((value) => value !== tag),
@@ -290,7 +263,6 @@ function buildFilterDescriptors({
       key: 'amount',
       label: `Amount: ${badgeLabel}`.trim(),
       onClear: () => {
-        closeColumnFilterPopover();
         setFilters((prev) => ({
           ...prev,
           amountOperator: null,
@@ -305,7 +277,6 @@ function buildFilterDescriptors({
       key: 'year',
       label: `Year: ${filters.year}`,
       onClear: () => {
-        closeColumnFilterPopover();
         setFilters((prev) => ({ ...prev, year: null }));
       },
     });
@@ -317,7 +288,6 @@ function buildFilterDescriptors({
       key: 'month',
       label: `Month: ${monthLabel}`,
       onClear: () => {
-        closeColumnFilterPopover();
         setFilters((prev) => ({ ...prev, month: null }));
       },
     });
@@ -332,7 +302,6 @@ function buildFilterDescriptors({
       key: 'type',
       label: `Type: ${typeLabel}`,
       onClear: () => {
-        closeColumnFilterPopover();
         setFilters((prev) => ({ ...prev, type: null }));
       },
     });
@@ -343,7 +312,6 @@ function buildFilterDescriptors({
       key: 'notes',
       label: `Notes contains: ${filters.notes}`,
       onClear: () => {
-        closeColumnFilterPopover();
         setFilters((prev) => ({ ...prev, notes: '' }));
       },
     });
@@ -358,7 +326,6 @@ export function useTransactionsFilterController({
   onRequestTabChange,
 }) {
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS });
-  const [openFilterDropdown, setOpenFilterDropdown] = useState(null);
   const [filterSearchValues, setFilterSearchValues] = useState({
     person: '',
     account: '',
@@ -367,8 +334,6 @@ export function useTransactionsFilterController({
     debtTags: '',
     type: '',
   });
-  const [activeColumnFilter, setActiveColumnFilter] = useState(null);
-  const columnFilterPopoverRef = useRef(null);
 
   const amountOperatorLabelLookup = useMemo(
     () => new Map(AMOUNT_OPERATOR_OPTIONS.map((option) => [option.value, option.label])),
@@ -622,10 +587,6 @@ export function useTransactionsFilterController({
     }
   }, [filters.type, typeOptions, setFilters]);
 
-  const closeColumnFilterPopover = useCallback(() => {
-    setActiveColumnFilter(null);
-  }, []);
-
   const handleFilterSearchChange = useCallback((field, value) => {
     setFilterSearchValues((prev) => ({
       ...prev,
@@ -647,7 +608,6 @@ export function useTransactionsFilterController({
   const handleToggleDebtTag = useCallback((value) => {
     if (value === 'all') {
       setFilters((prev) => ({ ...prev, debtTags: [] }));
-      setOpenFilterDropdown(null);
       setFilterSearchValues((prev) => ({ ...prev, debtTags: '' }));
       return;
     }
@@ -663,30 +623,19 @@ export function useTransactionsFilterController({
     });
   }, []);
 
-  const handleAmountOperatorSelect = useCallback(
-    (operator, options = {}) => {
-      const { closeDropdown = true, closePopover = false } = options;
-      const normalizedOperator = operator === 'all' ? null : operator;
-      setFilters((prev) => ({
-        ...prev,
-        amountOperator: normalizedOperator,
-        amountValue:
-          normalizedOperator === 'is-null'
-            ? ''
-            : normalizedOperator === null
-            ? ''
-            : prev.amountValue,
-      }));
-
-      if (closeDropdown) {
-        setOpenFilterDropdown(null);
-      }
-      if (closePopover) {
-        closeColumnFilterPopover();
-      }
-    },
-    [closeColumnFilterPopover],
-  );
+  const handleAmountOperatorSelect = useCallback((operator) => {
+    const normalizedOperator = operator === 'all' ? null : operator;
+    setFilters((prev) => ({
+      ...prev,
+      amountOperator: normalizedOperator,
+      amountValue:
+        normalizedOperator === 'is-null'
+          ? ''
+          : normalizedOperator === null
+          ? ''
+          : prev.amountValue,
+    }));
+  }, []);
 
   const handleAmountValueChange = useCallback((value) => {
     setFilters((prev) => ({
@@ -710,7 +659,6 @@ export function useTransactionsFilterController({
         ...prev,
         [field]: normalizedValue,
       }));
-      setOpenFilterDropdown(null);
 
       if (field === 'type') {
         if (normalizedValue) {
@@ -724,67 +672,14 @@ export function useTransactionsFilterController({
     [onRequestTabChange],
   );
 
-  const handlePopoverSingleSelect = useCallback(
-    (field, value) => {
-      if (field === 'amountOperator') {
-        const shouldClosePopover = value === 'all' || value === 'is-null';
-        handleAmountOperatorSelect(value, {
-          closeDropdown: false,
-          closePopover: shouldClosePopover,
-        });
-        return;
-      }
-
-      handleSingleFilterChange(field, value);
-      closeColumnFilterPopover();
-    },
-    [closeColumnFilterPopover, handleAmountOperatorSelect, handleSingleFilterChange],
-  );
-
-  useEffect(() => {
-    if (!activeColumnFilter) {
-      return undefined;
-    }
-
-    const handleOutsideClick = (event) => {
-      const target = event.target;
-      if (columnFilterPopoverRef.current && target instanceof Node) {
-        if (!columnFilterPopoverRef.current.contains(target)) {
-          closeColumnFilterPopover();
-        }
-      }
-    };
-
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        closeColumnFilterPopover();
-      }
-    };
-
-    const handleResize = () => {
-      closeColumnFilterPopover();
-    };
-
-    document.addEventListener('mousedown', handleOutsideClick);
-    document.addEventListener('keydown', handleEscape);
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('keydown', handleEscape);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [activeColumnFilter, closeColumnFilterPopover]);
-
   const activeFilterDescriptors = useMemo(
     () =>
       buildFilterDescriptors({
         filters,
         amountOperatorLabelLookup,
-        closeColumnFilterPopover,
         setFilters,
       }),
-    [amountOperatorLabelLookup, closeColumnFilterPopover, filters, setFilters],
+    [amountOperatorLabelLookup, filters, setFilters],
   );
 
   const activeFilterKeys = useMemo(() => {
@@ -822,294 +717,15 @@ export function useTransactionsFilterController({
     return keys;
   }, [filters]);
 
-  const columnFilterMap = useMemo(
-    () => new Map(COLUMN_FILTER_DESCRIPTORS.map((descriptor) => [descriptor.columnId, descriptor])),
-    [],
-  );
-
   const visibleFilterDescriptors = activeFilterDescriptors.slice(0, MAX_VISIBLE_FILTER_BADGES);
   const hasHiddenFilters = activeFilterDescriptors.length > visibleFilterDescriptors.length;
   const overflowBadgeCount = Math.max(activeFilterDescriptors.length - visibleFilterDescriptors.length, 0);
 
-  const handleColumnFilterTrigger = useCallback(
-    (descriptor) => {
-      if (!descriptor) {
-        return;
-      }
-
-      setOpenFilterDropdown(null);
-
-      setActiveColumnFilter((current) => {
-        if (current && current.columnId === descriptor.columnId && current.key === descriptor.key) {
-          return null;
-        }
-        return descriptor;
-      });
-    },
-    [setOpenFilterDropdown],
-  );
-
   const handleClearAllFilters = useCallback(() => {
     setFilters({ ...DEFAULT_FILTERS });
-    setOpenFilterDropdown(null);
     resetFilterSearchValues();
-    closeColumnFilterPopover();
     onRequestTabChange?.('all');
-  }, [closeColumnFilterPopover, onRequestTabChange, resetFilterSearchValues]);
-
-  const renderColumnFilterContent = useCallback(() => {
-    if (!activeColumnFilter) {
-      return null;
-    }
-
-    switch (activeColumnFilter.key) {
-      case 'person':
-        return (
-          <DropdownWithSearch
-            id="transactions-filter-person"
-            ariaLabel="Filter by person"
-            placeholder="Search people"
-            options={personOptions}
-            selectedValue={filters.person ?? 'all'}
-            onSelectOption={(value) => handlePopoverSingleSelect('person', value)}
-            searchValue={filterSearchValues.person}
-            onSearchChange={(value) => handleFilterSearchChange('person', value)}
-            emptyLabel="No people"
-          />
-        );
-      case 'account':
-        return (
-          <DropdownWithSearch
-            id="transactions-filter-account"
-            ariaLabel="Filter by account"
-            placeholder="Search accounts"
-            options={accountOptions}
-            selectedValue={filters.account ?? 'all'}
-            onSelectOption={(value) => handlePopoverSingleSelect('account', value)}
-            searchValue={filterSearchValues.account}
-            onSearchChange={(value) => handleFilterSearchChange('account', value)}
-            emptyLabel="No accounts"
-          />
-        );
-      case 'category':
-        return (
-          <DropdownWithSearch
-            id="transactions-filter-category"
-            ariaLabel="Filter by category"
-            placeholder="Search categories"
-            options={categoryOptions}
-            selectedValue={filters.category ?? 'all'}
-            onSelectOption={(value) => handlePopoverSingleSelect('category', value)}
-            searchValue={filterSearchValues.category}
-            onSearchChange={(value) => handleFilterSearchChange('category', value)}
-            emptyLabel="No categories"
-          />
-        );
-      case 'shop':
-        return (
-          <DropdownWithSearch
-            id="transactions-filter-shop"
-            ariaLabel="Filter by shop"
-            placeholder="Search shops"
-            options={shopOptions}
-            selectedValue={filters.shop ?? 'all'}
-            onSelectOption={(value) => handlePopoverSingleSelect('shop', value)}
-            searchValue={filterSearchValues.shop}
-            onSearchChange={(value) => handleFilterSearchChange('shop', value)}
-            emptyLabel="No shops"
-          />
-        );
-      case 'debtTags':
-        return (
-          <DropdownWithSearchContent
-            id="transactions-filter-debt-tags"
-            ariaLabel="Filter by debt tags"
-            placeholder="Search debt tags"
-            options={debtTagOptions}
-            selectedValues={filters.debtTags}
-            onToggleOption={handleToggleDebtTag}
-            searchValue={filterSearchValues.debtTags}
-            onSearchChange={(value) => handleFilterSearchChange('debtTags', value)}
-            emptyLabel="No tags"
-          />
-        );
-      case 'amount': {
-        const activeOperator = filters.amountOperator ?? 'all';
-        return (
-          <div className={styles.columnFilterSection}>
-            <DropdownSimple
-              id="transactions-filter-amount-operator"
-              ariaLabel="Select amount operator"
-              options={[{ value: 'all', label: 'Any amount' }, ...AMOUNT_OPERATOR_OPTIONS]}
-              selectedValue={activeOperator}
-              onSelect={(value) => handlePopoverSingleSelect('amountOperator', value)}
-            />
-            <input
-              type="number"
-              inputMode="decimal"
-              className={styles.modalControl}
-              value={filters.amountValue}
-              onChange={(event) => handleAmountValueChange(event.target.value)}
-              disabled={!filters.amountOperator || filters.amountOperator === 'is-null'}
-              placeholder="Enter amount"
-              aria-label="Filter amount value"
-            />
-          </div>
-        );
-      }
-      case 'date': {
-        const yearValue = filters.year ?? 'all';
-        const monthValue = filters.month ?? 'all';
-        return (
-          <div className={styles.columnFilterSection}>
-            <div className={styles.columnFilterGrid}>
-              <label htmlFor="transactions-filter-year" className={styles.modalLabel}>
-                Year
-              </label>
-              <select
-                id="transactions-filter-year"
-                className={styles.modalControl}
-                value={yearValue}
-                onChange={(event) => handleSingleFilterChange('year', event.target.value)}
-              >
-                <option value="all">Any year</option>
-                {yearOptions.map((option) => (
-                  <option key={`year-option-${option}`} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.columnFilterGrid}>
-              <label htmlFor="transactions-filter-month" className={styles.modalLabel}>
-                Month
-              </label>
-              <select
-                id="transactions-filter-month"
-                className={styles.modalControl}
-                value={monthValue}
-                onChange={(event) => handleSingleFilterChange('month', event.target.value)}
-              >
-                <option value="all">Any month</option>
-                {MONTH_OPTIONS.map((option) => (
-                  <option key={`month-option-${option.value}`} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.columnFilterFooter}>
-              <button
-                type="button"
-                className={`${styles.secondaryButton} ${styles.columnFilterClear}`.trim()}
-                onClick={handleClearDate}
-              >
-                Clear date
-              </button>
-            </div>
-          </div>
-        );
-      }
-      case 'type':
-        return (
-          <DropdownWithSearch
-            id="transactions-filter-type"
-            ariaLabel="Filter by type"
-            placeholder="Search types"
-            options={typeOptions}
-            selectedValue={filters.type ?? 'all'}
-            onSelectOption={(value) => handlePopoverSingleSelect('type', value)}
-            searchValue={filterSearchValues.type}
-            onSearchChange={(value) => handleFilterSearchChange('type', value)}
-            emptyLabel="No types"
-          />
-        );
-      case 'notes':
-        return (
-          <div className={styles.columnFilterSection}>
-            <label htmlFor="transactions-filter-notes" className={styles.modalLabel}>
-              Contains text
-            </label>
-            <input
-              id="transactions-filter-notes"
-              type="text"
-              className={styles.modalControl}
-              value={filters.notes}
-              onChange={(event) => handleSingleFilterChange('notes', event.target.value)}
-              placeholder="e.g. refund"
-            />
-          </div>
-        );
-      default:
-        return null;
-    }
-  }, [
-    accountOptions,
-    activeColumnFilter,
-    categoryOptions,
-    debtTagOptions,
-    filterSearchValues,
-    filters,
-    handleAmountValueChange,
-    handleClearDate,
-    handleFilterSearchChange,
-    handlePopoverSingleSelect,
-    handleSingleFilterChange,
-    handleToggleDebtTag,
-    personOptions,
-    shopOptions,
-    typeOptions,
-    yearOptions,
-  ]);
-
-  const columnFilterPopover = useMemo(() => {
-    if (!activeColumnFilter) {
-      return null;
-    }
-
-    const rect = activeColumnFilter.rect ?? {
-      top: 0,
-      left: 0,
-      bottom: 0,
-      right: 0,
-      width: 0,
-      height: 0,
-    };
-
-    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
-    const popoverWidth = Math.min(360, viewportWidth > 0 ? viewportWidth - 32 : 360);
-    const halfWidth = popoverWidth / 2;
-    const centerX = rect.left + rect.width / 2;
-    const clampedLeft = viewportWidth
-      ? Math.min(Math.max(centerX, 16 + halfWidth), viewportWidth - 16 - halfWidth)
-      : centerX;
-    const top = Math.max(rect.bottom + 8, 16);
-
-    return (
-      <div
-        ref={columnFilterPopoverRef}
-        className={styles.columnFilterPopover}
-        style={{ top: `${top}px`, left: `${clampedLeft}px` }}
-        role="dialog"
-        aria-modal="false"
-        aria-label={`Filter ${activeColumnFilter.label}`}
-        data-filter-key={activeColumnFilter.key}
-      >
-        <div className={styles.columnFilterHeader}>
-          <span className={styles.columnFilterTitle}>{activeColumnFilter.label}</span>
-          <button
-            type="button"
-            className={`${styles.iconButton} ${styles.columnFilterClose}`.trim()}
-            onClick={closeColumnFilterPopover}
-            aria-label={`Close ${activeColumnFilter.label} filter`}
-          >
-            <FiX aria-hidden />
-          </button>
-        </div>
-        <div className={styles.columnFilterBody}>{renderColumnFilterContent()}</div>
-      </div>
-    );
-  }, [activeColumnFilter, closeColumnFilterPopover, renderColumnFilterContent]);
+  }, [onRequestTabChange, resetFilterSearchValues]);
 
   return {
     filters,
@@ -1125,16 +741,11 @@ export function useTransactionsFilterController({
     filterSearchValues,
     handleFilterSearchChange,
     resetFilterSearchValues,
-    openFilterDropdown,
-    setOpenFilterDropdown,
     activeFilterDescriptors,
     visibleFilterDescriptors,
     hasHiddenFilters,
     overflowBadgeCount,
-    columnFilterMap,
     activeFilterKeys,
-    columnFilterPopover,
-    handleColumnFilterTrigger,
     handleClearAllFilters,
     handleSingleFilterChange,
     handleToggleDebtTag,
@@ -1142,7 +753,6 @@ export function useTransactionsFilterController({
     handleAmountValueChange,
     handleClearDate,
     amountOperatorLabelLookup,
-    closeColumnFilterPopover,
     MONTH_OPTIONS,
     AMOUNT_OPERATOR_OPTIONS,
   };

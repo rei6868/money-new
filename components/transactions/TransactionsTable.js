@@ -151,9 +151,7 @@ export function TransactionsTable(props) {
     isShowingSelectedOnly = false,
     onToggleShowSelected,
     showSelectionToolbar = true,
-    columnFilters,
-    onColumnFilter,
-    activeFilterKeys,
+    filterRowSlot = null,
   } = props;
 
   const [fontScale, setFontScale] = useState(FONT_SCALE_DEFAULT);
@@ -208,9 +206,7 @@ export function TransactionsTable(props) {
       onToggleShowSelected={onToggleShowSelected}
       isFetching={isFetching}
       showSelectionToolbar={showSelectionToolbar}
-      columnFilters={columnFilters}
-      onColumnFilter={onColumnFilter}
-      activeFilterKeys={activeFilterKeys}
+      filterRowSlot={filterRowSlot}
     />
   );
 }

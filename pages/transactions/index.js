@@ -15,16 +15,9 @@ import ColumnsCustomizeModal from '../../components/customize/ColumnsCustomizeMo
 import TxnTabs from '../../components/transactions/TxnTabs';
 import { PageToolbarSearch } from '../../components/layout/page/PageToolbar';
 import { EmptyStateCard, TablePanel } from '../../components/layout/panels';
-import { ModalWrapper } from '../../components/common/ModalWrapper';
-import { DropdownSimple } from '../../components/common/DropdownSimple';
-import { DropdownWithSearch, DropdownWithSearchContent } from '../../components/common/DropdownWithSearch';
 import { SelectionToolbar } from '../../components/table/SelectionToolbar';
-import {
-  AMOUNT_OPERATOR_OPTIONS,
-  MONTH_LABEL_LOOKUP,
-  MONTH_OPTIONS,
-  useTransactionsFilterController,
-} from '../../components/transactions/filters/useTransactionsFilterController';
+import { FilterRow } from '../../components/transactions/filters/FilterRow';
+import { useTransactionsFilterController } from '../../components/transactions/filters/useTransactionsFilterController';
 import {
   TRANSACTION_TYPE_VALUES,
   getTransactionTypeLabel,
@@ -159,7 +152,6 @@ export default function TransactionsHistoryPage() {
   const [quickAction, setQuickAction] = useState(null);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isFilterManagerOpen, setIsFilterManagerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [availableTypes, setAvailableTypes] = useState([]);
   const [isCompact, setIsCompact] = useState(false);
@@ -182,16 +174,10 @@ export default function TransactionsHistoryPage() {
     filterSearchValues,
     handleFilterSearchChange,
     resetFilterSearchValues,
-    openFilterDropdown,
-    setOpenFilterDropdown,
     activeFilterDescriptors,
     visibleFilterDescriptors,
     hasHiddenFilters,
     overflowBadgeCount,
-    columnFilterMap,
-    activeFilterKeys,
-    columnFilterPopover,
-    handleColumnFilterTrigger,
     handleClearAllFilters,
     handleSingleFilterChange,
     handleToggleDebtTag,
@@ -199,7 +185,6 @@ export default function TransactionsHistoryPage() {
     handleAmountValueChange,
     handleClearDate,
     amountOperatorLabelLookup,
-    closeColumnFilterPopover,
   } = useTransactionsFilterController({
     transactions,
     resolvedTypeList: availableTypes.length > 0 ? availableTypes : undefined,
@@ -520,30 +505,16 @@ export default function TransactionsHistoryPage() {
 
   const activeFilterCount = activeFilterDescriptors.length;
 
-  const handleOpenFilterManager = useCallback(() => {
-    setOpenFilterDropdown(null);
-    setIsFilterManagerOpen(true);
-    closeColumnFilterPopover();
-    resetFilterSearchValues();
-  }, [closeColumnFilterPopover, resetFilterSearchValues, setOpenFilterDropdown]);
-
-  const handleCloseFilterManager = useCallback(() => {
-    setIsFilterManagerOpen(false);
-    setOpenFilterDropdown(null);
-    resetFilterSearchValues();
-  }, [resetFilterSearchValues, setOpenFilterDropdown]);
-
   const handleClearAllFiltersClick = useCallback(() => {
     handleClearAllFilters();
     resetFilterSearchValues();
   }, [handleClearAllFilters, resetFilterSearchValues]);
 
-  const handleDropdownToggle = useCallback(
-    (id) => {
-      setOpenFilterDropdown((current) => (current === id ? null : id));
-    },
-    [setOpenFilterDropdown],
-  );
+  const handleRevealFilters = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('transactions-filters-open'));
+    }
+  }, []);
 
   const filteredTransactions = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
@@ -1011,229 +982,6 @@ export default function TransactionsHistoryPage() {
     );
   };
 
-  const filterManagerModal = (
-    <ModalWrapper
-      isOpen={isFilterManagerOpen}
-      onBackdropClick={handleCloseFilterManager}
-      wrapperClassName={styles.modalWrapper}
-      panelClassName={styles.modalContent}
-      backdropClassName={styles.modalBackdrop}
-    >
-      <div id="transactions-filter-modal" className={styles.modalInner}>
-        <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>Filter transactions</h2>
-          <button
-            type="button"
-            className={`${styles.iconButton} ${styles.toolbarIconButton}`.trim()}
-            onClick={handleCloseFilterManager}
-            aria-label="Close filters"
-          >
-            <FiX aria-hidden />
-          </button>
-        </div>
-        <div className={styles.modalBody} role="group" aria-label="Filter transactions">
-          <p className={styles.modalDescription}>
-            Narrow down the history by people, accounts, categories, debt tags, amount, year, and
-            month.
-          </p>
-          <div className={styles.modalGrid}>
-            <div className={styles.modalField}>
-              <DropdownWithSearch
-                id="person"
-                label="People"
-                isOpen={openFilterDropdown === 'person'}
-                onToggle={handleDropdownToggle}
-                options={personOptions}
-                searchValue={filterSearchValues.person}
-                onSearchChange={(value) => handleFilterSearchChange('person', value)}
-                onSelectOption={(value) => handleSingleFilterChange('person', value)}
-                selectedValue={filters.person ?? 'all'}
-                placeholder="Any person"
-                optionFormatter={(value) => (value === 'all' ? 'Any person' : value)}
-              />
-            </div>
-            <div className={styles.modalField}>
-              <DropdownWithSearch
-                id="account"
-                label="Accounts"
-                isOpen={openFilterDropdown === 'account'}
-                onToggle={handleDropdownToggle}
-                options={accountOptions}
-                searchValue={filterSearchValues.account}
-                onSearchChange={(value) => handleFilterSearchChange('account', value)}
-                onSelectOption={(value) => handleSingleFilterChange('account', value)}
-                selectedValue={filters.account ?? 'all'}
-                placeholder="Any account"
-                optionFormatter={(value) => (value === 'all' ? 'Any account' : value)}
-              />
-            </div>
-            <div className={styles.modalField}>
-              <DropdownWithSearch
-                id="category"
-                label="Categories"
-                isOpen={openFilterDropdown === 'category'}
-                onToggle={handleDropdownToggle}
-                options={categoryOptions}
-                searchValue={filterSearchValues.category}
-                onSearchChange={(value) => handleFilterSearchChange('category', value)}
-                onSelectOption={(value) => handleSingleFilterChange('category', value)}
-                selectedValue={filters.category ?? 'all'}
-                placeholder="Any category"
-                optionFormatter={(value) => (value === 'all' ? 'Any category' : value)}
-              />
-            </div>
-            <div className={styles.modalField}>
-              <DropdownWithSearch
-                id="type"
-                label="Type"
-                isOpen={openFilterDropdown === 'type'}
-                onToggle={handleDropdownToggle}
-                options={typeOptions}
-                searchValue={filterSearchValues.type}
-                onSearchChange={(value) => handleFilterSearchChange('type', value)}
-                onSelectOption={(value) => handleSingleFilterChange('type', value)}
-                selectedValue={filters.type ?? 'all'}
-                placeholder="Any type"
-                optionFormatter={(value) => (value === 'all' ? 'Any type' : value)}
-              />
-            </div>
-            <div className={styles.modalField}>
-              <DropdownWithSearch
-                id="shop"
-                label="Shop"
-                isOpen={openFilterDropdown === 'shop'}
-                onToggle={handleDropdownToggle}
-                options={shopOptions}
-                searchValue={filterSearchValues.shop}
-                onSearchChange={(value) => handleFilterSearchChange('shop', value)}
-                onSelectOption={(value) => handleSingleFilterChange('shop', value)}
-                selectedValue={filters.shop ?? 'all'}
-                placeholder="Any shop"
-                optionFormatter={(value) => (value === 'all' ? 'Any shop' : value)}
-              />
-            </div>
-            <div className={styles.modalField}>
-              <DropdownWithSearch
-                id="debtTags"
-                label="Debt tags"
-                isOpen={openFilterDropdown === 'debtTags'}
-                onToggle={handleDropdownToggle}
-                options={debtTagOptions}
-                searchValue={filterSearchValues.debtTags}
-                onSearchChange={(value) => handleFilterSearchChange('debtTags', value)}
-                onSelectOption={handleToggleDebtTag}
-                selectedValues={filters.debtTags}
-                multi
-                placeholder="Any debt tag"
-                optionFormatter={(value) => (value === 'all' ? 'Any debt tag' : value)}
-                renderValue={(_, fallback) =>
-                  Array.isArray(filters.debtTags) && filters.debtTags.length > 0
-                    ? `${filters.debtTags.length} selected`
-                    : fallback
-                }
-              />
-            </div>
-            <div className={`${styles.modalField} ${styles.modalFieldWide}`.trim()}>
-              <div className={styles.amountFilterRow}>
-                <DropdownSimple
-                  id="amount-operator"
-                  label="Amount operator"
-                  isOpen={openFilterDropdown === 'amount-operator'}
-                  onToggle={handleDropdownToggle}
-                  options={AMOUNT_OPERATOR_OPTIONS.map((option) => option.value)}
-                  value={filters.amountOperator ?? 'all'}
-                  onSelect={handleAmountOperatorSelect}
-                  placeholder="Any amount"
-                  optionFormatter={(value) =>
-                    value === 'all'
-                      ? 'Any amount'
-                      : amountOperatorLabelLookup.get(value) ?? value
-                  }
-                />
-                <label htmlFor="transactions-filter-amount-value" className={styles.modalLabel}>
-                  Amount value
-                  <input
-                    id="transactions-filter-amount-value"
-                    type="number"
-                    inputMode="decimal"
-                    step="0.01"
-                    className={styles.modalControl}
-                    value={filters.amountValue}
-                    onChange={handleAmountValueChange}
-                    placeholder="Enter amount"
-                    disabled={filters.amountOperator === 'is-null' || !filters.amountOperator}
-                  />
-                </label>
-              </div>
-            </div>
-            <div className={styles.modalField}>
-              <DropdownSimple
-                id="year"
-                label="Year"
-                isOpen={openFilterDropdown === 'year'}
-                onToggle={handleDropdownToggle}
-                options={yearOptions}
-                value={filters.year ?? 'all'}
-                onSelect={(value) => handleSingleFilterChange('year', value)}
-                placeholder="Any year"
-                optionFormatter={(value) => (value === 'all' ? 'Any year' : value)}
-              />
-            </div>
-            <div className={styles.modalField}>
-              <DropdownSimple
-                id="month"
-                label="Month"
-                isOpen={openFilterDropdown === 'month'}
-                onToggle={handleDropdownToggle}
-                options={MONTH_OPTIONS.map((option) => option.value)}
-                value={filters.month ?? 'all'}
-                onSelect={(value) => handleSingleFilterChange('month', value)}
-                placeholder="Any month"
-                optionFormatter={(value) =>
-                  value === 'all' ? 'Any month' : MONTH_LABEL_LOOKUP.get(String(value)) ?? value
-                }
-              />
-            </div>
-          </div>
-          {Array.isArray(filters.debtTags) && filters.debtTags.length > 0 ? (
-            <div className={styles.modalTagBadges} aria-live="polite">
-              {filters.debtTags.map((tag) => (
-                <button
-                  key={`selected-debt-tag-${tag}`}
-                  type="button"
-                  className={styles.modalTagBadge}
-                  onClick={() => handleToggleDebtTag(tag)}
-                  title={`Remove ${tag}`}
-                >
-                  <span className={styles.modalTagLabel}>{tag}</span>
-                  <FiX aria-hidden className={styles.modalTagRemove} />
-                  <span className={styles.srOnly}>Remove {tag}</span>
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-        <div className={styles.modalFooter}>
-          <button
-            type="button"
-            className={`${styles.secondaryButton} ${styles.clearFilterButton}`.trim()}
-            onClick={handleClearAllFiltersClick}
-            disabled={activeFilterCount === 0}
-          >
-            Clear all
-          </button>
-          <button
-            type="button"
-            className={`${styles.primaryButton} ${styles.modalApply}`.trim()}
-            onClick={handleCloseFilterManager}
-          >
-            Done
-          </button>
-        </div>
-      </div>
-    </ModalWrapper>
-  );
-
   const activeFiltersRow = activeFilterCount > 0 ? (
     <div className={styles.activeFiltersRow} role="region" aria-live="polite">
       <div className={styles.activeFilterBadges}>
@@ -1254,7 +1002,7 @@ export default function TransactionsHistoryPage() {
           <button
             type="button"
             className={styles.activeFilterMore}
-            onClick={handleOpenFilterManager}
+            onClick={handleRevealFilters}
             aria-label="Show all filters"
           >
             <FiMoreHorizontal aria-hidden />
@@ -1274,6 +1022,27 @@ export default function TransactionsHistoryPage() {
   ) : null;
 
   const isAddModalOpen = addModalType !== null;
+
+  const filterRowSlot = (
+    <FilterRow
+      filters={filters}
+      filterSearchValues={filterSearchValues}
+      personOptions={personOptions}
+      accountOptions={accountOptions}
+      categoryOptions={categoryOptions}
+      shopOptions={shopOptions}
+      debtTagOptions={debtTagOptions}
+      typeOptions={typeOptions}
+      yearOptions={yearOptions}
+      amountOperatorLabelLookup={amountOperatorLabelLookup}
+      onFilterSearchChange={handleFilterSearchChange}
+      onSelectFilter={handleSingleFilterChange}
+      onToggleDebtTag={handleToggleDebtTag}
+      onAmountOperatorSelect={handleAmountOperatorSelect}
+      onAmountValueChange={handleAmountValueChange}
+      onClearDate={handleClearDate}
+    />
+  );
 
   const handleToggleSearch = useCallback(() => {
     if (!isCompact) {
@@ -1306,8 +1075,6 @@ export default function TransactionsHistoryPage() {
       title="Transactions History"
       subtitle="Monitor every inflow, cashback, debt movement, and adjustment inside Money Flow."
     >
-      {filterManagerModal}
-      {columnFilterPopover}
       <div className={pageShellStyles.screen}>
         <div className={styles.controlsRegion}>
           <div
@@ -1407,9 +1174,7 @@ export default function TransactionsHistoryPage() {
             onToggleShowSelected={handleToggleShowSelected}
             isFetching={isFetching}
             showSelectionToolbar={false}
-            columnFilters={columnFilterMap}
-            onColumnFilter={handleColumnFilterTrigger}
-            activeFilterKeys={activeFilterKeys}
+            filterRowSlot={filterRowSlot}
           />
         )}
       </div>
