@@ -64,6 +64,7 @@ export type TableAccountsProps = {
   isShowingSelectedOnly?: boolean;
   onToggleShowSelected?: (next: boolean) => void;
   onEditAccount?: (account: AccountRow) => void;
+  showSelectionToolbar?: boolean;
 };
 
 type FontScaleState = {
@@ -214,6 +215,7 @@ export function TableAccounts({
   isShowingSelectedOnly = false,
   onToggleShowSelected,
   onEditAccount,
+  showSelectionToolbar = true,
 }: TableAccountsProps) {
   const [fontScale, setFontScale] = useState(FONT_SCALE_DEFAULT);
 
@@ -259,6 +261,7 @@ export function TableAccounts({
       onBulkDelete={(ids: string[]) => {
         console.info('Accounts bulk delete placeholder', ids);
       }}
+      showSelectionToolbar={showSelectionToolbar}
     />
   );
 }

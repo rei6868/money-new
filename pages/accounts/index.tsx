@@ -9,13 +9,16 @@ import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGl
 import QuickAddModal from '../../components/common/QuickAddModal';
 import {
   FiEye,
+  FiFilter,
   FiGrid,
   FiList,
   FiPlus,
   FiRefreshCcw,
   FiSearch,
   FiSettings,
+  FiTrash2,
   FiX,
+  FiXCircle,
 } from 'react-icons/fi';
 import ColumnsCustomizeModal, {
   ColumnConfig as CustomizeColumnConfig,
@@ -188,6 +191,27 @@ function resolveSortedAccounts(
   });
 }
 
+function useBreakpoint(query: string) {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const media = window.matchMedia(query);
+    const updateMatch = () => setMatches(media.matches);
+    updateMatch();
+    media.addEventListener('change', updateMatch);
+
+    return () => {
+      media.removeEventListener('change', updateMatch);
+    };
+  }, [query]);
+
+  return matches;
+}
+
 export default function AccountsPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
   const { accounts: accountsData, refetch: refetchAccounts, createAccount } = useAccounts();
@@ -230,18 +254,29 @@ export default function AccountsPage() {
   const [quickAction, setQuickAction] = useState<string | null>(null);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<NormalizedAccount | null>(null);
   const [accountTypes, setAccountTypes] = useState<string[]>([]);
 
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const isCompactLayout = useBreakpoint('(max-width: 720px)');
+  const previousLayoutRef = useRef<boolean | null>(null);
 
   useEffect(() => {
-    if (isSearchOpen && searchInputRef.current) {
+    if (isCompactLayout && isMobileSearchOpen && searchInputRef.current) {
       searchInputRef.current.focus();
     }
-  }, [isSearchOpen]);
+  }, [isCompactLayout, isMobileSearchOpen]);
+
+  useEffect(() => {
+    if (!isCompactLayout) {
+      setIsMobileSearchOpen(false);
+    } else if (previousLayoutRef.current === false) {
+      setIsMobileSearchOpen(false);
+    }
+    previousLayoutRef.current = isCompactLayout;
+  }, [isCompactLayout]);
 
   // Persist active type tab to localStorage
   useEffect(() => {
@@ -532,6 +567,18 @@ export default function AccountsPage() {
     setShowSelectedOnly(next);
   }, []);
 
+  const handleToggleShowSelectedClick = useCallback(() => {
+    handleToggleShowSelected(!showSelectedOnly);
+  }, [handleToggleShowSelected, showSelectedOnly]);
+
+  const handleClearSelection = useCallback(() => {
+    handleSelectAll(false);
+  }, [handleSelectAll]);
+
+  const handleDeleteSelected = useCallback(() => {
+    console.info('Accounts bulk delete placeholder', selectedIds);
+  }, [selectedIds]);
+
   const handleColumnVisibilityChange = useCallback((columnId: string, visible: boolean) => {
     setColumnState((prev) =>
       prev.map((column) =>
@@ -588,7 +635,7 @@ export default function AccountsPage() {
   );
 
   const handleToggleSearch = useCallback(() => {
-    setIsSearchOpen((prev) => {
+    setIsMobileSearchOpen((prev) => {
       if (prev && searchInputRef.current) {
         searchInputRef.current.blur();
       }
@@ -597,7 +644,7 @@ export default function AccountsPage() {
   }, []);
 
   const handleCloseSearch = useCallback(() => {
-    setIsSearchOpen(false);
+    setIsMobileSearchOpen(false);
   }, []);
 
   const handleRefresh = useCallback(() => {
@@ -809,13 +856,64 @@ export default function AccountsPage() {
   const isAddModalOpen = addModalType !== null;
   const isEditModalOpen = editingAccount !== null;
   const searchFieldId = 'accounts-search-input';
+  const selectionCount = selectionSummary.count ?? 0;
+  const isSearchOpen = isCompactLayout ? isMobileSearchOpen : true;
+  const toolbarLayout = isCompactLayout ? 'stacked' : 'inline';
+
+  const inlineSelectionToolbar =
+    !isCompactLayout && selectionCount > 0 ? (
+      <div
+        className={styles.toolbarSelectionActions}
+        role="group"
+        aria-label="Selected account actions"
+      >
+        <span className={styles.toolbarSelectionCount}>{selectionCount} selected</span>
+        <div className={styles.toolbarSelectionButtons}>
+          <button
+            type="button"
+            className={styles.toolbarSelectionButton}
+            onClick={handleToggleShowSelectedClick}
+            data-active={showSelectedOnly ? 'true' : undefined}
+            aria-pressed={showSelectedOnly}
+            title={showSelectedOnly ? 'Show all rows' : 'Show selected rows'}
+          >
+            <span className={styles.toolbarSelectionButtonIcon} aria-hidden>
+              <FiFilter />
+            </span>
+            <span className={styles.toolbarSelectionButtonLabel}>Show Selected</span>
+          </button>
+          <button
+            type="button"
+            className={styles.toolbarSelectionButton}
+            onClick={handleClearSelection}
+            title="Deselect all rows"
+          >
+            <span className={styles.toolbarSelectionButtonIcon} aria-hidden>
+              <FiXCircle />
+            </span>
+            <span className={styles.toolbarSelectionButtonLabel}>Deselected</span>
+          </button>
+          <button
+            type="button"
+            className={`${styles.toolbarSelectionButton} ${styles.toolbarSelectionButtonDanger}`.trim()}
+            onClick={handleDeleteSelected}
+            title="Delete selected accounts"
+          >
+            <span className={styles.toolbarSelectionButtonIcon} aria-hidden>
+              <FiTrash2 />
+            </span>
+            <span className={styles.toolbarSelectionButtonLabel}>Delete</span>
+          </button>
+        </div>
+      </div>
+    ) : null;
 
   return (
     <AppLayout title="Accounts" subtitle="">
       <div className={pageShellStyles.pageShell}>
         <div className={pageShellStyles.pageContent}>
           <div className={styles.toolbarSection} role="toolbar" aria-label="Accounts controls">
-            <div className={styles.toolbarRow}>
+            <div className={styles.toolbarRow} data-layout={toolbarLayout}>
               <div className={styles.toolbarQuickActions} role="group" aria-label="Account quick actions">
                 {actionButtons}
               </div>
@@ -845,23 +943,44 @@ export default function AccountsPage() {
                   </button>
                 </div>
               </div>
-              <div
-                className={styles.toolbarSearchArea}
-                data-open={isSearchOpen ? 'true' : 'false'}
-                role="search"
-              >
-                <button
-                  type="button"
-                  className={styles.toolbarSearchToggle}
-                  onClick={handleToggleSearch}
-                  aria-label={isSearchOpen ? 'Close search' : 'Open search'}
-                  aria-expanded={isSearchOpen}
-                  aria-controls={searchFieldId}
-                  data-active={isSearchOpen ? 'true' : 'false'}
+              {isCompactLayout ? (
+                <div
+                  className={styles.toolbarSearchArea}
+                  data-open={isSearchOpen ? 'true' : 'false'}
+                  role="search"
                 >
-                  {isSearchOpen ? <FiX aria-hidden /> : <FiSearch aria-hidden />}
-                </button>
-                <div className={styles.toolbarSearchInput} data-open={isSearchOpen ? 'true' : 'false'}>
+                  <button
+                    type="button"
+                    className={styles.toolbarSearchToggle}
+                    onClick={handleToggleSearch}
+                    aria-label={isSearchOpen ? 'Close search' : 'Open search'}
+                    aria-expanded={isSearchOpen}
+                    aria-controls={searchFieldId}
+                    data-active={isSearchOpen ? 'true' : 'false'}
+                  >
+                    {isSearchOpen ? <FiX aria-hidden /> : <FiSearch aria-hidden />}
+                  </button>
+                  <div className={styles.toolbarSearchInput} data-open={isSearchOpen ? 'true' : 'false'}>
+                    <PageToolbarSearch
+                      className={styles.toolbarSearch}
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      onClear={() => handleSearchChange('')}
+                      placeholder="Search accounts..."
+                      ariaLabel="Search accounts"
+                      inputRef={searchInputRef}
+                      id={searchFieldId}
+                      variant="mobile"
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') {
+                          handleCloseSearch();
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className={styles.toolbarSearchDesktop} role="search">
                   <PageToolbarSearch
                     className={styles.toolbarSearch}
                     value={searchQuery}
@@ -871,22 +990,19 @@ export default function AccountsPage() {
                     ariaLabel="Search accounts"
                     inputRef={searchInputRef}
                     id={searchFieldId}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Escape') {
-                        handleCloseSearch();
-                      }
-                    }}
+                    variant="desktop"
                   />
                 </div>
+              )}
+              {inlineSelectionToolbar}
+              <div className={styles.toolbarTabs}>
+                <AccountTypeTabs
+                  activeTab={activeTypeTab}
+                  onTabChange={setActiveTypeTab}
+                  tabs={accountTypeTabMetrics}
+                />
               </div>
             </div>
-          </div>
-          <div className={styles.toolbarTabsRow}>
-            <AccountTypeTabs
-              activeTab={activeTypeTab}
-              onTabChange={setActiveTypeTab}
-              tabs={accountTypeTabMetrics}
-            />
           </div>
           {fetchError ? (
             <TablePanel role="alert">
@@ -929,6 +1045,7 @@ export default function AccountsPage() {
                 isShowingSelectedOnly={showSelectedOnly}
                 onToggleShowSelected={handleToggleShowSelected}
                 onEditAccount={handleEditAccount}
+                showSelectionToolbar={isCompactLayout}
               />
             </TablePanel>
           )}
