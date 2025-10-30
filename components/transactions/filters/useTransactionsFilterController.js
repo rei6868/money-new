@@ -56,6 +56,409 @@ const COLUMN_FILTER_DESCRIPTORS = Object.freeze([
   { columnId: 'notes', key: 'notes', label: 'Notes' },
 ]);
 
+const toDisplayString = (value) => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (typeof value === 'number') {
+    return String(value);
+  }
+
+  return null;
+};
+
+const toDisplayArray = (value) => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => toDisplayString(item))
+    .filter((item) => typeof item === 'string');
+};
+
+const toOptionList = (values) =>
+  values
+    .map((item) => toDisplayString(item))
+    .filter((item) => typeof item === 'string')
+    .map((item) => ({ label: item, value: item }));
+
+function buildFilterLineDefinitionsFromState(state) {
+  const definitions = [];
+
+  if (state.person) {
+    definitions.push({
+      id: 'person',
+      columnId: 'person',
+      operatorId: 'is',
+      value: state.person,
+    });
+  }
+
+  if (state.account) {
+    definitions.push({
+      id: 'account',
+      columnId: 'account',
+      operatorId: 'is',
+      value: state.account,
+    });
+  }
+
+  if (state.category) {
+    definitions.push({
+      id: 'category',
+      columnId: 'category',
+      operatorId: 'is',
+      value: state.category,
+    });
+  }
+
+  if (state.shop) {
+    definitions.push({
+      id: 'shop',
+      columnId: 'shop',
+      operatorId: 'is',
+      value: state.shop,
+    });
+  }
+
+  if (Array.isArray(state.debtTags) && state.debtTags.length > 0) {
+    definitions.push({
+      id: 'debtTags',
+      columnId: 'debtTags',
+      operatorId: 'includes',
+      value: state.debtTags,
+    });
+  }
+
+  if (state.amountOperator) {
+    definitions.push({
+      id: 'amount',
+      columnId: 'amount',
+      operatorId: state.amountOperator,
+      value: state.amountOperator === 'is-null' ? null : state.amountValue,
+    });
+  }
+
+  if (state.year) {
+    definitions.push({
+      id: 'year',
+      columnId: 'year',
+      operatorId: 'is',
+      value: state.year,
+    });
+  }
+
+  if (state.month) {
+    definitions.push({
+      id: 'month',
+      columnId: 'month',
+      operatorId: 'is',
+      value: String(state.month),
+    });
+  }
+
+  if (state.type) {
+    definitions.push({
+      id: 'type',
+      columnId: 'type',
+      operatorId: 'is',
+      value: state.type,
+    });
+  }
+
+  if (state.notes) {
+    definitions.push({
+      id: 'notes',
+      columnId: 'notes',
+      operatorId: 'contains',
+      value: state.notes,
+    });
+  }
+
+  return definitions;
+}
+
+function mapFilterLineDefinitionsToState(definitions) {
+  const next = { ...DEFAULT_FILTERS };
+
+  definitions.forEach((definition) => {
+    const { columnId, operatorId, value } = definition ?? {};
+
+    if (columnId === 'person') {
+      next.person = toDisplayString(value);
+      return;
+    }
+
+    if (columnId === 'account') {
+      next.account = toDisplayString(value);
+      return;
+    }
+
+    if (columnId === 'category') {
+      next.category = toDisplayString(value);
+      return;
+    }
+
+    if (columnId === 'shop') {
+      next.shop = toDisplayString(value);
+      return;
+    }
+
+    if (columnId === 'debtTags') {
+      next.debtTags = toDisplayArray(value);
+      return;
+    }
+
+    if (columnId === 'amount') {
+      const normalizedOperator = operatorId ?? null;
+      next.amountOperator = normalizedOperator === 'all' ? null : normalizedOperator;
+      if (normalizedOperator && normalizedOperator !== 'is-null') {
+        const typedValue = typeof value === 'number' ? String(value) : value;
+        next.amountValue = typeof typedValue === 'string' ? typedValue : '';
+      } else {
+        next.amountValue = '';
+      }
+      return;
+    }
+
+    if (columnId === 'year') {
+      next.year = toDisplayString(value);
+      return;
+    }
+
+    if (columnId === 'month') {
+      next.month = toDisplayString(value);
+      return;
+    }
+
+    if (columnId === 'type') {
+      next.type = toDisplayString(value);
+      return;
+    }
+
+    if (columnId === 'notes') {
+      next.notes = typeof value === 'string' ? value : '';
+    }
+  });
+
+  return next;
+}
+
+function createFilterLineColumns({
+  personOptions,
+  accountOptions,
+  categoryOptions,
+  shopOptions,
+  debtTagOptions,
+  yearOptions,
+  typeOptions,
+}) {
+  return [
+    {
+      id: 'person',
+      label: 'Person',
+      helperText: 'Filter by counterparty',
+      operators: [
+        {
+          id: 'is',
+          label: 'is',
+          valueInput: 'select',
+          placeholder: 'Search people',
+          options: toOptionList(personOptions),
+        },
+      ],
+    },
+    {
+      id: 'account',
+      label: 'Account',
+      helperText: 'Match transactions by account',
+      operators: [
+        {
+          id: 'is',
+          label: 'is',
+          valueInput: 'select',
+          placeholder: 'Search accounts',
+          options: toOptionList(accountOptions),
+        },
+      ],
+    },
+    {
+      id: 'category',
+      label: 'Category',
+      helperText: 'Narrow results by category',
+      operators: [
+        {
+          id: 'is',
+          label: 'is',
+          valueInput: 'select',
+          placeholder: 'Search categories',
+          options: toOptionList(categoryOptions),
+        },
+      ],
+    },
+    {
+      id: 'shop',
+      label: 'Shop',
+      helperText: 'Limit by merchant or shop',
+      operators: [
+        {
+          id: 'is',
+          label: 'is',
+          valueInput: 'select',
+          placeholder: 'Search shops',
+          options: toOptionList(shopOptions),
+        },
+      ],
+    },
+    {
+      id: 'debtTags',
+      label: 'Debt tags',
+      helperText: 'Pick one or more debt tags',
+      operators: [
+        {
+          id: 'includes',
+          label: 'includes',
+          valueInput: 'multi-select',
+          placeholder: 'Search tags',
+          options: toOptionList(debtTagOptions),
+        },
+      ],
+    },
+    {
+      id: 'amount',
+      label: 'Amount',
+      helperText: 'Compare by amount',
+      operators: AMOUNT_OPERATOR_OPTIONS.map((option) => ({
+        id: option.value,
+        label: option.label,
+        valueInput: option.value === 'is-null' ? 'none' : 'number',
+        placeholder: option.value === 'is-null' ? undefined : '0.00',
+      })),
+    },
+    {
+      id: 'year',
+      label: 'Year',
+      helperText: 'Filter by accounting year',
+      operators: [
+        {
+          id: 'is',
+          label: 'is',
+          valueInput: 'select',
+          placeholder: 'Search years',
+          options: toOptionList(yearOptions),
+        },
+      ],
+    },
+    {
+      id: 'month',
+      label: 'Month',
+      helperText: 'Filter by calendar month',
+      operators: [
+        {
+          id: 'is',
+          label: 'is',
+          valueInput: 'select',
+          options: MONTH_OPTIONS.map((option) => ({
+            value: option.value,
+            label: option.label,
+          })),
+        },
+      ],
+    },
+    {
+      id: 'type',
+      label: 'Type',
+      helperText: 'Match transaction type',
+      operators: [
+        {
+          id: 'is',
+          label: 'is',
+          valueInput: 'select',
+          placeholder: 'Search types',
+          options: toOptionList(typeOptions),
+        },
+      ],
+    },
+    {
+      id: 'notes',
+      label: 'Notes',
+      helperText: 'Search within notes',
+      operators: [
+        {
+          id: 'contains',
+          label: 'contains',
+          valueInput: 'text',
+          placeholder: 'e.g. refund',
+        },
+      ],
+    },
+  ];
+}
+
+function createFilterLineOptionLoader({
+  personOptions,
+  accountOptions,
+  categoryOptions,
+  shopOptions,
+  debtTagOptions,
+  yearOptions,
+  typeOptions,
+}) {
+  const filterList = (values, matcher) => {
+    const mapped = Array.isArray(values) ? values : [];
+    return mapped
+      .map((value) => toDisplayString(value))
+      .filter((value) => typeof value === 'string' && matcher(value))
+      .map((value) => ({ label: value, value }));
+  };
+
+  return ({ columnId, search }) => {
+    const normalizedSearch = typeof search === 'string' ? search.trim().toLowerCase() : '';
+    const matchesSearch = (candidate) =>
+      !normalizedSearch || candidate.toLowerCase().includes(normalizedSearch);
+
+    if (columnId === 'person') {
+      return Promise.resolve(filterList(personOptions, matchesSearch));
+    }
+
+    if (columnId === 'account') {
+      return Promise.resolve(filterList(accountOptions, matchesSearch));
+    }
+
+    if (columnId === 'category') {
+      return Promise.resolve(filterList(categoryOptions, matchesSearch));
+    }
+
+    if (columnId === 'shop') {
+      return Promise.resolve(filterList(shopOptions, matchesSearch));
+    }
+
+    if (columnId === 'debtTags') {
+      return Promise.resolve(filterList(debtTagOptions, matchesSearch));
+    }
+
+    if (columnId === 'year') {
+      return Promise.resolve(filterList(yearOptions, matchesSearch));
+    }
+
+    if (columnId === 'type') {
+      return Promise.resolve(filterList(typeOptions, matchesSearch));
+    }
+
+    if (columnId === 'month') {
+      const monthOptions = MONTH_OPTIONS.filter((option) =>
+        matchesSearch(option.label.toLowerCase()),
+      ).map((option) => ({ value: option.value, label: option.label }));
+      return Promise.resolve(monthOptions);
+    }
+
+    return Promise.resolve([]);
+  };
+}
+
 function normalizeFilterString(value) {
   if (typeof value === 'string') {
     return value.trim().toLowerCase();
@@ -989,6 +1392,82 @@ export function useTransactionsFilterController({
     yearOptions,
   ]);
 
+  const filterLineDefinitions = useMemo(
+    () => buildFilterLineDefinitionsFromState(filters),
+    [filters],
+  );
+
+  const filterLineColumns = useMemo(
+    () =>
+      createFilterLineColumns({
+        personOptions,
+        accountOptions,
+        categoryOptions,
+        shopOptions,
+        debtTagOptions,
+        yearOptions,
+        typeOptions,
+      }),
+    [
+      personOptions,
+      accountOptions,
+      categoryOptions,
+      shopOptions,
+      debtTagOptions,
+      yearOptions,
+      typeOptions,
+    ],
+  );
+
+  const loadFilterLineOptions = useMemo(
+    () =>
+      createFilterLineOptionLoader({
+        personOptions,
+        accountOptions,
+        categoryOptions,
+        shopOptions,
+        debtTagOptions,
+        yearOptions,
+        typeOptions,
+      }),
+    [
+      personOptions,
+      accountOptions,
+      categoryOptions,
+      shopOptions,
+      debtTagOptions,
+      yearOptions,
+      typeOptions,
+    ],
+  );
+
+  const handleFilterLineChange = useCallback(
+    (definitions = []) => {
+      const nextState = mapFilterLineDefinitionsToState(definitions);
+      const previousType = normalizeTransactionType(filters.type) ?? filters.type;
+      const nextType = normalizeTransactionType(nextState.type) ?? nextState.type;
+
+      if (previousType !== nextType) {
+        if (nextType) {
+          onRequestTabChange?.(nextType);
+        } else {
+          onRequestTabChange?.('all');
+        }
+      }
+
+      setFilters(nextState);
+      setOpenFilterDropdown(null);
+      closeColumnFilterPopover();
+    },
+    [
+      closeColumnFilterPopover,
+      filters.type,
+      onRequestTabChange,
+      setFilters,
+      setOpenFilterDropdown,
+    ],
+  );
+
   return {
     filters,
     setFilters,
@@ -1022,6 +1501,10 @@ export function useTransactionsFilterController({
     handleClearDate,
     amountOperatorLabelLookup,
     closeColumnFilterPopover,
+    filterLineColumns,
+    filterLineDefinitions,
+    loadFilterLineOptions,
+    handleFilterLineChange,
     MONTH_OPTIONS,
     AMOUNT_OPERATOR_OPTIONS,
   };

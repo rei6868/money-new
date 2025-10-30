@@ -166,6 +166,48 @@
   min-width: max-content;
 }
 
+.filterToggleButton {
+  position: relative;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--mf-text-secondary);
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.filterToggleButton:hover,
+.filterToggleButton:focus-visible {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--mf-text-primary);
+  outline: none;
+}
+
+.filterToggleButton[data-active='true'] {
+  background: rgba(99, 102, 241, 0.16);
+  color: var(--mf-accent-strong);
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 12px 24px rgba(79, 70, 229, 0.24);
+}
+
+.filterToggleBadge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--mf-accent-strong);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 16px rgba(79, 70, 229, 0.3);
+}
+
 .actionsTools {
   display: flex;
   align-items: center;
@@ -255,6 +297,63 @@
   transform: none;
 }
 
+
+.filterLineRegion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  animation: fadeUp 0.2s ease-out;
+}
+
+.filterLineToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.filterLineTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--mf-text-primary);
+}
+
+.filterLineInner {
+  --filter-background: rgba(15, 23, 42, 0.02);
+  --filter-border: rgba(148, 163, 184, 0.32);
+  --filter-card-background: var(--mf-surface-card, #ffffff);
+  --filter-card-border: rgba(148, 163, 184, 0.22);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+}
+
+.filterLineInner :global(.container) {
+  border-radius: 20px;
+  background: var(--filter-background);
+  border-color: var(--filter-border);
+}
+
+.filterLineInner :global(.filterCard) {
+  background: var(--filter-card-background);
+  border-color: var(--filter-card-border);
+}
+
+.filterLineInner :global(.actionsRow) {
+  justify-content: flex-start;
+}
+
+.filterLineClearButton {
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+
+.filterLineEmptyState {
+  margin: 0;
+  color: var(--mf-text-secondary);
+  font-size: 0.9rem;
+}
 
 .searchField {
   flex: 1 1 auto;
@@ -381,6 +480,22 @@
 
   .tabsRow {
     margin-top: 0.35rem;
+  }
+
+  .filterLineToolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .filterLineClearButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .filterLineInner {
+    border-radius: 18px;
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.1);
   }
 
   .activeFiltersRow {
