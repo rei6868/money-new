@@ -15,7 +15,7 @@ const AVAILABLE_COLUMNS: ColumnDefinition[] = [
   { id: 'cycleTag', label: 'Cycle Tag', minWidth: 150, defaultWidth: 160, defaultVisible: false },
   { id: 'category', label: 'Category', minWidth: 150, defaultWidth: 160 },
   { id: 'linkedTxn', label: 'Linked TXN', minWidth: 160, defaultWidth: 176, defaultVisible: false },
-  { id: 'owner', label: 'Owner', minWidth: 130, defaultWidth: 140 },
+  { id: 'owner', label: 'People', minWidth: 130, defaultWidth: 160 },
   { id: 'id', label: 'ID', minWidth: 180, defaultWidth: 200, defaultVisible: false },
 ];
 

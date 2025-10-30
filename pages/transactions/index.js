@@ -20,6 +20,12 @@ import { DropdownSimple } from '../../components/common/DropdownSimple';
 import { DropdownWithSearch, DropdownWithSearchContent } from '../../components/common/DropdownWithSearch';
 import { SelectionToolbar } from '../../components/table/SelectionToolbar';
 import {
+  AMOUNT_OPERATOR_OPTIONS,
+  MONTH_LABEL_LOOKUP,
+  MONTH_OPTIONS,
+  useTransactionsFilterController,
+} from '../../components/transactions/filters/useTransactionsFilterController';
+import {
   TRANSACTION_TYPE_VALUES,
   getTransactionTypeLabel,
   normalizeTransactionType,
@@ -32,56 +38,6 @@ import {
 } from '../../lib/transactions/transferFilters';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
-
-const DEFAULT_FILTERS = Object.freeze({
-  person: null,
-  account: null,
-  category: null,
-  debtTags: [],
-  amountOperator: null,
-  amountValue: '',
-  year: null,
-  month: null,
-});
-
-const AMOUNT_OPERATOR_OPTIONS = [
-  { value: 'eq', label: 'Equals (=)' },
-  { value: 'neq', label: 'Not equal (≠)' },
-  { value: 'gt', label: 'Greater than (>)' },
-  { value: 'lt', label: 'Less than (<)' },
-  { value: 'gte', label: 'Greater than or equal (≥)' },
-  { value: 'lte', label: 'Less than or equal (≤)' },
-  { value: 'is-null', label: 'Is null' },
-];
-
-const MONTH_OPTIONS = [
-  { value: '1', label: 'January' },
-  { value: '2', label: 'February' },
-  { value: '3', label: 'March' },
-  { value: '4', label: 'April' },
-  { value: '5', label: 'May' },
-  { value: '6', label: 'June' },
-  { value: '7', label: 'July' },
-  { value: '8', label: 'August' },
-  { value: '9', label: 'September' },
-  { value: '10', label: 'October' },
-  { value: '11', label: 'November' },
-  { value: '12', label: 'December' },
-];
-
-const MONTH_LABEL_LOOKUP = new Map(MONTH_OPTIONS.map((option) => [option.value, option.label]));
-
-const MAX_VISIBLE_FILTER_BADGES = 4;
-
-const COLUMN_FILTER_DESCRIPTORS = Object.freeze([
-  { columnId: 'owner', key: 'person', label: 'Person' },
-  { columnId: 'account', key: 'account', label: 'Account' },
-  { columnId: 'category', key: 'category', label: 'Category' },
-  { columnId: 'debtTag', key: 'debtTags', label: 'Debt Tag' },
-  { columnId: 'amount', key: 'amount', label: 'Amount' },
-  { columnId: 'date', key: 'date', label: 'Date' },
-]);
-
 function expandTransferMatches(matches, base, transferLinkInfo) {
   const baseArray = Array.isArray(base) ? base : [];
 
@@ -178,155 +134,6 @@ function applyTypeMetadata(txn) {
   };
 }
 
-function normalizeFilterString(value) {
-  if (typeof value === 'string') {
-    return value.trim().toLowerCase();
-  }
-  if (value instanceof Date) {
-    return value.toISOString().toLowerCase();
-  }
-  if (value === null || value === undefined) {
-    return '';
-  }
-  return String(value).trim().toLowerCase();
-}
-
-function collectUniqueValues(source, accessor) {
-  if (!Array.isArray(source)) {
-    return [];
-  }
-
-  const values = new Set();
-  source.forEach((item) => {
-    if (!item) {
-      return;
-    }
-    const candidate = accessor(item);
-    if (typeof candidate === 'string') {
-      const normalized = candidate.trim();
-      if (normalized.length > 0) {
-        values.add(normalized);
-      }
-      return;
-    }
-    if (candidate instanceof Date) {
-      values.add(candidate.toISOString());
-    }
-  });
-
-  return Array.from(values).sort((a, b) => a.localeCompare(b));
-}
-
-function resolveTransactionDate(transaction) {
-  if (!transaction) {
-    return null;
-  }
-
-  const candidates = [
-    transaction.date,
-    transaction.transactionDate,
-    transaction.occurredOn,
-    transaction.createdAt,
-    transaction.updatedAt,
-  ];
-
-  for (const value of candidates) {
-    if (!value) {
-      continue;
-    }
-    if (value instanceof Date) {
-      return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-    }
-    if (typeof value === 'string') {
-      const normalized = value.includes('T') ? value : `${value}T00:00:00`;
-      const parsed = new Date(normalized);
-      if (!Number.isNaN(parsed.getTime())) {
-        return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-      }
-    }
-  }
-
-  return null;
-}
-
-function matchesAmountFilter(amountValue, operator, rawFilterValue) {
-  if (!operator) {
-    return true;
-  }
-
-  if (operator !== 'is-null') {
-    const normalizedFilterValue = String(rawFilterValue ?? '').trim();
-    if (normalizedFilterValue.length === 0) {
-      return true;
-    }
-  }
-
-  if (operator === 'is-null') {
-    return amountValue === null || amountValue === undefined || amountValue === '';
-  }
-
-  const numericAmount = Number(amountValue);
-  const numericFilter = Number(rawFilterValue);
-
-  if (!Number.isFinite(numericAmount) || !Number.isFinite(numericFilter)) {
-    return false;
-  }
-
-  switch (operator) {
-    case 'eq':
-      return Math.abs(numericAmount - numericFilter) < 1e-6;
-    case 'neq':
-      return Math.abs(numericAmount - numericFilter) >= 1e-6;
-    case 'gt':
-      return numericAmount > numericFilter;
-    case 'lt':
-      return numericAmount < numericFilter;
-    case 'gte':
-      return numericAmount >= numericFilter;
-    case 'lte':
-      return numericAmount <= numericFilter;
-    default:
-      return true;
-  }
-}
-
-function matchesDateFilter(date, year, month) {
-  if (!year && !month) {
-    return true;
-  }
-
-  if (!(date instanceof Date)) {
-    return false;
-  }
-
-  if (year) {
-    const yearNumber = Number(year);
-    if (Number.isFinite(yearNumber) && date.getFullYear() !== yearNumber) {
-      return false;
-    }
-  }
-
-  if (month) {
-    const monthNumber = Number(month);
-    if (Number.isFinite(monthNumber) && date.getMonth() !== monthNumber - 1) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-function matchesEntityFilter(value, filterValue) {
-  if (!filterValue) {
-    return true;
-  }
-  const normalizedFilter = normalizeFilterString(filterValue);
-  if (!normalizedFilter) {
-    return true;
-  }
-  const normalizedValue = normalizeFilterString(value);
-  return normalizedFilter === normalizedValue;
-}
 
 export default function TransactionsHistoryPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
@@ -352,16 +159,7 @@ export default function TransactionsHistoryPage() {
   const [quickAction, setQuickAction] = useState(null);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({ ...DEFAULT_FILTERS });
   const [isFilterManagerOpen, setIsFilterManagerOpen] = useState(false);
-  const [openFilterDropdown, setOpenFilterDropdown] = useState(null);
-  const [filterSearchValues, setFilterSearchValues] = useState({
-    person: '',
-    account: '',
-    category: '',
-    debtTags: '',
-  });
-  const [activeColumnFilter, setActiveColumnFilter] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
   const [availableTypes, setAvailableTypes] = useState([]);
   const [isCompact, setIsCompact] = useState(false);
@@ -369,8 +167,44 @@ export default function TransactionsHistoryPage() {
   const tableScrollRef = useRef(null);
   const savedScrollLeftRef = useRef(0);
   const searchInputRef = useRef(null);
-  const columnFilterPopoverRef = useRef(null);
   const transferLinkInfo = useMemo(() => buildTransferLinkInfo(transactions), [transactions]);
+
+  const {
+    filters,
+    matchesActiveFilters,
+    personOptions,
+    accountOptions,
+    categoryOptions,
+    shopOptions,
+    debtTagOptions,
+    yearOptions,
+    typeOptions,
+    filterSearchValues,
+    handleFilterSearchChange,
+    resetFilterSearchValues,
+    openFilterDropdown,
+    setOpenFilterDropdown,
+    activeFilterDescriptors,
+    visibleFilterDescriptors,
+    hasHiddenFilters,
+    overflowBadgeCount,
+    columnFilterMap,
+    activeFilterKeys,
+    columnFilterPopover,
+    handleColumnFilterTrigger,
+    handleClearAllFilters,
+    handleSingleFilterChange,
+    handleToggleDebtTag,
+    handleAmountOperatorSelect,
+    handleAmountValueChange,
+    handleClearDate,
+    amountOperatorLabelLookup,
+    closeColumnFilterPopover,
+  } = useTransactionsFilterController({
+    transactions,
+    resolvedTypeList: availableTypes.length > 0 ? availableTypes : undefined,
+    onRequestTabChange: setActiveTab,
+  });
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -684,788 +518,32 @@ export default function TransactionsHistoryPage() {
 
   const selectedLookup = useMemo(() => new Set(selectedIds), [selectedIds]);
 
-  const matchesActiveFilters = useCallback(
-    (txn, options = {}) => {
-      if (!txn) {
-        return false;
-      }
-
-      const { exclude = [], overrides = {} } = options;
-      const excludeSet = new Set(
-        Array.isArray(exclude) ? exclude : exclude !== undefined ? [exclude] : [],
-      );
-      const mergedFilters = { ...filters, ...overrides };
-
-      if (!excludeSet.has('person')) {
-        if (
-          mergedFilters.person &&
-          !matchesEntityFilter(
-            txn.owner ?? txn.person ?? txn.personName ?? txn.person_name ?? txn.customerName,
-            mergedFilters.person,
-          )
-        ) {
-          return false;
-        }
-      }
-
-      if (!excludeSet.has('account')) {
-        if (
-          mergedFilters.account &&
-          !matchesEntityFilter(
-            txn.account ?? txn.accountName ?? txn.account_name ?? txn.walletName,
-            mergedFilters.account,
-          )
-        ) {
-          return false;
-        }
-      }
-
-      if (!excludeSet.has('category')) {
-        if (
-          mergedFilters.category &&
-          !matchesEntityFilter(
-            txn.category ?? txn.categoryName ?? txn.category_name ?? txn.typeLabel,
-            mergedFilters.category,
-          )
-        ) {
-          return false;
-        }
-      }
-
-      const skipDebtTags = excludeSet.has('debtTags');
-      if (!skipDebtTags && Array.isArray(mergedFilters.debtTags) && mergedFilters.debtTags.length > 0) {
-        const tagValue =
-          txn.debtTag ?? txn.debtTagName ?? txn.debt_tag ?? txn.debtLabel ?? txn.tag ?? '';
-        const normalizedValue = normalizeFilterString(tagValue);
-        const hasMatch = mergedFilters.debtTags.some(
-          (tag) => normalizeFilterString(tag) === normalizedValue,
-        );
-        if (!hasMatch) {
-          return false;
-        }
-      }
-
-      if (!excludeSet.has('amount')) {
-        if (
-          !matchesAmountFilter(
-            txn.amount ?? txn.total ?? txn.value ?? txn.balance,
-            mergedFilters.amountOperator,
-            mergedFilters.amountValue,
-          )
-        ) {
-          return false;
-        }
-      }
-
-      const skipDate = excludeSet.has('date');
-      const skipYear = skipDate || excludeSet.has('year');
-      const skipMonth = skipDate || excludeSet.has('month');
-      const dateValue = resolveTransactionDate(txn);
-      const yearFilter = skipYear ? null : mergedFilters.year;
-      const monthFilter = skipMonth ? null : mergedFilters.month;
-      if (!matchesDateFilter(dateValue, yearFilter, monthFilter)) {
-        return false;
-      }
-
-      return true;
-    },
-    [filters],
-  );
-
-  const personOptions = useMemo(() => {
-    const base = Array.isArray(transactions) ? transactions : [];
-    const scoped = base.filter((txn) => matchesActiveFilters(txn, { exclude: 'person' }));
-    return collectUniqueValues(
-      scoped,
-      (txn) =>
-        txn?.owner ?? txn?.person ?? txn?.personName ?? txn?.person_name ?? txn?.customerName ?? '',
-    );
-  }, [matchesActiveFilters, transactions]);
-
-  const accountOptions = useMemo(() => {
-    const base = Array.isArray(transactions) ? transactions : [];
-    const scoped = base.filter((txn) => matchesActiveFilters(txn, { exclude: 'account' }));
-    return collectUniqueValues(
-      scoped,
-      (txn) => txn?.account ?? txn?.accountName ?? txn?.account_name ?? txn?.walletName ?? '',
-    );
-  }, [matchesActiveFilters, transactions]);
-
-  const categoryOptions = useMemo(() => {
-    const base = Array.isArray(transactions) ? transactions : [];
-    const scoped = base.filter((txn) => matchesActiveFilters(txn, { exclude: 'category' }));
-    return collectUniqueValues(
-      scoped,
-      (txn) => txn?.category ?? txn?.categoryName ?? txn?.category_name ?? txn?.typeLabel ?? '',
-    );
-  }, [matchesActiveFilters, transactions]);
-
-  const debtTagOptions = useMemo(() => {
-    const base = Array.isArray(transactions) ? transactions : [];
-    const scoped = base.filter((txn) => matchesActiveFilters(txn, { exclude: 'debtTags' }));
-    return collectUniqueValues(
-      scoped,
-      (txn) => txn?.debtTag ?? txn?.debtTagName ?? txn?.debt_tag ?? txn?.debtLabel ?? '',
-    );
-  }, [matchesActiveFilters, transactions]);
-
-  const yearOptions = useMemo(() => {
-    const years = new Set();
-    const base = Array.isArray(transactions) ? transactions : [];
-    base
-      .filter((txn) => matchesActiveFilters(txn, { exclude: ['year', 'month', 'date'] }))
-      .forEach((txn) => {
-        const date = resolveTransactionDate(txn);
-        if (date instanceof Date) {
-          years.add(String(date.getFullYear()));
-        }
-      });
-    return Array.from(years).sort((a, b) => Number(b) - Number(a));
-  }, [matchesActiveFilters, transactions]);
-
-  const amountOperatorLabelLookup = useMemo(() => {
-    const lookup = new Map();
-    AMOUNT_OPERATOR_OPTIONS.forEach((option) => {
-      lookup.set(option.value, option.label);
-    });
-    return lookup;
-  }, []);
-
-  useEffect(() => {
-    if (!filters.person) {
-      return;
-    }
-    const normalizedOptions = new Set(
-      personOptions.map((option) => normalizeFilterString(option ?? '')),
-    );
-    if (!normalizedOptions.has(normalizeFilterString(filters.person))) {
-      setFilters((prev) => (prev.person ? { ...prev, person: null } : prev));
-    }
-  }, [filters.person, personOptions, setFilters]);
-
-  useEffect(() => {
-    if (!filters.account) {
-      return;
-    }
-    const normalizedOptions = new Set(
-      accountOptions.map((option) => normalizeFilterString(option ?? '')),
-    );
-    if (!normalizedOptions.has(normalizeFilterString(filters.account))) {
-      setFilters((prev) => (prev.account ? { ...prev, account: null } : prev));
-    }
-  }, [accountOptions, filters.account, setFilters]);
-
-  useEffect(() => {
-    if (!filters.category) {
-      return;
-    }
-    const normalizedOptions = new Set(
-      categoryOptions.map((option) => normalizeFilterString(option ?? '')),
-    );
-    if (!normalizedOptions.has(normalizeFilterString(filters.category))) {
-      setFilters((prev) => (prev.category ? { ...prev, category: null } : prev));
-    }
-  }, [categoryOptions, filters.category, setFilters]);
-
-  useEffect(() => {
-    if (!Array.isArray(filters.debtTags) || filters.debtTags.length === 0) {
-      return;
-    }
-    const normalizedOptions = new Set(
-      debtTagOptions.map((option) => normalizeFilterString(option ?? '')),
-    );
-    const next = filters.debtTags.filter((tag) =>
-      normalizedOptions.has(normalizeFilterString(tag ?? '')),
-    );
-    if (next.length !== filters.debtTags.length) {
-      setFilters((prev) => ({ ...prev, debtTags: next }));
-    }
-  }, [debtTagOptions, filters.debtTags, setFilters]);
-
-  useEffect(() => {
-    if (!filters.year) {
-      return;
-    }
-    if (!yearOptions.includes(filters.year)) {
-      setFilters((prev) => (prev.year ? { ...prev, year: null } : prev));
-    }
-  }, [filters.year, yearOptions, setFilters]);
-
-  const closeColumnFilterPopover = useCallback(() => {
-    setActiveColumnFilter(null);
-  }, []);
-
-  const activeFilterDescriptors = useMemo(() => {
-    const descriptors = [];
-
-    if (filters.person) {
-      descriptors.push({
-        key: 'person',
-        label: `Person: ${filters.person}`,
-        onClear: () => {
-          closeColumnFilterPopover();
-          setFilters((prev) => ({ ...prev, person: null }));
-        },
-      });
-    }
-
-    if (filters.account) {
-      descriptors.push({
-        key: 'account',
-        label: `Account: ${filters.account}`,
-        onClear: () => {
-          closeColumnFilterPopover();
-          setFilters((prev) => ({ ...prev, account: null }));
-        },
-      });
-    }
-
-    if (filters.category) {
-      descriptors.push({
-        key: 'category',
-        label: `Category: ${filters.category}`,
-        onClear: () => {
-          closeColumnFilterPopover();
-          setFilters((prev) => ({ ...prev, category: null }));
-        },
-      });
-    }
-
-    if (Array.isArray(filters.debtTags) && filters.debtTags.length > 0) {
-      filters.debtTags.forEach((tag) => {
-        descriptors.push({
-          key: `debt-tag-${tag}`,
-          label: `Debt tag: ${tag}`,
-          onClear: () => {
-            closeColumnFilterPopover();
-            setFilters((prev) => ({
-              ...prev,
-              debtTags: prev.debtTags.filter((value) => value !== tag),
-            }));
-          },
-        });
-      });
-    }
-
-    if (
-      filters.amountOperator &&
-      (filters.amountOperator === 'is-null' || String(filters.amountValue).trim().length > 0)
-    ) {
-      const operatorLabel = amountOperatorLabelLookup.get(filters.amountOperator) ?? 'Amount';
-      const numericAmount = Number(filters.amountValue);
-      let formattedValue = '';
-      if (filters.amountOperator !== 'is-null') {
-        formattedValue = Number.isFinite(numericAmount)
-          ? new Intl.NumberFormat(undefined, {
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 2,
-            }).format(numericAmount)
-          : String(filters.amountValue);
-      }
-      const badgeLabel = formattedValue
-        ? `${operatorLabel.replace(/\s*\([^)]*\)/g, '')} ${formattedValue}`
-        : operatorLabel;
-      descriptors.push({
-        key: 'amount',
-        label: `Amount: ${badgeLabel}`.trim(),
-        onClear: () => {
-          closeColumnFilterPopover();
-          setFilters((prev) => ({
-            ...prev,
-            amountOperator: null,
-            amountValue: '',
-          }));
-        },
-      });
-    }
-
-    if (filters.year) {
-      descriptors.push({
-        key: 'year',
-        label: `Year: ${filters.year}`,
-        onClear: () => {
-          closeColumnFilterPopover();
-          setFilters((prev) => ({ ...prev, year: null }));
-        },
-      });
-    }
-
-    if (filters.month) {
-      const monthLabel = MONTH_LABEL_LOOKUP.get(String(filters.month)) ?? `Month ${filters.month}`;
-      descriptors.push({
-        key: 'month',
-        label: `Month: ${monthLabel}`,
-        onClear: () => {
-          closeColumnFilterPopover();
-          setFilters((prev) => ({ ...prev, month: null }));
-        },
-      });
-    }
-
-    return descriptors;
-  }, [amountOperatorLabelLookup, closeColumnFilterPopover, filters, setFilters]);
-
-  const activeFilterKeys = useMemo(() => {
-    const keys = new Set();
-    if (filters.person) {
-      keys.add('person');
-    }
-    if (filters.account) {
-      keys.add('account');
-    }
-    if (filters.category) {
-      keys.add('category');
-    }
-    if (Array.isArray(filters.debtTags) && filters.debtTags.length > 0) {
-      keys.add('debtTags');
-    }
-    if (
-      filters.amountOperator &&
-      (filters.amountOperator === 'is-null' || String(filters.amountValue).trim().length > 0)
-    ) {
-      keys.add('amount');
-    }
-    if (filters.year || filters.month) {
-      keys.add('date');
-    }
-    return keys;
-  }, [filters]);
-
-  const columnFilterMap = useMemo(
-    () => new Map(COLUMN_FILTER_DESCRIPTORS.map((descriptor) => [descriptor.columnId, descriptor])),
-    [],
-  );
-
   const activeFilterCount = activeFilterDescriptors.length;
-  const visibleFilterDescriptors = activeFilterDescriptors.slice(0, MAX_VISIBLE_FILTER_BADGES);
-  const hasHiddenFilters = activeFilterDescriptors.length > visibleFilterDescriptors.length;
-
-  const resetFilterSearch = useCallback(() => {
-    setFilterSearchValues({
-      person: '',
-      account: '',
-      category: '',
-      debtTags: '',
-    });
-  }, []);
 
   const handleOpenFilterManager = useCallback(() => {
     setOpenFilterDropdown(null);
     setIsFilterManagerOpen(true);
     closeColumnFilterPopover();
-    resetFilterSearch();
-  }, [closeColumnFilterPopover, resetFilterSearch]);
+    resetFilterSearchValues();
+  }, [closeColumnFilterPopover, resetFilterSearchValues, setOpenFilterDropdown]);
 
   const handleCloseFilterManager = useCallback(() => {
     setIsFilterManagerOpen(false);
     setOpenFilterDropdown(null);
-    resetFilterSearch();
-  }, [resetFilterSearch]);
+    resetFilterSearchValues();
+  }, [resetFilterSearchValues, setOpenFilterDropdown]);
 
-  const handleClearAllFilters = useCallback(() => {
-    setFilters({ ...DEFAULT_FILTERS });
-    setOpenFilterDropdown(null);
-    resetFilterSearch();
-    closeColumnFilterPopover();
-  }, [closeColumnFilterPopover, resetFilterSearch, setFilters, setOpenFilterDropdown]);
+  const handleClearAllFiltersClick = useCallback(() => {
+    handleClearAllFilters();
+    resetFilterSearchValues();
+  }, [handleClearAllFilters, resetFilterSearchValues]);
 
-  const handleDropdownToggle = useCallback((id) => {
-    setOpenFilterDropdown((current) => (current === id ? null : id));
-  }, []);
-
-  const handleColumnFilterRequest = useCallback((descriptor) => {
-    if (!descriptor || typeof descriptor !== 'object') {
-      closeColumnFilterPopover();
-      return;
-    }
-    setActiveColumnFilter((current) => {
-      if (current && current.columnId === descriptor.columnId && current.key === descriptor.key) {
-        return null;
-      }
-      return descriptor;
-    });
-  }, [closeColumnFilterPopover]);
-
-  const handleSingleFilterChange = useCallback((field, value) => {
-    const normalizedValue = value === 'all' || value === '' ? null : value;
-    setFilters((prev) => ({
-      ...prev,
-      [field]: normalizedValue,
-    }));
-    setOpenFilterDropdown(null);
-  }, [setFilters, setOpenFilterDropdown]);
-
-  const handlePopoverSingleSelect = useCallback(
-    (field, value) => {
-      handleSingleFilterChange(field, value);
-      closeColumnFilterPopover();
+  const handleDropdownToggle = useCallback(
+    (id) => {
+      setOpenFilterDropdown((current) => (current === id ? null : id));
     },
-    [closeColumnFilterPopover, handleSingleFilterChange],
+    [setOpenFilterDropdown],
   );
-
-  useEffect(() => {
-    if (!activeColumnFilter) {
-      return undefined;
-    }
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        closeColumnFilterPopover();
-      }
-    };
-
-    const handlePointerDown = (event) => {
-      const target = event.target;
-      if (columnFilterPopoverRef.current && target instanceof Node) {
-        if (!columnFilterPopoverRef.current.contains(target)) {
-          closeColumnFilterPopover();
-        }
-      }
-    };
-
-    window.addEventListener('resize', closeColumnFilterPopover);
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('resize', closeColumnFilterPopover);
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [activeColumnFilter, closeColumnFilterPopover]);
-
-  const renderColumnFilterContent = () => {
-    if (!activeColumnFilter) {
-      return null;
-    }
-
-    switch (activeColumnFilter.key) {
-      case 'person':
-        return (
-          <div className={styles.columnFilterSection}>
-            <DropdownWithSearchContent
-              options={personOptions}
-              searchValue={filterSearchValues.person}
-              onSearchChange={(value) => handleFilterSearchChange('person', value)}
-              onSelectOption={(value) => handlePopoverSingleSelect('person', value)}
-              selectedValue={filters.person ?? 'all'}
-              testIdPrefix="transactions-filter-person"
-            />
-            <div className={styles.columnFilterFooter}>
-              <button
-                type="button"
-                className={`${styles.secondaryButton} ${styles.columnFilterClear}`.trim()}
-                onClick={() => handlePopoverSingleSelect('person', 'all')}
-              >
-                Clear person
-              </button>
-            </div>
-          </div>
-        );
-      case 'account':
-        return (
-          <div className={styles.columnFilterSection}>
-            <DropdownWithSearchContent
-              options={accountOptions}
-              searchValue={filterSearchValues.account}
-              onSearchChange={(value) => handleFilterSearchChange('account', value)}
-              onSelectOption={(value) => handlePopoverSingleSelect('account', value)}
-              selectedValue={filters.account ?? 'all'}
-              testIdPrefix="transactions-filter-account"
-            />
-            <div className={styles.columnFilterFooter}>
-              <button
-                type="button"
-                className={`${styles.secondaryButton} ${styles.columnFilterClear}`.trim()}
-                onClick={() => handlePopoverSingleSelect('account', 'all')}
-              >
-                Clear account
-              </button>
-            </div>
-          </div>
-        );
-      case 'category':
-        return (
-          <div className={styles.columnFilterSection}>
-            <DropdownWithSearchContent
-              options={categoryOptions}
-              searchValue={filterSearchValues.category}
-              onSearchChange={(value) => handleFilterSearchChange('category', value)}
-              onSelectOption={(value) => handlePopoverSingleSelect('category', value)}
-              selectedValue={filters.category ?? 'all'}
-              testIdPrefix="transactions-filter-category"
-            />
-            <div className={styles.columnFilterFooter}>
-              <button
-                type="button"
-                className={`${styles.secondaryButton} ${styles.columnFilterClear}`.trim()}
-                onClick={() => handlePopoverSingleSelect('category', 'all')}
-              >
-                Clear category
-              </button>
-            </div>
-          </div>
-        );
-      case 'debtTags':
-        return (
-          <div className={styles.columnFilterSection}>
-            <DropdownWithSearchContent
-              options={debtTagOptions}
-              searchValue={filterSearchValues.debtTags}
-              onSearchChange={(value) => handleFilterSearchChange('debtTags', value)}
-              onSelectOption={handleToggleDebtTag}
-              selectedValues={filters.debtTags}
-              multi
-              testIdPrefix="transactions-filter-debt"
-            />
-            {Array.isArray(filters.debtTags) && filters.debtTags.length > 0 ? (
-              <div className={styles.modalTagBadges} aria-live="polite">
-                {filters.debtTags.map((tag) => (
-                  <button
-                    key={`column-debt-tag-${tag}`}
-                    type="button"
-                    className={styles.modalTagBadge}
-                    onClick={() => handleToggleDebtTag(tag)}
-                  >
-                    <span className={styles.modalTagLabel}>{tag}</span>
-                    <FiX aria-hidden className={styles.modalTagRemove} />
-                    <span className={styles.srOnly}>Remove {tag}</span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            <div className={styles.columnFilterFooter}>
-              <button
-                type="button"
-                className={`${styles.secondaryButton} ${styles.columnFilterClear}`.trim()}
-                onClick={() => {
-                  handleToggleDebtTag('all');
-                  closeColumnFilterPopover();
-                }}
-              >
-                Clear debt tags
-              </button>
-            </div>
-          </div>
-        );
-      case 'amount': {
-        const operatorOptions = [{ value: 'all', label: 'Any amount' }, ...AMOUNT_OPERATOR_OPTIONS];
-        const activeOperator = filters.amountOperator ?? 'all';
-        return (
-          <div className={styles.columnFilterSection}>
-            <div className={styles.columnFilterGroup}>
-              <span className={styles.modalLabel}>Operator</span>
-              <div className={styles.columnFilterChips} role="list">
-                {operatorOptions.map((option) => {
-                  const isActive = activeOperator === option.value;
-                  return (
-                    <button
-                      key={`amount-operator-${option.value}`}
-                      type="button"
-                      className={`${styles.columnFilterChip} ${
-                        isActive ? styles.columnFilterChipActive : ''
-                      }`.trim()}
-                      onClick={() => {
-                        handleAmountOperatorSelect(option.value);
-                        if (option.value === 'all') {
-                          closeColumnFilterPopover();
-                        }
-                      }}
-                      data-active={isActive ? 'true' : undefined}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className={styles.columnFilterGroup}>
-              <label htmlFor="transactions-amount-filter" className={styles.modalLabel}>
-                Amount value
-              </label>
-              <input
-                id="transactions-amount-filter"
-                type="number"
-                inputMode="decimal"
-                className={styles.modalControl}
-                value={filters.amountValue}
-                onChange={handleAmountValueChange}
-                placeholder="Enter amount"
-                disabled={!filters.amountOperator || filters.amountOperator === 'is-null'}
-              />
-            </div>
-            <div className={styles.columnFilterFooter}>
-              <button
-                type="button"
-                className={`${styles.secondaryButton} ${styles.columnFilterClear}`.trim()}
-                onClick={() => {
-                  handleAmountOperatorSelect('all');
-                  closeColumnFilterPopover();
-                }}
-              >
-                Clear amount
-              </button>
-            </div>
-          </div>
-        );
-      }
-      case 'date': {
-        const handleClearDate = () => {
-          setFilters((prev) => ({ ...prev, year: null, month: null }));
-          closeColumnFilterPopover();
-        };
-        const yearValue = filters.year ?? 'all';
-        const monthValue = filters.month ?? 'all';
-        return (
-          <div className={styles.columnFilterSection}>
-            <div className={styles.columnFilterGrid}>
-              <label htmlFor="transactions-filter-year" className={styles.modalLabel}>
-                Year
-              </label>
-              <select
-                id="transactions-filter-year"
-                className={styles.modalControl}
-                value={yearValue}
-                onChange={(event) => handleSingleFilterChange('year', event.target.value)}
-              >
-                <option value="all">Any year</option>
-                {yearOptions.map((option) => (
-                  <option key={`year-option-${option}`} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.columnFilterGrid}>
-              <label htmlFor="transactions-filter-month" className={styles.modalLabel}>
-                Month
-              </label>
-              <select
-                id="transactions-filter-month"
-                className={styles.modalControl}
-                value={monthValue}
-                onChange={(event) => handleSingleFilterChange('month', event.target.value)}
-              >
-                <option value="all">Any month</option>
-                {MONTH_OPTIONS.map((option) => (
-                  <option key={`month-option-${option.value}`} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.columnFilterFooter}>
-              <button
-                type="button"
-                className={`${styles.secondaryButton} ${styles.columnFilterClear}`.trim()}
-                onClick={handleClearDate}
-              >
-                Clear date
-              </button>
-            </div>
-          </div>
-        );
-      }
-      default:
-        return null;
-    }
-  };
-
-  const columnFilterPopover = activeColumnFilter
-    ? (() => {
-        const rect = activeColumnFilter.rect ?? {
-          top: 0,
-          left: 0,
-          bottom: 0,
-          right: 0,
-          width: 0,
-          height: 0,
-        };
-        const top = Math.max(rect.bottom + 8, 16);
-        const left = rect.left + rect.width / 2;
-        return (
-          <div
-            ref={columnFilterPopoverRef}
-            className={styles.columnFilterPopover}
-            style={{ top: `${top}px`, left: `${left}px` }}
-            role="dialog"
-            aria-modal="false"
-            aria-label={`Filter ${activeColumnFilter.label}`}
-            data-filter-key={activeColumnFilter.key}
-          >
-            <div className={styles.columnFilterHeader}>
-              <span className={styles.columnFilterTitle}>{activeColumnFilter.label}</span>
-              <button
-                type="button"
-                className={`${styles.iconButton} ${styles.columnFilterClose}`.trim()}
-                onClick={closeColumnFilterPopover}
-                aria-label={`Close ${activeColumnFilter.label} filter`}
-              >
-                <FiX aria-hidden />
-              </button>
-            </div>
-            <div className={styles.columnFilterBody}>{renderColumnFilterContent()}</div>
-          </div>
-        );
-      })()
-    : null;
-
-  const handleFilterSearchChange = useCallback((field, value) => {
-    setFilterSearchValues((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  }, [setFilterSearchValues]);
-
-  const handleToggleDebtTag = useCallback((value) => {
-    if (value === 'all') {
-      setFilters((prev) => ({
-        ...prev,
-        debtTags: [],
-      }));
-      setOpenFilterDropdown(null);
-      setFilterSearchValues((prev) => ({
-        ...prev,
-        debtTags: '',
-      }));
-      return;
-    }
-
-    setFilters((prev) => {
-      const currentTags = Array.isArray(prev.debtTags) ? prev.debtTags : [];
-      const exists = currentTags.includes(value);
-      const next = exists
-        ? currentTags.filter((tag) => tag !== value)
-        : [...currentTags, value];
-      return {
-        ...prev,
-        debtTags: next,
-      };
-    });
-  }, [setFilters, setFilterSearchValues, setOpenFilterDropdown]);
-
-  const handleAmountOperatorSelect = useCallback((operator) => {
-    const normalizedOperator = operator === 'all' ? null : operator;
-    setFilters((prev) => ({
-      ...prev,
-      amountOperator: normalizedOperator,
-      amountValue:
-        normalizedOperator === 'is-null'
-          ? ''
-          : normalizedOperator === null
-          ? ''
-          : prev.amountValue,
-    }));
-    setOpenFilterDropdown(null);
-  }, [setFilters, setOpenFilterDropdown]);
-
-  const handleAmountValueChange = useCallback((event) => {
-    const { value } = event.target;
-    setFilters((prev) => ({
-      ...prev,
-      amountValue: value,
-    }));
-  }, [setFilters]);
 
   const filteredTransactions = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
@@ -2006,6 +1084,36 @@ export default function TransactionsHistoryPage() {
             </div>
             <div className={styles.modalField}>
               <DropdownWithSearch
+                id="type"
+                label="Type"
+                isOpen={openFilterDropdown === 'type'}
+                onToggle={handleDropdownToggle}
+                options={typeOptions}
+                searchValue={filterSearchValues.type}
+                onSearchChange={(value) => handleFilterSearchChange('type', value)}
+                onSelectOption={(value) => handleSingleFilterChange('type', value)}
+                selectedValue={filters.type ?? 'all'}
+                placeholder="Any type"
+                optionFormatter={(value) => (value === 'all' ? 'Any type' : value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <DropdownWithSearch
+                id="shop"
+                label="Shop"
+                isOpen={openFilterDropdown === 'shop'}
+                onToggle={handleDropdownToggle}
+                options={shopOptions}
+                searchValue={filterSearchValues.shop}
+                onSearchChange={(value) => handleFilterSearchChange('shop', value)}
+                onSelectOption={(value) => handleSingleFilterChange('shop', value)}
+                selectedValue={filters.shop ?? 'all'}
+                placeholder="Any shop"
+                optionFormatter={(value) => (value === 'all' ? 'Any shop' : value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <DropdownWithSearch
                 id="debtTags"
                 label="Debt tags"
                 isOpen={openFilterDropdown === 'debtTags'}
@@ -2109,7 +1217,7 @@ export default function TransactionsHistoryPage() {
           <button
             type="button"
             className={`${styles.secondaryButton} ${styles.clearFilterButton}`.trim()}
-            onClick={handleClearAllFilters}
+            onClick={handleClearAllFiltersClick}
             disabled={activeFilterCount === 0}
           >
             Clear all
@@ -2150,13 +1258,15 @@ export default function TransactionsHistoryPage() {
             aria-label="Show all filters"
           >
             <FiMoreHorizontal aria-hidden />
+            <span className={styles.activeFilterMoreCount}>+{overflowBadgeCount}</span>
+            <span className={styles.srOnly}>Show {overflowBadgeCount} more filters</span>
           </button>
         ) : null}
       </div>
       <button
         type="button"
         className={`${styles.secondaryButton} ${styles.clearFilterButton}`.trim()}
-        onClick={handleClearAllFilters}
+        onClick={handleClearAllFiltersClick}
       >
         Clear all
       </button>
@@ -2298,7 +1408,7 @@ export default function TransactionsHistoryPage() {
             isFetching={isFetching}
             showSelectionToolbar={false}
             columnFilters={columnFilterMap}
-            onColumnFilter={handleColumnFilterRequest}
+            onColumnFilter={handleColumnFilterTrigger}
             activeFilterKeys={activeFilterKeys}
           />
         )}
