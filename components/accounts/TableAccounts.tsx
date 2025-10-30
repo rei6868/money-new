@@ -88,95 +88,104 @@ function usePaginationRenderer(
 
     return {
       render: (props: { selectedCount: number }) => (
-        <>
+        <div className={styles.paginationSection}>
           <SelectionToolbar
             variant="inline"
             selectedCount={props.selectedCount}
             className={styles.selectionCount}
           />
-          <div
-            className={styles.paginationControls}
-            role="group"
-            aria-label="Accounts table pagination"
-          >
-            <button
-              type="button"
-              className={styles.paginationButton}
-              onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
-              disabled={pagination.currentPage === 1}
-              aria-label="Previous page"
+          <div className={styles.paginationFooter}>
+            <div
+              className={styles.paginationControls}
+              role="group"
+              aria-label="Accounts table pagination"
             >
-              <FiChevronLeft aria-hidden />
-              <span className={styles.paginationButtonText}>Prev</span>
-            </button>
-            <button
-              type="button"
-              className={styles.fontScaleButton}
-              onClick={onDecrease}
-              disabled={!canDecrease}
-              aria-label="Decrease table font size"
-            >
-              <FiMinus aria-hidden />
-              <span className={styles.fontScaleButtonText}>-</span>
-            </button>
-            <div className={styles.pageSizeGroup}>
-              <label htmlFor="accounts-page-size">Rows per page</label>
-              <select
-                id="accounts-page-size"
-                className={styles.pageSizeSelect}
-                value={pagination.pageSize}
-                onChange={(event) => pagination.onPageSizeChange(Number(event.target.value))}
+              <button
+                type="button"
+                className={styles.paginationButton}
+                onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
+                disabled={pagination.currentPage === 1}
+                aria-label="Previous page"
               >
-                {pagination.pageSizeOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+                <FiChevronLeft aria-hidden />
+                <span className={styles.paginationButtonText}>Prev</span>
+              </button>
+              <button
+                type="button"
+                className={styles.fontScaleButton}
+                onClick={onDecrease}
+                disabled={!canDecrease}
+                aria-label="Decrease table font size"
+              >
+                <FiMinus aria-hidden />
+                <span className={styles.fontScaleButtonText}>-</span>
+              </button>
+              <div className={styles.pageSizeGroup}>
+                <label
+                  htmlFor="accounts-page-size"
+                  className={styles.pageSizeLabel}
+                >
+                  Rows per page
+                </label>
+                <select
+                  id="accounts-page-size"
+                  className={styles.pageSizeSelect}
+                  value={pagination.pageSize}
+                  onChange={(event) =>
+                    pagination.onPageSizeChange(Number(event.target.value))
+                  }
+                >
+                  {pagination.pageSizeOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                className={`${styles.fontScaleButton} ${styles.fontScaleReset}`.trim()}
+                onClick={onReset}
+                disabled={isDefault}
+                aria-label="Reset table font size"
+              >
+                <FiRefreshCw aria-hidden />
+                <span className={styles.fontScaleButtonText}>Reset</span>
+              </button>
+              <button
+                type="button"
+                className={styles.fontScaleButton}
+                onClick={onIncrease}
+                disabled={!canIncrease}
+                aria-label="Increase table font size"
+              >
+                <FiPlus aria-hidden />
+                <span className={styles.fontScaleButtonText}>+</span>
+              </button>
+              <button
+                type="button"
+                className={styles.paginationButton}
+                onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
+                disabled={pagination.currentPage === pagination.totalPages}
+                aria-label="Next page"
+              >
+                <FiChevronRight aria-hidden />
+                <span className={styles.paginationButtonText}>Next</span>
+              </button>
             </div>
-            <button
-              type="button"
-              className={`${styles.fontScaleButton} ${styles.fontScaleReset}`.trim()}
-              onClick={onReset}
-              disabled={isDefault}
-              aria-label="Reset table font size"
-            >
-              <FiRefreshCw aria-hidden />
-              <span className={styles.fontScaleButtonText}>Reset</span>
-            </button>
-            <button
-              type="button"
-              className={styles.fontScaleButton}
-              onClick={onIncrease}
-              disabled={!canIncrease}
-              aria-label="Increase table font size"
-            >
-              <FiPlus aria-hidden />
-              <span className={styles.fontScaleButtonText}>+</span>
-            </button>
-            <button
-              type="button"
-              className={styles.paginationButton}
-              onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
-              disabled={pagination.currentPage === pagination.totalPages}
-              aria-label="Next page"
-            >
-              <FiChevronRight aria-hidden />
-              <span className={styles.paginationButtonText}>Next</span>
-            </button>
-          </div>
-          <div className={styles.paginationMeta}>
-            <div className={styles.fontScaleMeta}>
-              <span className={styles.fontScaleLabel}>Font size</span>
-              <span className={styles.fontScaleValue} aria-live="polite">
-                {formattedScale}
+            <div className={styles.paginationMeta}>
+              <div className={styles.fontScaleMeta}>
+                <span className={styles.fontScaleLabel}>Font size</span>
+                <span className={styles.fontScaleValue} aria-live="polite">
+                  {formattedScale}
+                </span>
+              </div>
+              <span className={styles.paginationStatus}>
+                Page {pagination.currentPage} of {pagination.totalPages}
               </span>
             </div>
-            <span className={styles.paginationStatus}>
-              Page {pagination.currentPage} of {pagination.totalPages}
-            </span>
           </div>
-        </>
+        </div>
       ),
     };
   }, [fontState, pagination]);
