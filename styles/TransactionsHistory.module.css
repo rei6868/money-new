@@ -55,7 +55,7 @@
 .actionsRow {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 0.75rem;
   width: 100%;
   min-width: 0;
@@ -65,13 +65,14 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-width: max-content;
 }
 
-.actionsMain {
+.actionsTools {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.75rem;
   flex: 1 1 auto;
   min-width: 0;
@@ -158,8 +159,8 @@
 }
 
 .searchField {
-  flex: 1 1 clamp(220px, 35%, 360px);
-  max-width: 360px;
+  flex: 1 1 clamp(220px, 28vw, 340px);
+  max-width: 340px;
   min-width: 0;
 }
 
@@ -172,13 +173,26 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  flex: 1 1 clamp(240px, 40%, 420px);
+  flex: 0 1 clamp(240px, 32vw, 400px);
   min-width: 0;
   margin-left: auto;
 }
 
 .searchInlineField {
   max-width: none;
+}
+
+.filtersInline {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.filtersInline :global(.root) {
+  max-width: 100%;
 }
 
 @media (min-width: 721px) {
@@ -200,6 +214,10 @@
 
   .searchToggleButton {
     flex: 0 0 auto;
+  }
+
+  .tabsRow {
+    margin-top: 0.35rem;
   }
 }
 

@@ -849,6 +849,10 @@ export default function TransactionsHistoryPage() {
     </>
   );
 
+  const tabControls = (
+    <TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />
+  );
+
   const searchRowId = 'transactions-search-panel';
   const searchInputId = 'transactions-search-input';
 
@@ -906,24 +910,21 @@ export default function TransactionsHistoryPage() {
     >
       <div className={pageShellStyles.screen}>
         <div className={styles.controlsRegion}>
-          <div className={styles.tabsRow}>
-            <TxnTabs activeTab={activeTab} onTabChange={handleTabChange} tabs={tabMetrics} />
-          </div>
-
           <div
             className={styles.actionsWrapper}
             data-floating={isCompact ? 'true' : 'false'}
             data-search-open={isSearchOpen ? 'true' : 'false'}
           >
             <div className={styles.actionsRow}>
-              <div className={styles.actionsMain}>
-                <div className={styles.actionButtons}>{filterActionButtons}</div>
-                {!isCompact && (
+              <div className={styles.actionButtons}>{filterActionButtons}</div>
+              {!isCompact && (
+                <div className={styles.actionsTools}>
                   <div className={styles.searchInline} role="search">
                     {renderSearchField(styles.searchInlineField)}
                   </div>
-                )}
-              </div>
+                  <div className={styles.filtersInline}>{tabControls}</div>
+                </div>
+              )}
               {isCompact && (
                 <button
                   type="button"
@@ -950,6 +951,8 @@ export default function TransactionsHistoryPage() {
                 {renderSearchField()}
               </div>
             )}
+
+            {isCompact && <div className={styles.tabsRow}>{tabControls}</div>}
           </div>
         </div>
 
