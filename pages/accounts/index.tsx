@@ -7,7 +7,7 @@ import TableAccounts from '../../components/accounts/TableAccounts';
 import AccountEditModal, { AccountEditPayload } from '../../components/accounts/AccountEditModal';
 import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGlobal';
 import QuickAddModal from '../../components/common/QuickAddModal';
-import { FiEye, FiPlus, FiRefreshCcw, FiSettings } from 'react-icons/fi';
+import { FiEye, FiGrid, FiList, FiPlus, FiRefreshCcw, FiSettings } from 'react-icons/fi';
 import ColumnsCustomizeModal, {
   ColumnConfig as CustomizeColumnConfig,
 } from '../../components/customize/ColumnsCustomizeModal';
@@ -23,7 +23,7 @@ import { useAccounts } from '../../hooks/useAccounts';
 import { getAccountTypeLabel } from '../../lib/accounts/accountTypes';
 import styles from '../../styles/accounts.module.css';
 import pageShellStyles from '../../styles/layout/page-shell.module.css';
-import PageToolbar, { PageToolbarSearch } from '../../components/layout/page/PageToolbar';
+import { PageToolbarSearch } from '../../components/layout/page/PageToolbar';
 import { EmptyStateCard, TablePanel } from '../../components/layout/panels';
 
 type ColumnState = ReturnType<typeof createDefaultColumnState>[number] & {
@@ -784,64 +784,52 @@ export default function AccountsPage() {
       <div className={pageShellStyles.pageShell}>
         <div className={pageShellStyles.pageContent}>
           <div className={styles.toolbarSection} role="toolbar" aria-label="Accounts controls">
-            <div className={styles.toolbarPrimaryRow}>
+            <div className={styles.toolbarRow}>
+              <div className={styles.toolbarQuickActions} role="group" aria-label="Account quick actions">
+                {actionButtons}
+              </div>
               <div className={styles.toolbarSearchArea}>
-                <PageToolbar
+                <PageToolbarSearch
                   className={styles.toolbarSearch}
-                  search={(
-                    <PageToolbarSearch
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      onClear={() => handleSearchChange('')}
-                      placeholder="Search accounts..."
-                      ariaLabel="Search accounts"
-                    />
-                  )}
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  onClear={() => handleSearchChange('')}
+                  placeholder="Search accounts..."
+                  ariaLabel="Search accounts"
                 />
               </div>
               <div className={styles.toolbarViewToggle}>
                 <div className={styles.viewToggleGroup} role="tablist" aria-label="Accounts view mode">
-                  <div className={styles.viewTabs}>
-                    <span
-                      className={styles.tabIndicator}
-                      data-position={activeTab === 'cards' ? 'cards' : 'table'}
-                      aria-hidden
-                    />
-                    <button
-                      type="button"
-                      className={styles.tabButton}
-                      data-active={activeTab === 'table' ? 'true' : 'false'}
-                      onClick={() => setActiveTab('table')}
-                      role="tab"
-                      aria-selected={activeTab === 'table'}
-                    >
-                      Table
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.tabButton}
-                      data-active={activeTab === 'cards' ? 'true' : 'false'}
-                      onClick={() => setActiveTab('cards')}
-                      role="tab"
-                      aria-selected={activeTab === 'cards'}
-                    >
-                      Cards
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className={styles.viewToggleButton}
+                    data-active={activeTab === 'table' ? 'true' : 'false'}
+                    onClick={() => setActiveTab('table')}
+                    role="tab"
+                    aria-label="Show table view"
+                    aria-selected={activeTab === 'table'}
+                  >
+                    <FiList aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.viewToggleButton}
+                    data-active={activeTab === 'cards' ? 'true' : 'false'}
+                    onClick={() => setActiveTab('cards')}
+                    role="tab"
+                    aria-label="Show cards view"
+                    aria-selected={activeTab === 'cards'}
+                  >
+                    <FiGrid aria-hidden />
+                  </button>
                 </div>
               </div>
-            </div>
-
-            <div className={styles.toolbarTabsRow}>
               <div className={styles.accountTypeTabsWrapper}>
                 <AccountTypeTabs
                   activeTab={activeTypeTab}
                   onTabChange={setActiveTypeTab}
                   tabs={accountTypeTabMetrics}
                 />
-              </div>
-              <div className={styles.toolbarQuickActions} role="group" aria-label="Account quick actions">
-                {actionButtons}
               </div>
             </div>
           </div>
