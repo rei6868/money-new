@@ -52,6 +52,84 @@
   gap: 0.75rem;
 }
 
+.activeFiltersRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(148, 163, 184, 0.12);
+  margin-top: 0.25rem;
+}
+
+.activeFilterBadges {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.activeFilterBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(99, 102, 241, 0.38);
+  background: rgba(99, 102, 241, 0.16);
+  color: var(--mf-accent-strong);
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  max-width: min(220px, 100%);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.activeFilterBadge:hover,
+.activeFilterBadge:focus-visible {
+  background: rgba(99, 102, 241, 0.26);
+  border-color: rgba(99, 102, 241, 0.5);
+  outline: none;
+}
+
+.activeFilterLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activeFilterRemove {
+  flex-shrink: 0;
+}
+
+.activeFilterMore {
+  border: none;
+  background: rgba(15, 23, 42, 0.08);
+  color: var(--mf-text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.activeFilterMore:hover,
+.activeFilterMore:focus-visible {
+  background: rgba(148, 163, 184, 0.28);
+  color: var(--mf-text-primary);
+  outline: none;
+}
+
 .actionsRow {
   display: flex;
   align-items: center;
@@ -79,7 +157,7 @@
 .actionsTools {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 0.75rem;
   flex: 1 1 auto;
   min-width: 0;
@@ -165,8 +243,9 @@
   transform: none;
 }
 
+
 .searchField {
-  flex: 1 1 clamp(260px, 40vw, 640px);
+  flex: 1 1 auto;
   max-width: none;
   min-width: 0;
 }
@@ -180,7 +259,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  flex: 1 1 clamp(260px, 45vw, 640px);
+  flex: 1 1 auto;
   min-width: 0;
   margin-left: 0;
 }
@@ -197,6 +276,7 @@
   flex: 0 0 auto;
   min-width: max-content;
   overflow: hidden;
+  margin-left: auto;
 }
 
 .filtersInline :global(.root) {
@@ -284,10 +364,26 @@
 
   .filtersInline {
     justify-content: flex-start;
+    margin-left: 0;
   }
 
   .tabsRow {
     margin-top: 0.35rem;
+  }
+
+  .activeFiltersRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .activeFilterBadges {
+    width: 100%;
+  }
+
+  .activeFiltersRow .secondaryButton {
+    width: 100%;
+    justify-content: center;
   }
 }
 
@@ -1614,6 +1710,78 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+.modalGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem 1.25rem;
+  align-items: start;
+}
+
+.modalFieldWide {
+  grid-column: 1 / -1;
+}
+
+.amountFilterRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: nowrap;
+}
+
+.amountFilterRow :global(.modalDropdown) {
+  flex: 1 1 220px;
+}
+
+.amountFilterRow .modalLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1 1 200px;
+  margin: 0;
+}
+
+.modalTagBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.modalTagBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--mf-accent-strong);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.modalTagBadge:hover,
+.modalTagBadge:focus-visible {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.45);
+  outline: none;
+}
+
+.modalTagLabel {
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modalTagRemove {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
 }
 
 .modalDropdown {

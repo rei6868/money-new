@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import AppLayout from '../../components/layout/AppShell/AppShell';
 import { TransactionsTable } from '../../components/transactions/TransactionsTable';
-import { FiFilter, FiPlus, FiSearch, FiSettings, FiX } from 'react-icons/fi';
+import { FiFilter, FiMoreHorizontal, FiPlus, FiSearch, FiSettings, FiX } from 'react-icons/fi';
 
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import styles from '../../styles/TransactionsHistory.module.css';
@@ -17,6 +17,7 @@ import { PageToolbarSearch } from '../../components/layout/page/PageToolbar';
 import { EmptyStateCard, TablePanel } from '../../components/layout/panels';
 import { ModalWrapper } from '../../components/common/ModalWrapper';
 import { DropdownSimple } from '../../components/common/DropdownSimple';
+import { DropdownWithSearch } from '../../components/common/DropdownWithSearch';
 import { SelectionToolbar } from '../../components/table/SelectionToolbar';
 import {
   TRANSACTION_TYPE_VALUES,
@@ -33,37 +34,44 @@ import {
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30];
 
 const DEFAULT_FILTERS = Object.freeze({
-  person: 'all',
-  account: 'all',
-  category: 'all',
-  debtTag: 'all',
-  amountRange: 'all',
-  dateRange: 'all',
+  person: null,
+  account: null,
+  category: null,
+  debtTags: [],
+  amountOperator: null,
+  amountValue: '',
+  year: null,
+  month: null,
 });
 
-const AMOUNT_FILTER_OPTIONS = ['positive', 'negative', 'zero', 'under-100k', '100k-1m', 'over-1m'];
+const AMOUNT_OPERATOR_OPTIONS = [
+  { value: 'eq', label: 'Equals (=)' },
+  { value: 'neq', label: 'Not equal (≠)' },
+  { value: 'gt', label: 'Greater than (>)' },
+  { value: 'lt', label: 'Less than (<)' },
+  { value: 'gte', label: 'Greater than or equal (≥)' },
+  { value: 'lte', label: 'Less than or equal (≤)' },
+  { value: 'is-null', label: 'Is null' },
+];
 
-const AMOUNT_FILTER_LABELS = {
-  all: 'Any amount',
-  positive: 'Positive amounts',
-  negative: 'Negative amounts',
-  zero: 'Zero amount',
-  'under-100k': 'Under ₫100k',
-  '100k-1m': '₫100k – ₫1M',
-  'over-1m': 'Over ₫1M',
-};
+const MONTH_OPTIONS = [
+  { value: '1', label: 'January' },
+  { value: '2', label: 'February' },
+  { value: '3', label: 'March' },
+  { value: '4', label: 'April' },
+  { value: '5', label: 'May' },
+  { value: '6', label: 'June' },
+  { value: '7', label: 'July' },
+  { value: '8', label: 'August' },
+  { value: '9', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
 
-const DATE_FILTER_OPTIONS = ['today', 'last-7', 'last-30', 'this-month', 'last-month', 'this-year'];
+const MONTH_LABEL_LOOKUP = new Map(MONTH_OPTIONS.map((option) => [option.value, option.label]));
 
-const DATE_FILTER_LABELS = {
-  all: 'Any date',
-  today: 'Today',
-  'last-7': 'Last 7 days',
-  'last-30': 'Last 30 days',
-  'this-month': 'This month',
-  'last-month': 'Last month',
-  'this-year': 'This year',
-};
+const MAX_VISIBLE_FILTER_BADGES = 4;
 
 function expandTransferMatches(matches, base, transferLinkInfo) {
   const baseArray = Array.isArray(base) ? base : [];
@@ -232,83 +240,75 @@ function resolveTransactionDate(transaction) {
   return null;
 }
 
-function matchesAmountRange(amountValue, range) {
-  if (!range || range === 'all') {
+function matchesAmountFilter(amountValue, operator, rawFilterValue) {
+  if (!operator) {
     return true;
   }
 
-  const numeric = Number(amountValue);
-  if (!Number.isFinite(numeric)) {
+  if (operator !== 'is-null') {
+    const normalizedFilterValue = String(rawFilterValue ?? '').trim();
+    if (normalizedFilterValue.length === 0) {
+      return true;
+    }
+  }
+
+  if (operator === 'is-null') {
+    return amountValue === null || amountValue === undefined || amountValue === '';
+  }
+
+  const numericAmount = Number(amountValue);
+  const numericFilter = Number(rawFilterValue);
+
+  if (!Number.isFinite(numericAmount) || !Number.isFinite(numericFilter)) {
     return false;
   }
 
-  const absolute = Math.abs(numeric);
-  switch (range) {
-    case 'positive':
-      return numeric > 0;
-    case 'negative':
-      return numeric < 0;
-    case 'zero':
-      return Math.abs(numeric) < 1e-6;
-    case 'under-100k':
-      return absolute > 0 && absolute < 100000;
-    case '100k-1m':
-      return absolute >= 100000 && absolute <= 1000000;
-    case 'over-1m':
-      return absolute > 1000000;
+  switch (operator) {
+    case 'eq':
+      return Math.abs(numericAmount - numericFilter) < 1e-6;
+    case 'neq':
+      return Math.abs(numericAmount - numericFilter) >= 1e-6;
+    case 'gt':
+      return numericAmount > numericFilter;
+    case 'lt':
+      return numericAmount < numericFilter;
+    case 'gte':
+      return numericAmount >= numericFilter;
+    case 'lte':
+      return numericAmount <= numericFilter;
     default:
       return true;
   }
 }
 
-function isWithinDateRange(date, range) {
-  if (!range || range === 'all') {
+function matchesDateFilter(date, year, month) {
+  if (!year && !month) {
     return true;
   }
+
   if (!(date instanceof Date)) {
     return false;
   }
 
-  const today = new Date();
-  const base = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-  const compareDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-  switch (range) {
-    case 'today':
-      return compareDate.getTime() === base.getTime();
-    case 'last-7': {
-      const threshold = new Date(base);
-      threshold.setDate(base.getDate() - 6);
-      return compareDate >= threshold && compareDate <= base;
+  if (year) {
+    const yearNumber = Number(year);
+    if (Number.isFinite(yearNumber) && date.getFullYear() !== yearNumber) {
+      return false;
     }
-    case 'last-30': {
-      const threshold = new Date(base);
-      threshold.setDate(base.getDate() - 29);
-      return compareDate >= threshold && compareDate <= base;
-    }
-    case 'this-month':
-      return (
-        compareDate.getFullYear() === base.getFullYear() &&
-        compareDate.getMonth() === base.getMonth()
-      );
-    case 'last-month': {
-      const lastMonthDate = new Date(base);
-      lastMonthDate.setMonth(base.getMonth() - 1);
-      return (
-        compareDate.getFullYear() === lastMonthDate.getFullYear() &&
-        compareDate.getMonth() === lastMonthDate.getMonth()
-      );
-    }
-    case 'this-year':
-      return compareDate.getFullYear() === base.getFullYear();
-    default:
-      return true;
   }
+
+  if (month) {
+    const monthNumber = Number(month);
+    if (Number.isFinite(monthNumber) && date.getMonth() !== monthNumber - 1) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 function matchesEntityFilter(value, filterValue) {
-  if (!filterValue || filterValue === 'all') {
+  if (!filterValue) {
     return true;
   }
   const normalizedFilter = normalizeFilterString(filterValue);
@@ -344,9 +344,14 @@ export default function TransactionsHistoryPage() {
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS });
-  const [pendingFilters, setPendingFilters] = useState({ ...DEFAULT_FILTERS });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [openFilterDropdown, setOpenFilterDropdown] = useState(null);
+  const [filterSearchValues, setFilterSearchValues] = useState({
+    person: '',
+    account: '',
+    category: '',
+    debtTags: '',
+  });
   const [activeTab, setActiveTab] = useState('all');
   const [availableTypes, setAvailableTypes] = useState([]);
   const [isCompact, setIsCompact] = useState(false);
@@ -674,14 +679,18 @@ export default function TransactionsHistoryPage() {
         return false;
       }
 
-      if (!matchesEntityFilter(
-        txn.owner ?? txn.person ?? txn.personName ?? txn.person_name ?? txn.customerName,
-        filters.person,
-      )) {
+      if (
+        filters.person &&
+        !matchesEntityFilter(
+          txn.owner ?? txn.person ?? txn.personName ?? txn.person_name ?? txn.customerName,
+          filters.person,
+        )
+      ) {
         return false;
       }
 
       if (
+        filters.account &&
         !matchesEntityFilter(
           txn.account ?? txn.accountName ?? txn.account_name ?? txn.walletName,
           filters.account,
@@ -691,6 +700,7 @@ export default function TransactionsHistoryPage() {
       }
 
       if (
+        filters.category &&
         !matchesEntityFilter(
           txn.category ?? txn.categoryName ?? txn.category_name ?? txn.typeLabel,
           filters.category,
@@ -699,21 +709,30 @@ export default function TransactionsHistoryPage() {
         return false;
       }
 
+      if (Array.isArray(filters.debtTags) && filters.debtTags.length > 0) {
+        const tagValue =
+          txn.debtTag ?? txn.debtTagName ?? txn.debt_tag ?? txn.debtLabel ?? txn.tag ?? '';
+        const normalizedValue = normalizeFilterString(tagValue);
+        const hasMatch = filters.debtTags.some(
+          (tag) => normalizeFilterString(tag) === normalizedValue,
+        );
+        if (!hasMatch) {
+          return false;
+        }
+      }
+
       if (
-        !matchesEntityFilter(
-          txn.debtTag ?? txn.debtTagName ?? txn.debt_tag ?? txn.debtLabel,
-          filters.debtTag,
+        !matchesAmountFilter(
+          txn.amount ?? txn.total ?? txn.value ?? txn.balance,
+          filters.amountOperator,
+          filters.amountValue,
         )
       ) {
         return false;
       }
 
-      if (!matchesAmountRange(txn.amount ?? txn.total ?? txn.value, filters.amountRange)) {
-        return false;
-      }
-
       const dateValue = resolveTransactionDate(txn);
-      if (!isWithinDateRange(dateValue, filters.dateRange)) {
+      if (!matchesDateFilter(dateValue, filters.year, filters.month)) {
         return false;
       }
 
@@ -754,60 +773,212 @@ export default function TransactionsHistoryPage() {
     [transactions],
   );
 
-  const activeFilterCount = useMemo(
-    () =>
-      Object.values(filters).reduce(
-        (count, value) => (value && value !== 'all' ? count + 1 : count),
-        0,
-      ),
-    [filters],
-  );
+  const yearOptions = useMemo(() => {
+    const years = new Set();
+    const base = Array.isArray(transactions) ? transactions : [];
+    base.forEach((txn) => {
+      const date = resolveTransactionDate(txn);
+      if (date instanceof Date) {
+        years.add(String(date.getFullYear()));
+      }
+    });
+    return Array.from(years).sort((a, b) => Number(b) - Number(a));
+  }, [transactions]);
 
-  const pendingFilterCount = useMemo(
-    () =>
-      Object.values(pendingFilters).reduce(
-        (count, value) => (value && value !== 'all' ? count + 1 : count),
-        0,
-      ),
-    [pendingFilters],
-  );
+  const amountOperatorLabelLookup = useMemo(() => {
+    const lookup = new Map();
+    AMOUNT_OPERATOR_OPTIONS.forEach((option) => {
+      lookup.set(option.value, option.label);
+    });
+    return lookup;
+  }, []);
+
+  const activeFilterDescriptors = useMemo(() => {
+    const descriptors = [];
+
+    if (filters.person) {
+      descriptors.push({
+        key: 'person',
+        label: `Person: ${filters.person}`,
+        onClear: () => setFilters((prev) => ({ ...prev, person: null })),
+      });
+    }
+
+    if (filters.account) {
+      descriptors.push({
+        key: 'account',
+        label: `Account: ${filters.account}`,
+        onClear: () => setFilters((prev) => ({ ...prev, account: null })),
+      });
+    }
+
+    if (filters.category) {
+      descriptors.push({
+        key: 'category',
+        label: `Category: ${filters.category}`,
+        onClear: () => setFilters((prev) => ({ ...prev, category: null })),
+      });
+    }
+
+    if (Array.isArray(filters.debtTags) && filters.debtTags.length > 0) {
+      filters.debtTags.forEach((tag) => {
+        descriptors.push({
+          key: `debt-tag-${tag}`,
+          label: `Debt tag: ${tag}`,
+          onClear: () =>
+            setFilters((prev) => ({
+              ...prev,
+              debtTags: prev.debtTags.filter((value) => value !== tag),
+            })),
+        });
+      });
+    }
+
+    if (
+      filters.amountOperator &&
+      (filters.amountOperator === 'is-null' || String(filters.amountValue).trim().length > 0)
+    ) {
+      const operatorLabel = amountOperatorLabelLookup.get(filters.amountOperator) ?? 'Amount';
+      const numericAmount = Number(filters.amountValue);
+      let formattedValue = '';
+      if (filters.amountOperator !== 'is-null') {
+        formattedValue = Number.isFinite(numericAmount)
+          ? new Intl.NumberFormat(undefined, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2,
+            }).format(numericAmount)
+          : String(filters.amountValue);
+      }
+      const badgeLabel = formattedValue
+        ? `${operatorLabel.replace(/\s*\([^)]*\)/g, '')} ${formattedValue}`
+        : operatorLabel;
+      descriptors.push({
+        key: 'amount',
+        label: `Amount: ${badgeLabel}`.trim(),
+        onClear: () =>
+          setFilters((prev) => ({
+            ...prev,
+            amountOperator: null,
+            amountValue: '',
+          })),
+      });
+    }
+
+    if (filters.year) {
+      descriptors.push({
+        key: 'year',
+        label: `Year: ${filters.year}`,
+        onClear: () => setFilters((prev) => ({ ...prev, year: null })),
+      });
+    }
+
+    if (filters.month) {
+      const monthLabel = MONTH_LABEL_LOOKUP.get(String(filters.month)) ?? `Month ${filters.month}`;
+      descriptors.push({
+        key: 'month',
+        label: `Month: ${monthLabel}`,
+        onClear: () => setFilters((prev) => ({ ...prev, month: null })),
+      });
+    }
+
+    return descriptors;
+  }, [amountOperatorLabelLookup, filters, setFilters]);
+
+  const activeFilterCount = activeFilterDescriptors.length;
+  const visibleFilterDescriptors = activeFilterDescriptors.slice(0, MAX_VISIBLE_FILTER_BADGES);
+  const hasHiddenFilters = activeFilterDescriptors.length > visibleFilterDescriptors.length;
+
+  const resetFilterSearch = useCallback(() => {
+    setFilterSearchValues({
+      person: '',
+      account: '',
+      category: '',
+      debtTags: '',
+    });
+  }, []);
 
   const handleOpenFilterModal = useCallback(() => {
-    setPendingFilters({ ...filters });
     setOpenFilterDropdown(null);
     setIsFilterModalOpen(true);
-  }, [filters]);
+    resetFilterSearch();
+  }, [resetFilterSearch]);
 
   const handleCloseFilterModal = useCallback(() => {
     setIsFilterModalOpen(false);
     setOpenFilterDropdown(null);
-    setPendingFilters({ ...filters });
-  }, [filters]);
-
-  const handleApplyFilterModal = useCallback(() => {
-    const next = { ...pendingFilters };
-    setFilters(next);
-    setPendingFilters(next);
-    setIsFilterModalOpen(false);
-    setOpenFilterDropdown(null);
-  }, [pendingFilters]);
+    resetFilterSearch();
+  }, [resetFilterSearch]);
 
   const handleClearAllFilters = useCallback(() => {
-    const reset = { ...DEFAULT_FILTERS };
-    setFilters(reset);
-    setPendingFilters(reset);
+    setFilters({ ...DEFAULT_FILTERS });
     setOpenFilterDropdown(null);
-    setIsFilterModalOpen(false);
-  }, []);
+    resetFilterSearch();
+  }, [resetFilterSearch, setFilters, setOpenFilterDropdown]);
 
   const handleDropdownToggle = useCallback((id) => {
     setOpenFilterDropdown((current) => (current === id ? null : id));
   }, []);
 
-  const handleFilterOptionSelect = useCallback((field, value) => {
-    setPendingFilters((prev) => ({ ...prev, [field]: value }));
+  const handleSingleFilterChange = useCallback((field, value) => {
+    const normalizedValue = value === 'all' || value === '' ? null : value;
+    setFilters((prev) => ({
+      ...prev,
+      [field]: normalizedValue,
+    }));
     setOpenFilterDropdown(null);
-  }, []);
+  }, [setFilters, setOpenFilterDropdown]);
+
+  const handleFilterSearchChange = useCallback((field, value) => {
+    setFilterSearchValues((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  }, [setFilterSearchValues]);
+
+  const handleToggleDebtTag = useCallback((value) => {
+    if (value === 'all') {
+      setFilters((prev) => ({
+        ...prev,
+        debtTags: [],
+      }));
+      setOpenFilterDropdown(null);
+      setFilterSearchValues((prev) => ({
+        ...prev,
+        debtTags: '',
+      }));
+      return;
+    }
+
+    setFilters((prev) => {
+      const currentTags = Array.isArray(prev.debtTags) ? prev.debtTags : [];
+      const exists = currentTags.includes(value);
+      const next = exists
+        ? currentTags.filter((tag) => tag !== value)
+        : [...currentTags, value];
+      return {
+        ...prev,
+        debtTags: next,
+      };
+    });
+  }, [setFilters, setFilterSearchValues, setOpenFilterDropdown]);
+
+  const handleAmountOperatorSelect = useCallback((operator) => {
+    const normalizedOperator = operator === 'all' ? null : operator;
+    setFilters((prev) => ({
+      ...prev,
+      amountOperator: normalizedOperator,
+      amountValue: normalizedOperator === 'is-null' ? '' : prev.amountValue,
+    }));
+    setOpenFilterDropdown(null);
+  }, [setFilters, setOpenFilterDropdown]);
+
+  const handleAmountValueChange = useCallback((event) => {
+    const { value } = event.target;
+    setFilters((prev) => ({
+      ...prev,
+      amountValue: value,
+    }));
+  }, [setFilters]);
 
   const filteredTransactions = useMemo(() => {
     const base = Array.isArray(transactions) ? transactions : [];
@@ -1301,123 +1472,213 @@ export default function TransactionsHistoryPage() {
         </div>
         <div className={styles.modalBody} role="group" aria-label="Filter transactions">
           <p className={styles.modalDescription}>
-            Narrow down the history by people, accounts, categories, debt tags, amount ranges, and
-            date periods.
+            Narrow down the history by people, accounts, categories, debt tags, amount, year, and
+            month.
           </p>
-          <div className={styles.modalField}>
-            <DropdownSimple
-              id="transactions-filter-person"
-              label="People"
-              isOpen={openFilterDropdown === 'person'}
-              onToggle={handleDropdownToggle}
-              options={personOptions}
-              value={pendingFilters.person}
-              onSelect={(value) => handleFilterOptionSelect('person', value)}
-              placeholder="Any person"
-              optionFormatter={(value) =>
-                value === 'all' ? 'Any person' : value
-              }
-            />
+          <div className={styles.modalGrid}>
+            <div className={styles.modalField}>
+              <DropdownWithSearch
+                id="person"
+                label="People"
+                isOpen={openFilterDropdown === 'person'}
+                onToggle={handleDropdownToggle}
+                options={personOptions}
+                searchValue={filterSearchValues.person}
+                onSearchChange={(value) => handleFilterSearchChange('person', value)}
+                onSelectOption={(value) => handleSingleFilterChange('person', value)}
+                selectedValue={filters.person ?? 'all'}
+                placeholder="Any person"
+                optionFormatter={(value) => (value === 'all' ? 'Any person' : value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <DropdownWithSearch
+                id="account"
+                label="Accounts"
+                isOpen={openFilterDropdown === 'account'}
+                onToggle={handleDropdownToggle}
+                options={accountOptions}
+                searchValue={filterSearchValues.account}
+                onSearchChange={(value) => handleFilterSearchChange('account', value)}
+                onSelectOption={(value) => handleSingleFilterChange('account', value)}
+                selectedValue={filters.account ?? 'all'}
+                placeholder="Any account"
+                optionFormatter={(value) => (value === 'all' ? 'Any account' : value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <DropdownWithSearch
+                id="category"
+                label="Categories"
+                isOpen={openFilterDropdown === 'category'}
+                onToggle={handleDropdownToggle}
+                options={categoryOptions}
+                searchValue={filterSearchValues.category}
+                onSearchChange={(value) => handleFilterSearchChange('category', value)}
+                onSelectOption={(value) => handleSingleFilterChange('category', value)}
+                selectedValue={filters.category ?? 'all'}
+                placeholder="Any category"
+                optionFormatter={(value) => (value === 'all' ? 'Any category' : value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <DropdownWithSearch
+                id="debtTags"
+                label="Debt tags"
+                isOpen={openFilterDropdown === 'debtTags'}
+                onToggle={handleDropdownToggle}
+                options={debtTagOptions}
+                searchValue={filterSearchValues.debtTags}
+                onSearchChange={(value) => handleFilterSearchChange('debtTags', value)}
+                onSelectOption={handleToggleDebtTag}
+                selectedValues={filters.debtTags}
+                multi
+                placeholder="Any debt tag"
+                optionFormatter={(value) => (value === 'all' ? 'Any debt tag' : value)}
+                renderValue={(_, fallback) =>
+                  Array.isArray(filters.debtTags) && filters.debtTags.length > 0
+                    ? `${filters.debtTags.length} selected`
+                    : fallback
+                }
+              />
+            </div>
+            <div className={`${styles.modalField} ${styles.modalFieldWide}`.trim()}>
+              <div className={styles.amountFilterRow}>
+                <DropdownSimple
+                  id="amount-operator"
+                  label="Amount operator"
+                  isOpen={openFilterDropdown === 'amount-operator'}
+                  onToggle={handleDropdownToggle}
+                  options={AMOUNT_OPERATOR_OPTIONS.map((option) => option.value)}
+                  value={filters.amountOperator ?? 'all'}
+                  onSelect={handleAmountOperatorSelect}
+                  placeholder="Any amount"
+                  optionFormatter={(value) =>
+                    value === 'all'
+                      ? 'Any amount'
+                      : amountOperatorLabelLookup.get(value) ?? value
+                  }
+                />
+                <label htmlFor="transactions-filter-amount-value" className={styles.modalLabel}>
+                  Amount value
+                  <input
+                    id="transactions-filter-amount-value"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    className={styles.modalControl}
+                    value={filters.amountValue}
+                    onChange={handleAmountValueChange}
+                    placeholder="Enter amount"
+                    disabled={filters.amountOperator === 'is-null' || !filters.amountOperator}
+                  />
+                </label>
+              </div>
+            </div>
+            <div className={styles.modalField}>
+              <DropdownSimple
+                id="year"
+                label="Year"
+                isOpen={openFilterDropdown === 'year'}
+                onToggle={handleDropdownToggle}
+                options={yearOptions}
+                value={filters.year ?? 'all'}
+                onSelect={(value) => handleSingleFilterChange('year', value)}
+                placeholder="Any year"
+                optionFormatter={(value) => (value === 'all' ? 'Any year' : value)}
+              />
+            </div>
+            <div className={styles.modalField}>
+              <DropdownSimple
+                id="month"
+                label="Month"
+                isOpen={openFilterDropdown === 'month'}
+                onToggle={handleDropdownToggle}
+                options={MONTH_OPTIONS.map((option) => option.value)}
+                value={filters.month ?? 'all'}
+                onSelect={(value) => handleSingleFilterChange('month', value)}
+                placeholder="Any month"
+                optionFormatter={(value) =>
+                  value === 'all' ? 'Any month' : MONTH_LABEL_LOOKUP.get(String(value)) ?? value
+                }
+              />
+            </div>
           </div>
-          <div className={styles.modalField}>
-            <DropdownSimple
-              id="transactions-filter-account"
-              label="Accounts"
-              isOpen={openFilterDropdown === 'account'}
-              onToggle={handleDropdownToggle}
-              options={accountOptions}
-              value={pendingFilters.account}
-              onSelect={(value) => handleFilterOptionSelect('account', value)}
-              placeholder="Any account"
-              optionFormatter={(value) =>
-                value === 'all' ? 'Any account' : value
-              }
-            />
-          </div>
-          <div className={styles.modalField}>
-            <DropdownSimple
-              id="transactions-filter-category"
-              label="Categories"
-              isOpen={openFilterDropdown === 'category'}
-              onToggle={handleDropdownToggle}
-              options={categoryOptions}
-              value={pendingFilters.category}
-              onSelect={(value) => handleFilterOptionSelect('category', value)}
-              placeholder="Any category"
-              optionFormatter={(value) =>
-                value === 'all' ? 'Any category' : value
-              }
-            />
-          </div>
-          <div className={styles.modalField}>
-            <DropdownSimple
-              id="transactions-filter-debt-tag"
-              label="Debt tags"
-              isOpen={openFilterDropdown === 'debtTag'}
-              onToggle={handleDropdownToggle}
-              options={debtTagOptions}
-              value={pendingFilters.debtTag}
-              onSelect={(value) => handleFilterOptionSelect('debtTag', value)}
-              placeholder="Any debt tag"
-              optionFormatter={(value) =>
-                value === 'all' ? 'Any debt tag' : value
-              }
-            />
-          </div>
-          <div className={styles.modalField}>
-            <DropdownSimple
-              id="transactions-filter-amount"
-              label="Amount"
-              isOpen={openFilterDropdown === 'amount'}
-              onToggle={handleDropdownToggle}
-              options={AMOUNT_FILTER_OPTIONS}
-              value={pendingFilters.amountRange}
-              onSelect={(value) => handleFilterOptionSelect('amountRange', value)}
-              placeholder={AMOUNT_FILTER_LABELS.all}
-              optionFormatter={(value) => AMOUNT_FILTER_LABELS[value] ?? value}
-            />
-          </div>
-          <div className={styles.modalField}>
-            <DropdownSimple
-              id="transactions-filter-date"
-              label="Date"
-              isOpen={openFilterDropdown === 'date'}
-              onToggle={handleDropdownToggle}
-              options={DATE_FILTER_OPTIONS}
-              value={pendingFilters.dateRange}
-              onSelect={(value) => handleFilterOptionSelect('dateRange', value)}
-              placeholder={DATE_FILTER_LABELS.all}
-              optionFormatter={(value) => DATE_FILTER_LABELS[value] ?? value}
-            />
-          </div>
+          {Array.isArray(filters.debtTags) && filters.debtTags.length > 0 ? (
+            <div className={styles.modalTagBadges} aria-live="polite">
+              {filters.debtTags.map((tag) => (
+                <button
+                  key={`selected-debt-tag-${tag}`}
+                  type="button"
+                  className={styles.modalTagBadge}
+                  onClick={() => handleToggleDebtTag(tag)}
+                  title={`Remove ${tag}`}
+                >
+                  <span className={styles.modalTagLabel}>{tag}</span>
+                  <FiX aria-hidden className={styles.modalTagRemove} />
+                  <span className={styles.srOnly}>Remove {tag}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className={styles.modalFooter}>
           <button
             type="button"
-            className={styles.secondaryButton}
-            onClick={handleCloseFilterModal}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
             className={`${styles.secondaryButton} ${styles.clearFilterButton}`.trim()}
             onClick={handleClearAllFilters}
-            disabled={pendingFilterCount === 0}
+            disabled={activeFilterCount === 0}
           >
             Clear all
           </button>
           <button
             type="button"
             className={`${styles.primaryButton} ${styles.modalApply}`.trim()}
-            onClick={handleApplyFilterModal}
+            onClick={handleCloseFilterModal}
           >
-            Apply filters
+            Done
           </button>
         </div>
       </div>
     </ModalWrapper>
   );
+
+  const activeFiltersRow = activeFilterCount > 0 ? (
+    <div className={styles.activeFiltersRow} role="region" aria-live="polite">
+      <div className={styles.activeFilterBadges}>
+        {visibleFilterDescriptors.map((descriptor) => (
+          <button
+            key={descriptor.key}
+            type="button"
+            className={styles.activeFilterBadge}
+            onClick={descriptor.onClear}
+            title={`Remove ${descriptor.label}`}
+          >
+            <span className={styles.activeFilterLabel}>{descriptor.label}</span>
+            <FiX aria-hidden className={styles.activeFilterRemove} />
+            <span className={styles.srOnly}>Remove {descriptor.label}</span>
+          </button>
+        ))}
+        {hasHiddenFilters ? (
+          <button
+            type="button"
+            className={styles.activeFilterMore}
+            onClick={handleOpenFilterModal}
+            aria-label="Show all filters"
+          >
+            <FiMoreHorizontal aria-hidden />
+          </button>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        className={`${styles.secondaryButton} ${styles.clearFilterButton}`.trim()}
+        onClick={handleClearAllFilters}
+      >
+        Clear all
+      </button>
+    </div>
+  ) : null;
 
   const isAddModalOpen = addModalType !== null;
 
@@ -1504,6 +1765,8 @@ export default function TransactionsHistoryPage() {
             {isCompact && <div className={styles.tabsRow}>{tabControls}</div>}
           </div>
         </div>
+
+        {activeFiltersRow}
 
         {columnDefinitions.length === 0 ? (
           <TablePanel data-testid="transactions-loading">
