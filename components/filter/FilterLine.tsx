@@ -294,7 +294,8 @@ export function FilterLine({
 
   const collapsedFilters = filters.filter((filter) => filter.id !== openFilterId);
   const openColumn = openFilter ? findColumn(columns, openFilter.columnId) : undefined;
-  const openOperator = openColumn ? findOperator(openColumn, openFilter.operatorId) : undefined;
+  const openOperator =
+    openFilter && openColumn ? findOperator(openColumn, openFilter.operatorId) : undefined;
 
   return (
     <div className={styles.container}>

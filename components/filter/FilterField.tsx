@@ -68,7 +68,12 @@ export function FilterField({
           <span className={styles.controlLabel}>Column</span>
           <ReusableDropdown
             value={filter.columnId}
-            onChange={(value: string) => onColumnChange(value)}
+            onChange={(value) => {
+              if (Array.isArray(value)) {
+                return;
+              }
+              onColumnChange(value);
+            }}
             options={columnOptions}
             placeholder="Select column"
             className={styles.dropdownControl}
@@ -78,7 +83,12 @@ export function FilterField({
           <span className={styles.controlLabel}>Operator</span>
           <ReusableDropdown
             value={filter.operatorId}
-            onChange={(value: string) => onOperatorChange(value)}
+            onChange={(value) => {
+              if (Array.isArray(value)) {
+                return;
+              }
+              onOperatorChange(value);
+            }}
             options={operatorOptions}
             placeholder={column ? 'Select operator' : 'Choose column first'}
             className={styles.dropdownControl}

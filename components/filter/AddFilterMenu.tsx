@@ -29,7 +29,12 @@ export function AddFilterMenu({ columns, onSelect, label }: AddFilterMenuProps) 
   return (
     <ReusableDropdown
       value={selectedValue}
-      onChange={(value: string) => handleChange(value)}
+      onChange={(value) => {
+        if (Array.isArray(value)) {
+          return;
+        }
+        handleChange(value);
+      }}
       options={options}
       placeholder={placeholder}
       searchPlaceholder="Search columns"
