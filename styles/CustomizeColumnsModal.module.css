@@ -179,78 +179,8 @@
 .columnControls {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.5rem;
   flex-shrink: 0;
-}
-
-.columnItem[data-resizing='true'] .columnChipBody {
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.65);
-}
-
-.columnWidthControl {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  flex-shrink: 0;
-}
-
-.columnWidthValue {
-  min-width: 64px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #0f172a;
-  text-align: right;
-}
-
-.columnResizeHandle {
-  border: none;
-  border-radius: 14px;
-  width: 38px;
-  height: 38px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(148, 163, 184, 0.24);
-  color: rgba(15, 23, 42, 0.6);
-  cursor: ew-resize;
-  touch-action: none;
-  transition: background 0.18s ease, transform 0.18s ease, color 0.18s ease;
-}
-
-.columnResizeHandle:hover,
-.columnResizeHandle:focus-visible {
-  background: rgba(99, 102, 241, 0.22);
-  color: rgba(79, 70, 229, 0.95);
-  outline: none;
-  transform: translateX(1px);
-}
-
-.columnResizeHandle[data-active='true'] {
-  background: rgba(99, 102, 241, 0.3);
-  color: rgba(79, 70, 229, 0.95);
-  box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.4);
-}
-
-.columnResizeGrip {
-  display: inline-block;
-  width: 14px;
-  height: 22px;
-  background-image: linear-gradient(
-      rgba(15, 23, 42, 0.25) 0,
-      rgba(15, 23, 42, 0.25) 50%,
-      transparent 50%,
-      transparent 100%
-    ),
-    linear-gradient(
-      90deg,
-      rgba(15, 23, 42, 0.25) 0,
-      rgba(15, 23, 42, 0.25) 50%,
-      transparent 50%,
-      transparent 100%
-    );
-  background-size: 4px 4px;
-  border-radius: 6px;
-  opacity: 0.75;
 }
 
 .lockBadge {

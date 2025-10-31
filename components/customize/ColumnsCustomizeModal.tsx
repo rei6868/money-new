@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Reorder } from 'framer-motion';
 import { FiEye, FiEyeOff, FiLock, FiX } from 'react-icons/fi';
@@ -16,14 +16,6 @@ export type ColumnConfig = {
   mandatory?: boolean;
   width?: number;
   minWidth?: number;
-};
-
-type ActiveResize = {
-  id: string;
-  startX: number;
-  startWidth: number;
-  minWidth: number;
-  pointerId: number;
 };
 
 export type ColumnsCustomizeModalProps = {
@@ -62,7 +54,6 @@ export function ColumnsCustomizeModal({
   onChange,
 }: ColumnsCustomizeModalProps) {
   const [draftColumns, setDraftColumns] = useState<ColumnConfig[]>(() => normalizeColumns(context, columns));
-  const [activeResize, setActiveResize] = useState<ActiveResize | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -79,21 +70,6 @@ export function ColumnsCustomizeModal({
     setDraftColumns(nextColumns);
     onChange(normalizeColumns(context, nextColumns));
   };
-
-  const updateColumnWidth = useCallback(
-    (id: string, width: number) => {
-      setDraftColumns((prev) => {
-        const next = prev.map((column) =>
-          column.id === id
-            ? { ...column, width: Math.max(column.minWidth ?? 120, Math.round(width)) }
-            : column,
-        );
-        onChange(normalizeColumns(context, next));
-        return next;
-      });
-    },
-    [context, onChange],
-  );
 
   const handleToggleVisibility = (id: string) => {
     const next = draftColumns.map((column) => {
@@ -124,57 +100,6 @@ export function ColumnsCustomizeModal({
     emitChange(next);
   };
 
-  const handleResizeStart = useCallback(
-    (id: string) => (event: React.PointerEvent<HTMLButtonElement>) => {
-      const column = draftColumns.find((item) => item.id === id);
-      if (!column) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      event.currentTarget.setPointerCapture(event.pointerId);
-      setActiveResize({
-        id,
-        startX: event.clientX,
-        startWidth: column.width ?? column.minWidth ?? 120,
-        minWidth: column.minWidth ?? 120,
-        pointerId: event.pointerId,
-      });
-    },
-    [draftColumns],
-  );
-
-  useEffect(() => {
-    if (!activeResize) {
-      return undefined;
-    }
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (event.pointerId !== activeResize.pointerId) {
-        return;
-      }
-      const delta = event.clientX - activeResize.startX;
-      const nextWidth = Math.max(activeResize.minWidth, activeResize.startWidth + delta);
-      updateColumnWidth(activeResize.id, nextWidth);
-    };
-
-    const handlePointerUp = (event: PointerEvent) => {
-      if (event.pointerId !== activeResize.pointerId) {
-        return;
-      }
-      setActiveResize(null);
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('pointercancel', handlePointerUp);
-
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-      window.removeEventListener('pointercancel', handlePointerUp);
-    };
-  }, [activeResize, updateColumnWidth]);
 
   return (
     <Transition show={open} as={Fragment} appear>
@@ -226,7 +151,6 @@ export function ColumnsCustomizeModal({
                     key={column.id}
                     value={column}
                     className={styles.columnItem}
-                    data-resizing={activeResize?.id === column.id ? 'true' : undefined}
                     dragListener={!column.locked}
                     aria-disabled={column.locked ? 'true' : undefined}
                   >
@@ -239,20 +163,6 @@ export function ColumnsCustomizeModal({
                         {column.locked ? <span className={styles.columnHint}>Locked</span> : null}
                       </div>
                       <div className={styles.columnControls}>
-                        <div className={styles.columnWidthControl}>
-                          <span className={styles.columnWidthValue} aria-live={activeResize?.id === column.id ? 'polite' : 'off'}>
-                            {Math.round(column.width ?? column.minWidth ?? 0)}px
-                          </span>
-                          <button
-                            type="button"
-                            className={styles.columnResizeHandle}
-                            onPointerDown={handleResizeStart(column.id)}
-                            aria-label={`Resize ${column.label}`}
-                            data-active={activeResize?.id === column.id ? 'true' : undefined}
-                          >
-                            <span aria-hidden className={styles.columnResizeGrip} />
-                          </button>
-                        </div>
                         {column.locked ? (
                           <span className={styles.lockBadge}>
                             <FiLock aria-hidden />
