@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FiChevronDown, FiX } from 'react-icons/fi';
+import { FiCheck, FiChevronDown, FiX } from 'react-icons/fi';
 
 import styles from './ReusableDropdown.module.css';
 
@@ -53,12 +53,27 @@ export default function ReusableDropdown({
   addNewLabel = '+ New',
   ariaLabel,
   hasError = false,
+  multiple = false,
+  onSearchTermChange,
+  isLoading = false,
+  emptyState = 'No matches found',
 }) {
-  const normalizedValue = value === undefined || value === null ? '' : String(value);
   const normalizedOptions = useMemo(
     () => options.map((option, index) => normalizeOption(option, index)).filter(Boolean),
     [options],
   );
+  const normalizedValue = useMemo(() => {
+    if (multiple) {
+      if (Array.isArray(value)) {
+        return value.map((item) => String(item));
+      }
+      if (typeof value === 'string' && value.length > 0) {
+        return [value];
+      }
+      return [];
+    }
+    return value === undefined || value === null ? '' : String(value);
+  }, [multiple, value]);
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const triggerRef = useRef(null);
@@ -66,10 +81,20 @@ export default function ReusableDropdown({
   const searchInputRef = useRef(null);
   const [menuStyles, setMenuStyles] = useState(null);
 
-  const selectedOption = useMemo(
-    () => normalizedOptions.find((option) => option.value === normalizedValue) ?? null,
-    [normalizedOptions, normalizedValue],
-  );
+  const selectedOption = useMemo(() => {
+    if (multiple) {
+      return null;
+    }
+    return normalizedOptions.find((option) => option.value === normalizedValue) ?? null;
+  }, [multiple, normalizedOptions, normalizedValue]);
+
+  const selectedOptions = useMemo(() => {
+    if (!multiple) {
+      return [];
+    }
+    const valueSet = new Set(Array.isArray(normalizedValue) ? normalizedValue : []);
+    return normalizedOptions.filter((option) => valueSet.has(option.value));
+  }, [multiple, normalizedOptions, normalizedValue]);
 
   const filteredOptions = useMemo(() => {
     if (!searchTerm) {
@@ -77,15 +102,28 @@ export default function ReusableDropdown({
     }
 
     const normalizedTerm = searchTerm.trim().toLowerCase();
-    return normalizedOptions.filter((option) =>
-      option.label.toLowerCase().includes(normalizedTerm),
-    );
+    return normalizedOptions.filter((option) => option.label.toLowerCase().includes(normalizedTerm));
   }, [normalizedOptions, searchTerm]);
+
+  const displayLabel = useMemo(() => {
+    if (multiple) {
+      if (!selectedOptions.length) {
+        return placeholder;
+      }
+      if (selectedOptions.length > 2) {
+        const preview = selectedOptions.slice(0, 2).map((option) => option.label).join(', ');
+        return `${preview} +${selectedOptions.length - 2}`;
+      }
+      return selectedOptions.map((option) => option.label).join(', ');
+    }
+    return selectedOption ? selectedOption.label : placeholder;
+  }, [multiple, placeholder, selectedOption, selectedOptions]);
 
   const closeDropdown = useCallback(
     (focusTrigger = false) => {
       setIsOpen(false);
       setSearchTerm('');
+      onSearchTermChange?.('');
       onOpenChange?.(false);
       setMenuStyles(null);
       if (focusTrigger) {
@@ -94,21 +132,23 @@ export default function ReusableDropdown({
         });
       }
     },
-    [onOpenChange],
+    [onOpenChange, onSearchTermChange],
   );
 
   const toggleDropdown = () => {
     if (disabled) {
       return;
     }
-    setIsOpen((prev) => {
-      const next = !prev;
-      if (next) {
-        setSearchTerm('');
-      }
-      onOpenChange?.(next);
-      return next;
-    });
+
+    if (isOpen) {
+      closeDropdown(true);
+      return;
+    }
+
+    setIsOpen(true);
+    setSearchTerm('');
+    onSearchTermChange?.('');
+    onOpenChange?.(true);
   };
 
   const updateMenuPosition = useCallback(() => {
@@ -146,8 +186,9 @@ export default function ReusableDropdown({
     }
     setIsOpen(true);
     setSearchTerm('');
+    onSearchTermChange?.('');
     onOpenChange?.(true);
-  }, [openOnMount, disabled, onOpenChange]);
+  }, [openOnMount, disabled, onOpenChange, onSearchTermChange]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -214,10 +255,27 @@ export default function ReusableDropdown({
     });
   }, [isOpen]);
 
+  const normalizedArray = useMemo(
+    () => (multiple ? (Array.isArray(normalizedValue) ? normalizedValue : []) : []),
+    [multiple, normalizedValue],
+  );
+
   const handleSelect = (option) => {
     if (!option) {
       return;
     }
+
+    if (multiple) {
+      const nextValues = new Set(normalizedArray);
+      if (nextValues.has(option.value)) {
+        nextValues.delete(option.value);
+      } else {
+        nextValues.add(option.value);
+      }
+      onChange?.(Array.from(nextValues), option.original ?? option);
+      return;
+    }
+
     onChange?.(option.value, option.original ?? option);
     closeDropdown();
   };
@@ -227,7 +285,12 @@ export default function ReusableDropdown({
     if (disabled) {
       return;
     }
-    onChange?.('', null);
+
+    if (multiple) {
+      onChange?.([], null);
+    } else {
+      onChange?.('', null);
+    }
     closeDropdown();
   };
 
@@ -243,6 +306,15 @@ export default function ReusableDropdown({
   const triggerTestId = testIdPrefix ? `${testIdPrefix}-trigger` : undefined;
   const searchTestId = testIdPrefix ? `${testIdPrefix}-search` : undefined;
   const triggerAriaLabel = ariaLabel ?? (label ? undefined : placeholder);
+
+  const handleSearchChange = (event) => {
+    const next = event.target.value;
+    setSearchTerm(next);
+    onSearchTermChange?.(next);
+  };
+
+  const hasSelection = multiple ? selectedOptions.length > 0 : Boolean(selectedOption);
+  const isPlaceholder = multiple ? selectedOptions.length === 0 : !selectedOption;
 
   return (
     <div
@@ -265,14 +337,14 @@ export default function ReusableDropdown({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label={triggerAriaLabel}
-        data-placeholder={selectedOption ? 'false' : 'true'}
+        data-placeholder={isPlaceholder ? 'true' : 'false'}
         data-testid={triggerTestId}
       >
         <span className={styles.triggerText}>
-          {selectedOption ? selectedOption.label : placeholder}
+          {displayLabel}
         </span>
         <span className={styles.triggerIcons}>
-          {selectedOption ? (
+          {hasSelection ? (
             <button
               type="button"
               className={styles.clearButton}
@@ -293,6 +365,7 @@ export default function ReusableDropdown({
               className={styles.menu}
               ref={menuRef}
               role="listbox"
+              aria-multiselectable={multiple ? 'true' : undefined}
               style={{
                 top: menuStyles ? `${menuStyles.top}px` : '0px',
                 left: menuStyles ? `${menuStyles.left}px` : '0px',
@@ -306,7 +379,7 @@ export default function ReusableDropdown({
                   id={`${dropdownId}-search`}
                   type="search"
                   value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
+                  onChange={handleSearchChange}
                   placeholder={searchPlaceholder}
                   className={styles.searchInput}
                   data-testid={searchTestId}
@@ -320,8 +393,10 @@ export default function ReusableDropdown({
                 </div>
               ) : null}
               <ul className={styles.optionsList}>
-                {filteredOptions.length === 0 ? (
-                  <li className={styles.emptyState}>No matches found</li>
+                {isLoading ? (
+                  <li className={styles.loadingState}>Loading…</li>
+                ) : filteredOptions.length === 0 ? (
+                  <li className={styles.emptyState}>{emptyState}</li>
                 ) : (
                   filteredOptions.map((option) => (
                     <li key={option.key}>
@@ -329,14 +404,36 @@ export default function ReusableDropdown({
                         type="button"
                         className={styles.optionButton}
                         onClick={() => handleSelect(option)}
-                        data-selected={option.value === normalizedValue ? 'true' : 'false'}
+                        data-selected={
+                          multiple
+                            ? normalizedArray.includes(option.value)
+                              ? 'true'
+                              : 'false'
+                            : option.value === normalizedValue
+                            ? 'true'
+                            : 'false'
+                        }
                         role="option"
-                        aria-selected={option.value === normalizedValue}
+                        aria-selected={
+                          multiple
+                            ? normalizedArray.includes(option.value)
+                            : option.value === normalizedValue
+                        }
                         data-testid={
                           testIdPrefix ? `${testIdPrefix}-option-${option.value}` : undefined
                         }
                       >
-                        {option.label}
+                        <span className={styles.optionContent}>
+                          {multiple ? (
+                            <span className={styles.optionCheckbox} aria-hidden>
+                              <FiCheck />
+                            </span>
+                          ) : null}
+                          <span className={styles.optionLabel}>{option.label}</span>
+                          {option.original?.description ? (
+                            <span className={styles.optionDescription}>{option.original.description}</span>
+                          ) : null}
+                        </span>
                       </button>
                     </li>
                   ))

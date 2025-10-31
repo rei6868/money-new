@@ -1,47 +1,43 @@
-import { useState } from 'react';
-import styles from './FilterLine.module.css';
-import type { AddFilterMenuProps, FilterColumn } from './types';
+import { useMemo, useState } from 'react';
 
-function ColumnButton({ column, onClick }: { column: FilterColumn; onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} className={styles.addButton}>
-      {column.icon}
-      <span>{column.label}</span>
-    </button>
-  );
-}
+import ReusableDropdown from '../common/ReusableDropdown';
+import styles from './FilterLine.module.css';
+import type { AddFilterMenuProps } from './types';
 
 export function AddFilterMenu({ columns, onSelect, label }: AddFilterMenuProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedValue, setSelectedValue] = useState('');
 
-  if (!columns.length) {
-    return null;
-  }
+  const options = useMemo(
+    () =>
+      columns.map((column) => ({
+        value: column.id,
+        label: column.label,
+      })),
+    [columns],
+  );
 
-  const handleSelect = (column: FilterColumn) => {
-    onSelect(column);
-    setIsExpanded(false);
+  const placeholder = label ? `＋ ${label}` : '＋ Add filter';
+
+  const handleChange = (value: string) => {
+    const column = columns.find((item) => item.id === value);
+    if (column) {
+      onSelect(column);
+    }
+    setSelectedValue('');
   };
 
   return (
-    <div>
-      <button
-        type="button"
-        className={styles.addButton}
-        onClick={() => setIsExpanded((value) => !value)}
-        aria-expanded={isExpanded}
-      >
-        <span>＋</span>
-        <span>{label ?? 'Add filter'}</span>
-      </button>
-      {isExpanded && (
-        <div className={styles.badgeRow} style={{ marginTop: 8 }}>
-          {columns.map((column) => (
-            <ColumnButton key={column.id} column={column} onClick={() => handleSelect(column)} />
-          ))}
-        </div>
-      )}
-    </div>
+    <ReusableDropdown
+      value={selectedValue}
+      onChange={(value: string) => handleChange(value)}
+      options={options}
+      placeholder={placeholder}
+      searchPlaceholder="Search columns"
+      className={styles.addDropdown}
+      disabled={columns.length === 0}
+      ariaLabel="Add filter"
+      testIdPrefix="filter-line-add"
+    />
   );
 }
 

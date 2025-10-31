@@ -192,7 +192,50 @@
   font-weight: 600;
 }
 
+.optionContent {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.optionCheckbox {
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.92);
+  color: transparent;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+
+.optionButton[data-selected='true'] .optionCheckbox {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.45);
+  color: rgba(79, 70, 229, 0.95);
+}
+
+.optionLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.optionDescription {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--mf-text-muted);
+}
+
 .emptyState {
+  padding: 1.1rem 0.9rem;
+  font-size: 0.9rem;
+  color: var(--mf-text-muted);
+}
+
+.loadingState {
   padding: 1.1rem 0.9rem;
   font-size: 0.9rem;
   color: var(--mf-text-muted);

@@ -81,10 +81,13 @@ export interface FilterFieldProps {
   column: FilterColumn | undefined;
   operator: FilterOperator | undefined;
   columns: FilterColumn[];
+  availableColumns: FilterColumn[];
   onColumnChange: (columnId: string) => void;
   onOperatorChange: (operatorId: string) => void;
   onValueChange: (value: FilterValue) => void;
   onRemove: () => void;
+  onApply: () => void;
+  onCancel: () => void;
   loadValueOptions?: FilterLineProps['loadValueOptions'];
 }
 
@@ -94,6 +97,7 @@ export interface FilterBadgeProps {
   operatorLabel?: string;
   valueLabel?: string;
   onClick?: () => void;
+  onRemove?: () => void;
 }
 
 export interface FilterInputProps {

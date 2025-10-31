@@ -1,62 +1,115 @@
+import { useMemo } from 'react';
+import { FiX } from 'react-icons/fi';
+
+import ReusableDropdown from '../common/ReusableDropdown';
 import styles from './FilterLine.module.css';
 import FilterInput from './FilterInput';
-import type { FilterFieldProps } from './types';
+import type { FilterColumn, FilterFieldProps, FilterOperator } from './types';
+
+const mapColumnsToOptions = (columns: FilterColumn[]) =>
+  columns.map((item) => ({
+    value: item.id,
+    label: item.label,
+  }));
+
+const mapOperatorsToOptions = (operators: FilterOperator[] | undefined) =>
+  (operators ?? []).map((item) => ({
+    value: item.id,
+    label: item.label,
+  }));
 
 export function FilterField({
   filter,
   column,
   operator,
   columns,
+  availableColumns,
   onColumnChange,
   onOperatorChange,
   onValueChange,
   onRemove,
+  onApply,
+  onCancel,
   loadValueOptions,
 }: FilterFieldProps) {
+  const columnOptions = useMemo(
+    () => mapColumnsToOptions(availableColumns.length ? availableColumns : columns),
+    [availableColumns, columns],
+  );
+
+  const operatorOptions = useMemo(
+    () => mapOperatorsToOptions(column?.operators),
+    [column?.operators],
+  );
+
+  const showValueInput = Boolean(operator && operator.valueInput !== 'none');
+
   return (
-    <div className={styles.filterCard}>
-      <div className={styles.filterHeader}>
-        <div className={styles.filterTitle}>{column?.label ?? 'Select column'}</div>
-        <button type="button" onClick={onRemove} aria-label="Remove filter">
-          ✕
+    <div className={styles.fieldCard}>
+      <div className={styles.fieldHeader}>
+        <div className={styles.fieldTitleGroup}>
+          <div className={styles.fieldTitle}>{column?.label ?? 'Choose a column'}</div>
+          {column?.helperText ? (
+            <div className={styles.fieldHelper}>{column.helperText}</div>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className={styles.fieldCloseButton}
+          onClick={onRemove}
+          aria-label="Remove filter"
+        >
+          <FiX aria-hidden />
         </button>
       </div>
-      {column?.helperText ? <small>{column.helperText}</small> : null}
-      <div className={styles.filterControls}>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Column</span>
-          <select value={filter.columnId} onChange={(event) => onColumnChange(event.target.value)}>
-            {columns.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Operator</span>
-          <select
-            value={filter.operatorId}
-            onChange={(event) => onOperatorChange(event.target.value)}
-            disabled={!column}
-          >
-            {(column?.operators ?? []).map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 200px' }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Value</span>
-          <FilterInput
-            columnId={filter.columnId}
-            operator={operator}
-            value={filter.value}
-            onChange={onValueChange}
-            loadValueOptions={loadValueOptions}
+
+      <div className={styles.fieldControls}>
+        <div className={styles.fieldControl}>
+          <span className={styles.controlLabel}>Column</span>
+          <ReusableDropdown
+            value={filter.columnId}
+            onChange={(value: string) => onColumnChange(value)}
+            options={columnOptions}
+            placeholder="Select column"
+            className={styles.dropdownControl}
           />
-        </label>
+        </div>
+        <div className={styles.fieldControl}>
+          <span className={styles.controlLabel}>Operator</span>
+          <ReusableDropdown
+            value={filter.operatorId}
+            onChange={(value: string) => onOperatorChange(value)}
+            options={operatorOptions}
+            placeholder={column ? 'Select operator' : 'Choose column first'}
+            className={styles.dropdownControl}
+            disabled={!column || operatorOptions.length === 0}
+          />
+        </div>
+        <div className={styles.fieldControl}>
+          <span className={styles.controlLabel}>Value</span>
+          {showValueInput ? (
+            <FilterInput
+              columnId={filter.columnId}
+              operator={operator}
+              value={filter.value}
+              onChange={onValueChange}
+              loadValueOptions={loadValueOptions}
+            />
+          ) : (
+            <div className={styles.emptyValue}>
+              {operator ? 'No value needed for this operator' : 'Select an operator to continue'}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.fieldFooter}>
+        <button type="button" className={styles.secondaryButton} onClick={onCancel}>
+          Cancel
+        </button>
+        <button type="button" className={styles.primaryButton} onClick={onApply}>
+          Apply
+        </button>
       </div>
     </div>
   );

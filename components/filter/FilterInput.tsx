@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
+
+import ReusableDropdown from '../common/ReusableDropdown';
+import styles from './FilterLine.module.css';
 import type { FilterInputProps, FilterOption } from './types';
 
-const typedValue = (value: unknown, fallback: string) => {
-  if (value === null || value === undefined) {
+const toStringValue = (candidate: unknown, fallback = ''): string => {
+  if (candidate === null || candidate === undefined) {
     return fallback;
   }
 
-  return String(value);
+  return String(candidate);
 };
 
 export function FilterInput({ columnId, operator, value, onChange, loadValueOptions }: FilterInputProps) {
@@ -17,24 +20,26 @@ export function FilterInput({ columnId, operator, value, onChange, loadValueOpti
   useEffect(() => {
     setSearch('');
     setAsyncOptions([]);
+    setIsLoading(false);
   }, [columnId, operator?.id]);
 
   useEffect(() => {
     if (!operator) {
-      return;
+      return undefined;
     }
 
     if (operator.valueInput !== 'select' && operator.valueInput !== 'multi-select') {
-      return;
+      return undefined;
     }
 
     if (!loadValueOptions) {
       setAsyncOptions(operator.options ?? []);
-      return;
+      return undefined;
     }
 
     const controller = new AbortController();
     setIsLoading(true);
+
     loadValueOptions({
       columnId,
       operatorId: operator.id,
@@ -42,14 +47,16 @@ export function FilterInput({ columnId, operator, value, onChange, loadValueOpti
       signal: controller.signal,
     })
       .then((options) => {
-        setAsyncOptions(options);
+        setAsyncOptions(Array.isArray(options) ? options : []);
       })
       .catch((error) => {
         if (error?.name !== 'AbortError') {
           console.error('Failed to load filter options', error);
         }
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        setIsLoading(false);
+      });
 
     return () => controller.abort();
   }, [columnId, operator, loadValueOptions, search]);
@@ -59,78 +66,83 @@ export function FilterInput({ columnId, operator, value, onChange, loadValueOpti
       return [];
     }
 
-    if (operator.options && !loadValueOptions) {
-      return operator.options;
+    if (loadValueOptions) {
+      return asyncOptions;
     }
 
-    return asyncOptions;
+    return operator.options ?? [];
   }, [operator, asyncOptions, loadValueOptions]);
 
-  if (!operator || operator.valueInput === 'none') {
+  if (!operator) {
+    return null;
+  }
+
+  if (operator.valueInput === 'none') {
     return null;
   }
 
   if (operator.valueInput === 'toggle') {
-    const isChecked = Boolean(value);
+    const isActive = Boolean(value);
     return (
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <input
-          type="checkbox"
-          checked={isChecked}
-          onChange={(event) => onChange(event.target.checked)}
-        />
+      <button
+        type="button"
+        className={styles.toggleButton}
+        data-active={isActive ? 'true' : 'false'}
+        onClick={() => onChange(!isActive)}
+        aria-pressed={isActive}
+      >
         <span>{operator.label}</span>
-      </label>
+        <span>{isActive ? 'Enabled' : 'Disabled'}</span>
+      </button>
     );
   }
 
   if (operator.valueInput === 'select' || operator.valueInput === 'multi-select') {
     const isMulti = operator.valueInput === 'multi-select';
-    const stringValue = Array.isArray(value)
-      ? value.map((item) => typedValue(item, ''))
-      : value !== null && value !== undefined
-      ? [typedValue(value, '')]
-      : [];
+    const normalizedValue = isMulti
+      ? Array.isArray(value)
+        ? value.map((item) => toStringValue(item)).filter((item) => item.length > 0)
+        : []
+      : (() => {
+          const stringValue = toStringValue(value);
+          return stringValue.length > 0 ? stringValue : '';
+        })();
 
-    const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-      const selected = Array.from(event.target.selectedOptions).map((option) => option.value);
-      onChange(isMulti ? selected : selected[0] ?? null);
+    const handleSelectChange = (next: string | string[]) => {
+      if (isMulti) {
+        onChange(Array.isArray(next) ? next : []);
+        return;
+      }
+
+      const nextValue = typeof next === 'string' ? next : Array.isArray(next) ? next[0] ?? '' : '';
+      onChange(nextValue ? nextValue : null);
     };
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {loadValueOptions ? (
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={operator.placeholder ?? 'Search values'}
-          />
-        ) : null}
-        <select
-          multiple={isMulti}
-          value={stringValue}
-          onChange={handleSelectChange}
-          disabled={isLoading}
-          size={Math.min(Math.max(options.length, 3), 8)}
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value} title={option.description ?? undefined}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <ReusableDropdown
+        value={normalizedValue as string | string[]}
+        onChange={handleSelectChange}
+        options={options}
+        placeholder={operator.placeholder ?? 'Select value'}
+        searchPlaceholder={operator.placeholder ?? 'Search'}
+        multiple={isMulti}
+        onSearchTermChange={setSearch}
+        className={styles.dropdownControl}
+        isLoading={isLoading}
+      />
     );
   }
 
   const inputType = operator.valueInput;
+  const typed = toStringValue(value);
+
   return (
     <input
       type={inputType}
       placeholder={operator.placeholder ?? ''}
-      value={typedValue(value, '')}
+      value={typed}
       onChange={(event) => onChange(event.target.value)}
+      className={styles.textInput}
     />
   );
 }

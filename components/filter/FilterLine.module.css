@@ -1,114 +1,370 @@
 .container {
-  background: var(--filter-background, #fff);
-  border: 1px solid var(--filter-border, rgba(0, 0, 0, 0.08));
-  border-radius: 12px;
-  padding: 16px;
+  background: var(--mf-surface, #ffffff);
+  border: 1px solid var(--mf-border-subtle, rgba(148, 163, 184, 0.24));
+  border-radius: 20px;
+  padding: 1.1rem 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 1rem;
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.08);
 }
 
-.filtersRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.filterCard {
-  background: var(--filter-card-background, #f9fafb);
-  border: 1px solid var(--filter-card-border, rgba(0, 0, 0, 0.05));
-  border-radius: 10px;
-  padding: 12px;
-  flex: 1 1 280px;
-  min-width: 240px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.filterHeader {
+.bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.filterTitle {
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: var(--filter-title-color, #1f2933);
-}
-
-.filterControls {
-  display: flex;
-  gap: 8px;
+  gap: 0.85rem;
   flex-wrap: wrap;
 }
 
-.badgeRow {
+.badgesScroller {
+  flex: 1 1 auto;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.collapsedBadge {
-  cursor: pointer;
-}
-
-.actionsRow {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 0.6rem;
+  min-height: 40px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.25rem;
+  scrollbar-width: thin;
 }
 
-.addButton {
+.badgesScroller::-webkit-scrollbar {
+  height: 6px;
+}
+
+.badgesScroller::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 999px;
+}
+
+.badgeEmpty {
+  color: var(--mf-text-muted, #64748b);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 999px;
+  border: 1px solid rgba(99, 102, 241, 0.26);
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--mf-text-primary, #1f2937);
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.16);
+  overflow: hidden;
+}
+
+.badgeMain {
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0.45rem 0.9rem;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  border: 1px dashed var(--filter-border, rgba(0, 0, 0, 0.1));
-  background: transparent;
-  border-radius: 999px;
-  padding: 8px 16px;
-  font-size: 0.9rem;
-  font-weight: 500;
+  gap: 0.35rem;
+  font-size: 0.85rem;
   cursor: pointer;
-  transition: background 0.2s ease;
 }
 
-.addButton:hover {
-  background: rgba(15, 76, 129, 0.04);
+.badgeMain:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
-@media (max-width: 920px) {
-  .container {
-    gap: 16px;
-  }
-
-  .filtersRow {
-    overflow-x: auto;
-    padding-bottom: 4px;
-    scroll-snap-type: x mandatory;
-  }
-
-  .filterCard {
-    flex: 0 0 calc(100% - 48px);
-    min-width: unset;
-    scroll-snap-align: start;
-  }
+.badgeLabel {
+  font-weight: 600;
 }
 
-@media (max-width: 600px) {
-  .filtersRow {
+.badgeOperator {
+  font-weight: 500;
+  color: var(--mf-text-secondary, #334155);
+}
+
+.badgeValue {
+  color: var(--mf-text-secondary, #334155);
+  font-weight: 500;
+}
+
+.badgeSeparator {
+  color: rgba(79, 70, 229, 0.8);
+}
+
+.badgeRemove {
+  border: none;
+  background: rgba(79, 70, 229, 0.22);
+  color: var(--mf-text-primary, #1f2937);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.65rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.badgeRemove:hover,
+.badgeRemove:focus-visible {
+  background: rgba(79, 70, 229, 0.32);
+  color: var(--mf-text-strong, #111827);
+  outline: none;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.addDropdown {
+  min-width: 180px;
+  flex: 0 0 auto;
+}
+
+.clearAllButton {
+  border: none;
+  background: rgba(248, 113, 113, 0.1);
+  color: var(--mf-negative-strong, #dc2626);
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.clearAllButton:hover,
+.clearAllButton:focus-visible {
+  background: rgba(248, 113, 113, 0.16);
+  box-shadow: 0 10px 24px rgba(248, 113, 113, 0.28);
+  outline: none;
+}
+
+.fieldCard {
+  background: rgba(241, 245, 249, 0.4);
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  padding: 1.1rem 1.25rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.fieldHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.fieldTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fieldTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--mf-text-strong, #0f172a);
+}
+
+.fieldHelper {
+  font-size: 0.85rem;
+  color: var(--mf-text-muted, #64748b);
+  max-width: 480px;
+}
+
+.fieldCloseButton {
+  border: none;
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--mf-text-secondary, #334155);
+  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.fieldCloseButton:hover,
+.fieldCloseButton:focus-visible {
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--mf-text-primary, #1f2937);
+  outline: none;
+}
+
+.fieldControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+}
+
+.fieldControl {
+  flex: 1 1 220px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.controlLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--mf-text-muted, #64748b);
+  text-transform: uppercase;
+}
+
+.textInput {
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.95rem;
+  color: var(--mf-text-primary, #1f2937);
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.textInput:focus-visible {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.7);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.22);
+}
+
+.emptyValue {
+  font-size: 0.85rem;
+  color: var(--mf-text-muted, #64748b);
+  background: rgba(148, 163, 184, 0.14);
+  border-radius: 14px;
+  padding: 0.7rem 0.9rem;
+}
+
+.toggleButton {
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--mf-text-secondary, #334155);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.toggleButton[data-active='true'] {
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--mf-text-primary, #1f2937);
+  box-shadow: 0 10px 24px rgba(79, 70, 229, 0.18);
+}
+
+.toggleButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.22);
+}
+
+.fieldFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.secondaryButton {
+  border: none;
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--mf-text-secondary, #334155);
+  padding: 0.6rem 1.1rem;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.secondaryButton:hover,
+.secondaryButton:focus-visible {
+  background: rgba(148, 163, 184, 0.28);
+  color: var(--mf-text-primary, #1f2937);
+  outline: none;
+}
+
+.primaryButton {
+  border: none;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #ffffff;
+  padding: 0.6rem 1.35rem;
+  border-radius: 999px;
+  font-weight: 600;
+  box-shadow: 0 16px 32px rgba(99, 102, 241, 0.25);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.primaryButton:hover,
+.primaryButton:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 22px 42px rgba(99, 102, 241, 0.35);
+  outline: none;
+}
+
+.dropdownControl {
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .bar {
     flex-direction: column;
-    overflow: visible;
+    align-items: stretch;
   }
 
-  .filterCard {
+  .badgesScroller {
     width: 100%;
   }
 
-  .filterControls {
+  .actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .fieldControls {
     flex-direction: column;
+  }
+
+  .fieldControl {
+    min-width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .badgesScroller {
+    gap: 0.5rem;
+  }
+
+  .badgeMain {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .badgeRemove {
+    padding: 0 0.55rem;
   }
 }

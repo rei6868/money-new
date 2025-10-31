@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+
+import { ConfirmationModal } from '../common/ConfirmationModal';
 import FilterBadge from './FilterBadge';
 import FilterField from './FilterField';
 import AddFilterMenu from './AddFilterMenu';
@@ -8,8 +10,8 @@ import type {
   FilterDefinition,
   FilterLineProps,
   FilterOperator,
+  FilterValue,
 } from './types';
-import { FilterValue } from './types';
 import styles from './FilterLine.module.css';
 
 const buildFilterId = (() => {
@@ -46,9 +48,29 @@ const deriveInitialValue = (operator: FilterOperator | undefined): FilterValue =
   }
 };
 
-const summariseValue = (value: FilterValue): string | undefined => {
+const summariseValue = (value: FilterValue, operator?: FilterOperator): string | undefined => {
   if (Array.isArray(value)) {
-    return value.join(', ');
+    if (operator?.options?.length) {
+      const optionLookup = new Map(operator.options.map((item) => [item.value, item.label]));
+      const mapped = value
+        .map((item) => {
+          const key = item === null || item === undefined ? '' : String(item);
+          return optionLookup.get(key) ?? key;
+        })
+        .filter((item) => item && item.length > 0);
+      if (mapped.length) {
+        return mapped.join(', ');
+      }
+    }
+
+    return value
+      .map((item) => (item === null || item === undefined ? '' : String(item)))
+      .filter((item) => item.length > 0)
+      .join(', ');
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
   }
 
   if (value === null || value === undefined) {
@@ -57,6 +79,14 @@ const summariseValue = (value: FilterValue): string | undefined => {
 
   if (typeof value === 'object') {
     return JSON.stringify(value);
+  }
+
+  if (operator?.options?.length) {
+    const stringValue = String(value);
+    const match = operator.options.find((option) => option.value === stringValue);
+    if (match) {
+      return match.label;
+    }
   }
 
   return String(value);
@@ -103,26 +133,22 @@ export function FilterLine({
   const [filters, setFilters] = useState<FilterDefinition[]>(() =>
     defaultFilters.map((filter) => ensureFilterId(filter)),
   );
-  const [openFilterId, setOpenFilterId] = useState<string | null>(() => filters[0]?.id ?? null);
+  const [openFilterId, setOpenFilterId] = useState<string | null>(null);
+  const [pendingNewFilterId, setPendingNewFilterId] = useState<string | null>(null);
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
 
   useEffect(() => {
     const initialFilters = defaultFilters.map((filter) => ensureFilterId(filter));
     setFilters(initialFilters);
-    setOpenFilterId(initialFilters[0]?.id ?? null);
+    setOpenFilterId(null);
+    setPendingNewFilterId(null);
   }, [defaultFilters]);
 
   useEffect(() => {
-    if (!filters.length) {
+    if (openFilterId && !filters.some((filter) => filter.id === openFilterId)) {
       setOpenFilterId(null);
-      return;
-    }
-
-    if (!openFilterId || !filters.some((filter) => filter.id === openFilterId)) {
-      setOpenFilterId(filters[0].id);
     }
   }, [filters, openFilterId]);
-
-  const availableColumns = useMemo(() => columns, [columns]);
 
   const updateFilters = (updater: (filters: FilterDefinition[]) => FilterDefinition[]) => {
     setFilters((previous) => {
@@ -132,10 +158,39 @@ export function FilterLine({
     });
   };
 
+  const usedColumnIds = useMemo(() => new Set(filters.map((filter) => filter.columnId)), [filters]);
+
+  const availableColumnsForAdd = useMemo(
+    () => columns.filter((column) => !usedColumnIds.has(column.id)),
+    [columns, usedColumnIds],
+  );
+
+  const openFilterIndex = useMemo(
+    () => filters.findIndex((filter) => filter.id === openFilterId),
+    [filters, openFilterId],
+  );
+  const openFilter = openFilterIndex >= 0 ? filters[openFilterIndex] : null;
+
+  const availableColumnsForOpenFilter = useMemo(() => {
+    if (!openFilter) {
+      return availableColumnsForAdd;
+    }
+
+    const reserved = new Set(
+      filters.filter((candidate) => candidate.id !== openFilter.id).map((candidate) => candidate.columnId),
+    );
+
+    return columns.filter(
+      (column) => column.id === openFilter.columnId || !reserved.has(column.id),
+    );
+  }, [availableColumnsForAdd, columns, filters, openFilter]);
+
   const handleAddFilter = (column: FilterColumn) => {
     updateFilters((previous) => {
-      const next = [...previous, createFilterFromColumn(column)];
-      return next;
+      const nextFilter = createFilterFromColumn(column);
+      setOpenFilterId(nextFilter.id);
+      setPendingNewFilterId(nextFilter.id);
+      return [...previous, nextFilter];
     });
   };
 
@@ -179,13 +234,13 @@ export function FilterLine({
     });
   };
 
-  const handleValueChangeInternal = (index: number, value: FilterValue) => {
+  const handleValueChangeInternal = (index: number, nextValue: FilterValue) => {
     updateFilters((previous) => {
       const nextFilters = [...previous];
       const current = nextFilters[index];
       nextFilters[index] = {
         ...current,
-        value,
+        value: nextValue,
       };
       const cascade = getCascadeContext(nextFilters, columns, index);
       onValueChange?.({ ...cascade, previousValue: current.value });
@@ -200,56 +255,121 @@ export function FilterLine({
       const cascade = { ...getCascadeContext(previous, columns, index) };
       onRemoveFilter?.(cascade);
       if (removed?.id === openFilterId) {
-        setOpenFilterId(nextFilters[0]?.id ?? null);
+        setOpenFilterId(null);
+      }
+      if (removed?.id && pendingNewFilterId === removed.id) {
+        setPendingNewFilterId(null);
       }
       return nextFilters;
     });
   };
 
+  const handleApplyFilter = (filterId: string) => {
+    if (pendingNewFilterId === filterId) {
+      setPendingNewFilterId(null);
+    }
+    setOpenFilterId(null);
+  };
+
+  const handleCancelFilter = (filterId: string) => {
+    if (pendingNewFilterId === filterId) {
+      updateFilters((previous) => previous.filter((filter) => filter.id !== filterId));
+      setPendingNewFilterId(null);
+    }
+    setOpenFilterId(null);
+  };
+
+  const handleClearAllConfirmed = () => {
+    setIsConfirmingClear(false);
+    setPendingNewFilterId(null);
+    setOpenFilterId(null);
+    updateFilters((previous) => {
+      previous.forEach((_, index) => {
+        const cascade = { ...getCascadeContext(previous, columns, index) };
+        onRemoveFilter?.(cascade);
+      });
+      return [];
+    });
+  };
+
+  const collapsedFilters = filters.filter((filter) => filter.id !== openFilterId);
+  const openColumn = openFilter ? findColumn(columns, openFilter.columnId) : undefined;
+  const openOperator = openColumn ? findOperator(openColumn, openFilter.operatorId) : undefined;
+
   return (
     <div className={styles.container}>
-      {filters.length ? (
-        <div className={styles.filtersRow}>
-          {filters.map((filter, index) => {
-            const column = findColumn(availableColumns, filter.columnId);
-            const operator = findOperator(column, filter.operatorId);
-            const isOpen = filter.id === openFilterId;
-            if (isOpen) {
+      <div className={styles.bar}>
+        <div className={styles.badgesScroller}>
+          {collapsedFilters.length ? (
+            collapsedFilters.map((filter) => {
+              const column = findColumn(columns, filter.columnId);
+              const operator = findOperator(column, filter.operatorId);
+              const absoluteIndex = filters.findIndex((candidate) => candidate.id === filter.id);
+              if (absoluteIndex === -1) {
+                return null;
+              }
               return (
-                <FilterField
+                <FilterBadge
                   key={filter.id}
                   filter={filter}
-                  column={column}
-                  operator={operator}
-                  columns={availableColumns}
-                  onColumnChange={(columnId) => handleColumnChangeInternal(index, columnId)}
-                  onOperatorChange={(operatorId) => handleOperatorChangeInternal(index, operatorId)}
-                  onValueChange={(value) => handleValueChangeInternal(index, value)}
-                  onRemove={() => handleRemoveFilter(index)}
-                  loadValueOptions={loadValueOptions}
+                  columnLabel={column?.label}
+                  operatorLabel={operator?.label}
+                  valueLabel={summariseValue(filter.value, operator)}
+                  onClick={() => setOpenFilterId(filter.id)}
+                  onRemove={() => handleRemoveFilter(absoluteIndex)}
                 />
               );
-            }
-
-            return (
-              <FilterBadge
-                key={filter.id}
-                filter={filter}
-                columnLabel={column?.label}
-                operatorLabel={operator?.label}
-                valueLabel={summariseValue(filter.value)}
-                onClick={() => setOpenFilterId(filter.id)}
-              />
-            );
-          })}
+            })
+          ) : filters.length ? (
+            <span className={styles.badgeEmpty}>Editing filter…</span>
+          ) : (
+            emptyState ?? <span className={styles.badgeEmpty}>No filters applied.</span>
+          )}
         </div>
-      ) : (
-        emptyState ?? <p style={{ margin: 0, color: '#52606d' }}>No filters applied.</p>
-      )}
-
-      <div className={styles.actionsRow}>
-        <AddFilterMenu columns={availableColumns} onSelect={handleAddFilter} label={addFilterLabel} />
+        <div className={styles.actions}>
+          <AddFilterMenu
+            columns={availableColumnsForAdd}
+            onSelect={handleAddFilter}
+            label={addFilterLabel}
+          />
+          {filters.length ? (
+            <button
+              type="button"
+              className={styles.clearAllButton}
+              onClick={() => setIsConfirmingClear(true)}
+            >
+              Clear all
+            </button>
+          ) : null}
+        </div>
       </div>
+
+      {openFilter && openFilterIndex >= 0 ? (
+        <FilterField
+          filter={openFilter}
+          column={openColumn}
+          operator={openOperator}
+          columns={columns}
+          availableColumns={availableColumnsForOpenFilter}
+          onColumnChange={(columnId) => handleColumnChangeInternal(openFilterIndex, columnId)}
+          onOperatorChange={(operatorId) => handleOperatorChangeInternal(openFilterIndex, operatorId)}
+          onValueChange={(nextValue) => handleValueChangeInternal(openFilterIndex, nextValue)}
+          onRemove={() => handleRemoveFilter(openFilterIndex)}
+          onApply={() => handleApplyFilter(openFilter.id)}
+          onCancel={() => handleCancelFilter(openFilter.id)}
+          loadValueOptions={loadValueOptions}
+        />
+      ) : null}
+
+      <ConfirmationModal
+        isOpen={isConfirmingClear}
+        title="Clear all filters"
+        message="Are you sure to clear all filters?"
+        confirmLabel="Clear"
+        confirmTone="danger"
+        onConfirm={handleClearAllConfirmed}
+        onCancel={() => setIsConfirmingClear(false)}
+      />
     </div>
   );
 }
