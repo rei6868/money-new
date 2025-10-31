@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import AppLayout from '../../components/layout/AppShell/AppShell';
 import AccountsCardsView from '../../components/accounts/AccountsCardsView';
-import AccountTypeTabs from '../../components/accounts/AccountTypeTabs';
 import TableAccounts from '../../components/accounts/TableAccounts';
 import AccountEditModal, { AccountEditPayload } from '../../components/accounts/AccountEditModal';
 import AddModalGlobal, { AddModalType } from '../../components/common/AddModalGlobal';
@@ -995,13 +994,6 @@ export default function AccountsPage() {
                 </div>
               )}
               {inlineSelectionToolbar}
-              <div className={styles.toolbarTabs}>
-                <AccountTypeTabs
-                  activeTab={activeTypeTab}
-                  onTabChange={setActiveTypeTab}
-                  tabs={accountTypeTabMetrics}
-                />
-              </div>
             </div>
           </div>
           {fetchError ? (
