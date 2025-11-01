@@ -1,4 +1,3 @@
-import AppLayout from '../components/layout/AppShell/AppShell';
 import PagePlaceholder from '../components/PagePlaceholder';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 
@@ -9,13 +8,6 @@ export default function SubscriptionPage() {
     return null;
   }
 
-  return (
-    <AppLayout
-      title="Subscription"
-      subtitle="Control recurring spend, renewals, and cashback routing."
-    >
-      <PagePlaceholder title="Subscription" />
-    </AppLayout>
-  );
+  return <PagePlaceholder title="Subscription" />;
 }
 

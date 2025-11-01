@@ -1,4 +1,3 @@
-import AppLayout from '../components/layout/AppShell/AppShell';
 import PagePlaceholder from '../components/PagePlaceholder';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 
@@ -9,12 +8,5 @@ export default function SettingsPage() {
     return null;
   }
 
-  return (
-    <AppLayout
-      title="Settings"
-      subtitle="Profile, security, and automation controls will appear soon."
-    >
-      <PagePlaceholder title="Settings" />
-    </AppLayout>
-  );
+  return <PagePlaceholder title="Settings" />;
 }

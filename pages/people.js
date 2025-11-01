@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-
-import AppLayout from '../components/layout/AppShell/AppShell';
 import { PeoplePageContent } from '../components/pages/people/PeoplePageContent';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 
@@ -75,15 +73,13 @@ export default function PeoplePage() {
   }
 
   return (
-    <AppLayout>
-      <PeoplePageContent
+    <PeoplePageContent
         people={people}
         isLoading={isLoading}
         error={error}
         onAddNew={handleAddNew}
         onEditPerson={handleEdit}
         onDeletePerson={handleDelete}
-      />
-    </AppLayout>
+    />
   );
 }

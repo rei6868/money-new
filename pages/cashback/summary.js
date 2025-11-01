@@ -1,4 +1,3 @@
-import AppLayout from '../../components/layout/AppShell/AppShell';
 import PagePlaceholder from '../../components/PagePlaceholder';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 
@@ -9,12 +8,5 @@ export default function CashbackSummaryPage() {
     return null;
   }
 
-  return (
-    <AppLayout
-      title="Cashback summary"
-      subtitle="Monitor cashback KPIs and highlight program performance."
-    >
-      <PagePlaceholder title="Cashback summary dashboards" />
-    </AppLayout>
-  );
+  return <PagePlaceholder title="Cashback summary dashboards" />;
 }

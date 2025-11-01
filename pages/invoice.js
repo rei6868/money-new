@@ -1,4 +1,3 @@
-import AppLayout from '../components/layout/AppShell/AppShell';
 import PagePlaceholder from '../components/PagePlaceholder';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 
@@ -9,12 +8,5 @@ export default function InvoicePage() {
     return null;
   }
 
-  return (
-    <AppLayout
-      title="Invoice"
-      subtitle="Invoice drafts, payment timelines, and reminders will appear here."
-    >
-      <PagePlaceholder title="Invoice" />
-    </AppLayout>
-  );
+  return <PagePlaceholder title="Invoice" />;
 }

@@ -1,4 +1,3 @@
-import AppLayout from '../../components/layout/AppShell/AppShell';
 import PagePlaceholder from '../../components/PagePlaceholder';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 
@@ -9,13 +8,6 @@ export default function DebtMovementsPage() {
     return null;
   }
 
-  return (
-    <AppLayout
-      title="Debt Movements"
-      subtitle="Track payments, adjustments, and owner changes for each liability."
-    >
-      <PagePlaceholder title="Debt Movements" />
-    </AppLayout>
-  );
+  return <PagePlaceholder title="Debt Movements" />;
 }
 

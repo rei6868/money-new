@@ -1,4 +1,3 @@
-import AppLayout from '../components/layout/AppShell/AppShell';
 import PagePlaceholder from '../components/PagePlaceholder';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 
@@ -9,12 +8,5 @@ export default function HubPage() {
     return null;
   }
 
-  return (
-    <AppLayout
-      title="Hub"
-      subtitle="Central workspace for collaboration, tasks, and shared resources."
-    >
-      <PagePlaceholder title="Hub" />
-    </AppLayout>
-  );
+  return <PagePlaceholder title="Hub" />;
 }

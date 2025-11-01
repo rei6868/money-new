@@ -1,4 +1,3 @@
-import AppLayout from '../components/layout/AppShell/AppShell';
 import PagePlaceholder from '../components/PagePlaceholder';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 
@@ -9,13 +8,6 @@ export default function BatchInputPage() {
     return null;
   }
 
-  return (
-    <AppLayout
-      title="Batch Input"
-      subtitle="Upload and reconcile batch transaction imports with guardrails."
-    >
-      <PagePlaceholder title="Batch Input" />
-    </AppLayout>
-  );
+  return <PagePlaceholder title="Batch Input" />;
 }
 

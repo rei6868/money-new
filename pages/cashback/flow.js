@@ -1,4 +1,3 @@
-import AppLayout from '../../components/layout/AppShell/AppShell';
 import PagePlaceholder from '../../components/PagePlaceholder';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 
@@ -9,13 +8,6 @@ export default function CashbackFlowPage() {
     return null;
   }
 
-  return (
-    <AppLayout
-      title="Cashback Flow"
-      subtitle="Review every cashback accrual, release, and allocation signal."
-    >
-      <PagePlaceholder title="Cashback Flow" />
-    </AppLayout>
-  );
+  return <PagePlaceholder title="Cashback Flow" />;
 }
 
