@@ -1,19 +1,8 @@
-import { useEffect } from 'react';
-import { useRouter } from 'next/router';
-
-import { useAuth } from '../context/AuthContext';
-
-export default function HomePage() {
-  const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
-
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-
-    router.replace(isAuthenticated ? '/dashboard' : '/login');
-  }, [isAuthenticated, isLoading, router]);
-
-  return null;
+export default function Home() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center">
+      <h1 className="text-4xl font-bold">Project Phoenix - Welcome</h1>
+      <p className="mt-2 text-lg">UI Refactor in progress.</p>
+    </div>
+  );
 }
