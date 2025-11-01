@@ -1,4 +1,3 @@
-import AppLayout from '../../components/layout/AppShell/AppShell';
 import PagePlaceholder from '../../components/PagePlaceholder';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 
@@ -9,13 +8,6 @@ export default function CashbackMovementsPage() {
     return null;
   }
 
-  return (
-    <AppLayout
-      title="Cashback Movements"
-      subtitle="Trace the lifecycle of each cashback movement inside Money Flow."
-    >
-      <PagePlaceholder title="Cashback Movements" />
-    </AppLayout>
-  );
+  return <PagePlaceholder title="Cashback Movements" />;
 }
 

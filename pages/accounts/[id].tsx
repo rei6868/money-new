@@ -2,8 +2,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 import { FiArrowLeft } from 'react-icons/fi';
-
-import AppLayout from '../../components/layout/AppShell/AppShell';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { formatAmountWithTrailing } from '../../lib/numberFormat';
@@ -111,8 +109,7 @@ export default function AccountDetailPage() {
   };
 
   return (
-    <AppLayout title={pageTitle} subtitle={subtitle}>
-      <div className={styles.root}>
+    <div className={styles.root}>
         <Link href="/accounts" className={styles.backLink}>
           <FiArrowLeft aria-hidden />
           Back to accounts
@@ -164,7 +161,6 @@ export default function AccountDetailPage() {
             Unable to locate this account.
           </div>
         )}
-      </div>
-    </AppLayout>
+    </div>
   );
 }

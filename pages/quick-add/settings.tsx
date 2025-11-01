@@ -7,8 +7,6 @@ import {
   FiTrash2,
   FiZap,
 } from 'react-icons/fi';
-
-import AppLayout from '../../components/layout/AppShell/AppShell';
 import type { QuickAddActionId } from '../../components/common/QuickAddModal';
 import styles from '../../styles/QuickAddSettings.module.css';
 
@@ -149,11 +147,7 @@ export default function QuickAddSettingsPage() {
   };
 
   return (
-    <AppLayout
-      title="Quick add shortcuts"
-      subtitle="Tune your lightning-fast presets. Drag to reorder, toggle active states, and tailor defaults for each action."
-    >
-      <div className={styles.page}>
+    <div className={styles.page}>
         <section className={styles.board}>
           <header className={styles.boardHeader}>
             <div className={styles.boardTitleGroup}>
@@ -263,7 +257,6 @@ export default function QuickAddSettingsPage() {
             <li>Use valid JSON for presets — it will be passed directly into the Add modal.</li>
           </ul>
         </aside>
-      </div>
-    </AppLayout>
+    </div>
   );
 }

@@ -1,4 +1,3 @@
-import AppLayout from '../components/layout/AppShell/AppShell';
 import PagePlaceholder from '../components/PagePlaceholder';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 
@@ -9,12 +8,5 @@ export default function ReportsPage() {
     return null;
   }
 
-  return (
-    <AppLayout
-      title="Reports"
-      subtitle="Custom profit and loss reporting will be available in a future sprint."
-    >
-      <PagePlaceholder title="Reports" />
-    </AppLayout>
-  );
+  return <PagePlaceholder title="Reports" />;
 }

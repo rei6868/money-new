@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-
-import AppLayout from '../components/layout/AppShell/AppShell';
 import { CategoryPageContent } from '../components/pages/category/CategoryPageContent';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 
@@ -60,8 +58,7 @@ export default function CategoryPage() {
   }
 
   return (
-    <AppLayout>
-      <CategoryPageContent
+    <CategoryPageContent
         categories={categories}
         loading={loading}
         error={error}
@@ -72,8 +69,7 @@ export default function CategoryPage() {
         }
         onEditCategory={(category) => console.info(`Edit category ${category.categoryId}`)}
         onDeleteCategory={(category) => console.info(`Delete category ${category.categoryId}`)}
-      />
-    </AppLayout>
+    />
   );
 }
 

@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
-
-import AppLayout from '../components/layout/AppShell/AppShell';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 
 export default function ShopPage() {
@@ -68,7 +66,7 @@ export default function ShopPage() {
   }
 
   return (
-    <AppLayout title="Shops" subtitle="Manage partner shops and on-site purchases.">
+    <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
         <button type="button" onClick={handleAddNew} style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}>
           Add New Shop
@@ -123,7 +121,7 @@ export default function ShopPage() {
           </tbody>
         </table>
       )}
-    </AppLayout>
+    </div>
   );
 }
 

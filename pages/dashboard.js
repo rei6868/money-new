@@ -1,4 +1,3 @@
-import AppLayout from '../components/layout/AppShell/AppShell';
 import PagePlaceholder from '../components/PagePlaceholder';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 
@@ -9,9 +8,5 @@ export default function DashboardPage() {
     return null;
   }
 
-  return (
-    <AppLayout title="Dashboard" subtitle="High-level KPIs and analytics will be placed here.">
-      <PagePlaceholder title="Dashboard" />
-    </AppLayout>
-  );
+  return <PagePlaceholder title="Dashboard" />;
 }
