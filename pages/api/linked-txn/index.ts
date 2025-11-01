@@ -8,8 +8,10 @@ import {
   type NewLinkedTransaction 
 } from "../../../src/db/schema/transactions";
 import { transactions, type NewTransaction } from "../../../src/db/schema/transactions";
-import { debtMovements, debtLedger } from "../../../src/db/schema/debtMovements";
-import { cashbackMovements, cashbackLedger } from "../../../src/db/schema/cashbackLedger";
+import { debtMovements } from "../../../src/db/schema/debtMovements";
+import { debtLedger } from "../../../src/db/schema/debtLedger";
+import { cashbackMovements } from "../../../src/db/schema/cashbackMovements";
+import { cashbackLedger } from "../../../src/db/schema/cashbackLedger";
 import { accounts } from "../../../src/db/schema/accounts";
 import { eq, sql } from "drizzle-orm";
 
