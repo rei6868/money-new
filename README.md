@@ -43,8 +43,8 @@ This project aims to migrate and standardize the financial management system fro
 ### Local Development
 1. Clone the repository
 ```bash
-git clone https://github.com/rei6868/money-new.git
-cd money-new
+git clone https://github.com/rei6868/gemini-money.git
+cd gemini-money
 ```
 
 2. Install dependencies

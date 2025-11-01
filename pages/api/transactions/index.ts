@@ -9,8 +9,10 @@ import { db } from "../../../lib/db/client";
 import { transactions, transactionTypeEnum, transactionStatusEnum, type NewTransaction } from "../../../src/db/schema/transactions";
 import { debtMovements, debtMovementTypeEnum, debtMovementStatusEnum, type NewDebtMovement } from "../../../src/db/schema/debtMovements";
 import { debtLedger, debtLedgerStatusEnum, type NewDebtLedger } from "../../../src/db/schema/debtLedger";
+import { cashbackMovements, cashbackTypeEnum, cashbackStatusEnum, type NewCashbackMovement } from "../../../src/db/schema/cashbackMovements";
+import { cashbackLedger, cashbackEligibilityEnum, cashbackLedgerStatusEnum, type NewCashbackLedger } from "../../../src/db/schema/cashbackLedger";
 import { accounts } from "../../../src/db/schema/accounts";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 
 // Mock data for development when database is not configured
 const MOCK_TRANSACTIONS: any[] = [
@@ -312,8 +314,124 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         await database.insert(debtMovements).values(newDebtMovement);
       }
 
-      // Update accounts (simple logic, outscoped for brevity)
-      // TODO: You can re-add account balance update logic here if needed
+      // Cashback logic
+      if (body.cashbackMovement && (body.type === "expense" || body.type === "income")) {
+        const { cashbackType, cashbackValue } = body.cashbackMovement;
+        const allowedCashbackTypes = cashbackTypeEnum.enumValues as readonly string[];
+        if (!allowedCashbackTypes.includes(cashbackType))
+          return res.status(400).json({ error: "Invalid cashbackType", details: allowedCashbackTypes });
+
+        // Calculate cashback amount
+        let cashbackAmount = 0;
+        if (cashbackType === "percent") {
+          cashbackAmount = amount * (parseFloat(cashbackValue) / 100);
+        } else {
+          cashbackAmount = parseFloat(cashbackValue);
+        }
+
+        // Get cycle tag (YYYY-MM format)
+        const occurredDate = new Date(body.occurredOn);
+        const cycleTag = `${occurredDate.getFullYear()}-${String(occurredDate.getMonth() + 1).padStart(2, "0")}`;
+
+        // Check budget cap from ledger
+        const [ledger] = await database
+          .select()
+          .from(cashbackLedger)
+          .where(
+            and(
+              eq(cashbackLedger.accountId, body.accountId),
+              eq(cashbackLedger.cycleTag, cycleTag)
+            )
+          );
+
+        let budgetCap = 0;
+        let totalCashback = 0;
+        let cashbackLedgerId: string;
+        let movementStatus: typeof cashbackStatusEnum.enumValues[number] = "applied";
+
+        if (ledger) {
+          budgetCap = parseFloat(ledger.budgetCap ?? "0");
+          totalCashback = parseFloat(ledger.totalCashback ?? "0");
+          cashbackLedgerId = ledger.cashbackLedgerId;
+
+          // Check if adding this cashback would exceed cap
+          if (budgetCap > 0 && totalCashback + cashbackAmount > budgetCap) {
+            movementStatus = "exceed_cap";
+            cashbackAmount = Math.max(0, budgetCap - totalCashback);
+          }
+        } else {
+          // Create new ledger entry
+          cashbackLedgerId = randomUUID();
+          budgetCap = body.cashbackMovement.budgetCap ? parseFloat(body.cashbackMovement.budgetCap) : 0;
+          const newLedger: NewCashbackLedger = {
+            cashbackLedgerId,
+            accountId: body.accountId,
+            cycleTag,
+            totalSpend: amount.toFixed(2),
+            totalCashback: cashbackAmount.toFixed(2),
+            budgetCap: budgetCap.toFixed(2),
+            eligibility: "eligible",
+            remainingBudget: (budgetCap - cashbackAmount).toFixed(2),
+            status: "open",
+          };
+          await database.insert(cashbackLedger).values(newLedger);
+        }
+
+        // Create cashback movement
+        const newCashbackMovement: NewCashbackMovement = {
+          cashbackMovementId: randomUUID(),
+          transactionId,
+          accountId: body.accountId,
+          cycleTag,
+          cashbackType,
+          cashbackValue: parseFloat(cashbackValue).toFixed(4),
+          cashbackAmount: cashbackAmount.toFixed(2),
+          status: movementStatus,
+          budgetCap: budgetCap > 0 ? budgetCap.toFixed(2) : null,
+          note: body.notes || null,
+        };
+        await database.insert(cashbackMovements).values(newCashbackMovement);
+
+        // Update ledger if it existed
+        if (ledger) {
+          const newTotalCashback = totalCashback + cashbackAmount;
+          const newTotalSpend = parseFloat(ledger.totalSpend ?? "0") + amount;
+          await database.update(cashbackLedger).set({
+            totalSpend: newTotalSpend.toFixed(2),
+            totalCashback: newTotalCashback.toFixed(2),
+            remainingBudget: (budgetCap - newTotalCashback).toFixed(2),
+            eligibility: newTotalCashback >= budgetCap && budgetCap > 0 ? "reached_cap" : "eligible",
+            lastUpdated: new Date(),
+          }).where(eq(cashbackLedger.cashbackLedgerId, cashbackLedgerId));
+        }
+      }
+
+      // Update account balance
+      const [account] = await database.select().from(accounts).where(eq(accounts.accountId, body.accountId));
+      if (account) {
+        const currentBalance = parseFloat(account.currentBalance ?? "0");
+        const totalIn = parseFloat(account.totalIn ?? "0");
+        const totalOut = parseFloat(account.totalOut ?? "0");
+        
+        let newBalance = currentBalance;
+        let newTotalIn = totalIn;
+        let newTotalOut = totalOut;
+
+        if (body.type === "income" || body.type === "repayment" || body.type === "cashback") {
+          newBalance += amount;
+          newTotalIn += amount;
+        } else if (body.type === "expense" || body.type === "debt") {
+          newBalance -= amount;
+          newTotalOut += amount;
+        }
+
+        await database.update(accounts).set({
+          currentBalance: newBalance.toFixed(2),
+          totalIn: newTotalIn.toFixed(2),
+          totalOut: newTotalOut.toFixed(2),
+          updatedAt: new Date(),
+        }).where(eq(accounts.accountId, body.accountId));
+      }
 
       res.status(201).json(createdTxn);
     } catch (error) {
