@@ -108,11 +108,6 @@ function parseUpdatePayload(body: Record<string, unknown>) {
     hasMutations = true;
   }
 
-  if (body.linkedTxnId !== undefined) {
-    updates.linkedTxnId = coerceOptionalString(body.linkedTxnId);
-    hasMutations = true;
-  }
-
   if (body.type !== undefined) {
     const allowedTypes = transactionTypeEnum.enumValues as readonly string[];
     if (typeof body.type !== "string" || !allowedTypes.includes(body.type)) {

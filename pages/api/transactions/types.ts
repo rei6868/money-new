@@ -45,7 +45,7 @@ export default async function handler(
     const transferCountRows = await database
       .select({ count: sql<number>`count(*)` })
       .from(transactions)
-      .where(sql`${transactions.type} = 'expense' AND ${transactions.linkedTxnId} IS NOT NULL`);
+      .where(sql`${transactions.type} = 'expense' AND ${transactions.parentTxnId} IS NOT NULL`);
 
     const transferCount = Number(transferCountRows[0]?.count ?? 0);
 
