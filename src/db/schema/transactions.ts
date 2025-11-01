@@ -108,11 +108,11 @@ export const transactions: PgTableWithColumns<any> = pgTable("transactions", {
   ),
 
   /**
-   * Optional pointer to a Linked Transaction group for multi-step flows such as
-   * refunds, splits, batch imports, or settlement runs.
+   * Optional self-reference to the parent transaction for task-based workflows
+   * such as refunds or cancellations. Enables tracking of opposite transactions.
    */
-  linkedTxnId: varchar("linked_txn_id", { length: 36 }).references(
-    () => linkedTransactions.linkedTxnId,
+  parentTxnId: varchar("parent_txn_id", { length: 36 }).references(
+    () => transactions.transactionId,
     { onDelete: "set null" }
   ),
 
@@ -153,96 +153,5 @@ export const transactions: PgTableWithColumns<any> = pgTable("transactions", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-/**
- * Enumerates the supported groupings of linked transactions, covering scenarios
- * like refunds, bill splits, batch imports, and settlement workflows.
- */
-export const linkedTxnTypeEnum = pgEnum("linked_txn_type", [
-  "refund",
-  "split",
-  "batch",
-  "settle",
-]);
-
-/**
- * Status values for linked transaction groups. These states control whether the
- * grouping is active, fully resolved, or intentionally canceled.
- */
-export const linkedTxnStatusEnum = pgEnum("linked_txn_status", [
-  "active",
-  "done",
-  "canceled",
-]);
-
-/**
- * Represents a logical grouping of transactions (e.g. a refund journey, split
- * disbursement, batch import, or settlement run). Stores metadata needed to tie
- * individual ledger entries together for reporting and reconciliation.
- */
-export const linkedTransactions: PgTableWithColumns<any> = pgTable(
-  "linked_transactions",
-  {
-  /**
-   * Primary key for the linked transaction group. Uses string identifiers for
-   * interoperability with upstream services.
-   */
-  linkedTxnId: varchar("linked_txn_id", { length: 36 }).primaryKey(),
-
-  /**
-   * Optional pointer to the root transaction when the group represents a
-   * multi-step workflow (refund master, split anchor, etc.).
-   */
-  parentTxnId: varchar("parent_txn_id", { length: 36 }).references(
-    () => transactions.transactionId,
-    { onDelete: "set null" },
-  ),
-
-  /**
-   * Business classification describing the grouped behaviour (refund, split,
-   * batch import, or settlement operation).
-   */
-  type: linkedTxnTypeEnum("type").notNull(),
-
-  /**
-   * Array of related transaction IDs associated with the linkage. Stored as a
-   * text array for flexibility while still referencing transaction identifiers.
-   */
-  relatedTxnIds: varchar("related_txn_ids", { length: 36 })
-    .array()
-    .notNull()
-    .default(sql`ARRAY[]::varchar[]`),
-
-  /**
-   * Optional descriptive notes (e.g. refund reason, settlement memo).
-   */
-  notes: text("notes"),
-
-  /**
-   * Lifecycle state for the linked transaction group.
-   */
-  status: linkedTxnStatusEnum("status").notNull(),
-
-  /**
-   * Creation timestamp for the linkage record.
-   */
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-
-  /**
-   * Update timestamp for audit trails.
-   */
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
-  parentTxnFk: foreignKey({
-    columns: [table.parentTxnId],
-    foreignColumns: [transactions.transactionId],
-    name: "linked_transactions_parent_txn_id_fkey",
-  })
-    .onDelete("set null")
-    .onUpdate("cascade"),
-}));
-
 export type Transaction = typeof transactions.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;
-
-export type LinkedTransaction = typeof linkedTransactions.$inferSelect;
-export type NewLinkedTransaction = typeof linkedTransactions.$inferInsert;

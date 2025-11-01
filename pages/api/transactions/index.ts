@@ -222,7 +222,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         personId: body.personId || null,
         categoryId: body.categoryId || null,
         shopId: body.shopId || null,
-        linkedTxnId: body.linkedTxnId || null,
         subscriptionMemberId: body.subscriptionMemberId || null,
         notes: body.notes || null,
       };
